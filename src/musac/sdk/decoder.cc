@@ -1,0 +1,67 @@
+// This is copyrighted software. More information is at the end of this file.
+#include <musac/sdk/decoder.hh>
+
+#include <memory>
+
+#include <musac/sdk/buffer.hh>
+
+
+namespace musac {
+    struct decoder::impl final {
+        buffer <float> m_stereo_buf{0};
+        bool m_is_open = false;
+    };
+
+    decoder::decoder()
+        : m_pimpl(std::make_unique <impl>()) {
+    }
+
+    decoder::~decoder() = default;
+
+    bool decoder::is_open() const {
+        return m_pimpl->m_is_open;
+    }
+
+    // Conversion happens in-place.
+    static constexpr void mono_to_stereo(float buf[], unsigned int len) {
+        if (len < 1 || !buf) {
+            return;
+        }
+        for (int i = (int)len / 2 - 1, j = (int)len - 1; i >= 0; --i) {
+            buf[j--] = buf[i];
+            buf[j--] = buf[i];
+        }
+    }
+
+    static constexpr void stereo_to_mono(float dst[], const float src[], unsigned int src_len) {
+        if (src_len < 1 || !dst || !src) {
+            return;
+        }
+        for (unsigned int i = 0, j = 0; i < src_len; i += 2, ++j) {
+            dst[j] = src[i] * 0.5f;
+            dst[j] += src[i + 1] * 0.5f;
+        }
+    }
+
+    unsigned int decoder::decode(float buf[], unsigned int len, bool& call_again, unsigned int device_channels) {
+        if (this->get_channels() == 1 && device_channels == 2) {
+            auto srcLen = this->do_decode(buf, len / 2, call_again);
+            mono_to_stereo(buf, srcLen * 2);
+            return srcLen * 2;
+        }
+
+        if (this->get_channels() == 2 && device_channels == 1) {
+            if (m_pimpl->m_stereo_buf.size() != len * 2) {
+                m_pimpl->m_stereo_buf.reset(len * 2);
+            }
+            auto srcLen = this->do_decode(m_pimpl->m_stereo_buf.data(), m_pimpl->m_stereo_buf.size(), call_again);
+            stereo_to_mono(buf, m_pimpl->m_stereo_buf.data(), srcLen);
+            return srcLen / 2;
+        }
+        return this->do_decode(buf, len, call_again);
+    }
+
+    void decoder::set_is_open(bool f) {
+        m_pimpl->m_is_open = f;
+    }
+}

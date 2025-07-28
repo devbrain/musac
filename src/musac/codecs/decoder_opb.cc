@@ -1,0 +1,78 @@
+//
+// Created by igor on 3/19/25.
+//
+
+#include <musac/codecs/decoder_opb.hh>
+#include <musac/sdk/samples_converter.hh>
+
+#include "codecs/opb_lib/opblib.h"
+#include "codecs/opl/opl_player.hh"
+
+
+
+#define SAMPLE_RATE 44100
+
+namespace musac {
+    struct decoder_opb::impl {
+        impl()
+            : m_player(SAMPLE_RATE) {
+        }
+
+        static int ReceiveOpbBuffer(OPB_Command* commandStream, size_t commandCount, void* context) {
+            auto* self = (impl*)context;
+            self->m_player.copy(commandStream, commandCount);
+            return 0;
+        }
+
+        opl_player m_player;
+    };
+
+    static size_t StreamReader(void* buffer, size_t elementSize, size_t elementCount, void* context) {
+        auto rwops = (SDL_IOStream*)context;
+        SDL_ReadIO(rwops, buffer, elementSize * elementCount);
+        return elementCount;
+    }
+
+    decoder_opb::decoder_opb()
+        : m_pimpl(std::make_unique <impl>()) {
+    }
+
+    decoder_opb::~decoder_opb() = default;
+
+    bool decoder_opb::open(SDL_IOStream* rwops) {
+        auto rc = OPB_BinaryToOpl(StreamReader, rwops, impl::ReceiveOpbBuffer, m_pimpl.get());
+        return rc == 0;
+    }
+
+    unsigned int decoder_opb::get_channels() const {
+        return 2;
+    }
+
+    unsigned int decoder_opb::get_rate() const {
+        return SAMPLE_RATE;
+    }
+
+    bool decoder_opb::rewind() {
+        m_pimpl->m_player.rewind();
+        return true;
+    }
+
+    std::chrono::microseconds decoder_opb::duration() const {
+        return {};
+    }
+
+    bool decoder_opb::seek_to_time([[maybe_unused]] std::chrono::microseconds pos) {
+        return false;
+    }
+
+    unsigned int decoder_opb::do_decode(float* const buf, unsigned int len, bool& callAgain) {
+        auto rc = m_pimpl->m_player.render(buf, len);
+        if (rc == 0) {
+            return rc;
+        }
+        if (rc < len) {
+            callAgain = true;
+        }
+        return rc;
+    }
+}
