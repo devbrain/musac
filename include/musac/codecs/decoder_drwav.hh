@@ -1,0 +1,52 @@
+// This is copyrighted software. More information is at the end of this file.
+
+#pragma once
+
+#include <SDL3/SDL.h>
+#include <musac/sdk/decoder.hh>
+
+namespace musac {
+    /*!
+     * \brief dr_wav decoder.
+     */
+    class decoder_drwav : public decoder {
+        public:
+            decoder_drwav();
+            ~decoder_drwav() override;
+
+            bool open(SDL_IOStream* rwops) override;
+            [[nodiscard]] unsigned int get_channels() const override;
+            [[nodiscard]] unsigned int get_rate() const override;
+            bool rewind() override;
+            [[nodiscard]] std::chrono::microseconds duration() const override;
+            bool seek_to_time(std::chrono::microseconds pos) override;
+
+        protected:
+            unsigned int do_decode(float* buf, unsigned int len, bool& call_again) override;
+
+        private:
+            struct impl;
+            std::unique_ptr <impl> m_pimpl;
+    };
+} // namespace Aulib
+
+/*
+
+Copyright (C) 2021 Nikos Chantziaras.
+
+This file is part of SDL_audiolib.
+
+SDL_audiolib is free software: you can redistribute it and/or modify it under
+the terms of the GNU Lesser General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your option) any
+later version.
+
+SDL_audiolib is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+details.
+
+You should have received a copy of the GNU Lesser General Public License
+along with SDL_audiolib. If not, see <http://www.gnu.org/licenses/>.
+
+*/
