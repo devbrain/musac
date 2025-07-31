@@ -1,7 +1,7 @@
 #ifndef __SEQUENCE_H
 #define __SEQUENCE_H
 
-#include "player.h"
+#include "musac/codecs/seq/player.h"
 #include <SDL3/SDL.h>
 namespace ymfmidi {
 	class Sequence

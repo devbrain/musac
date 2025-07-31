@@ -31,8 +31,7 @@
 #include <stdarg.h>
 #include <stdbool.h>
 #include <string.h>
-#include "opblib.h"
-
+#include "musac/codecs/opb_lib/opblib.h"
 #define OPB_HEADER_SIZE 7
 // OPBin1\0
 const char OPB_Header[OPB_HEADER_SIZE] = { 'O', 'P', 'B', 'i', 'n', '1', '\0' };

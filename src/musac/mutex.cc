@@ -2,8 +2,7 @@
 // Created by igor on 3/17/25.
 //
 
-#include "mutex.hh"
-
+#include "musac/mutex.hh"
 namespace musac {
     mutex::mutex()
         : m_mutex(SDL_CreateMutex()) {

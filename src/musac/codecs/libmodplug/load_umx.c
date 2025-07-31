@@ -9,8 +9,7 @@
  * Retrieves the offset, size and object type directly from umx.
 */
 
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 
 typedef LONG fci_t;		/* FCompactIndex */
 

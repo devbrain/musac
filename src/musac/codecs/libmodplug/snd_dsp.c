@@ -4,8 +4,7 @@
  * Authors: Olivier Lapicque <olivierl@jps.net>
 */
 
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 static UINT GetMaskFromSize(UINT len)
 //-----------------------------------
 {

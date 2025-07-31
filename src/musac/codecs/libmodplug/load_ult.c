@@ -4,8 +4,7 @@
  * Authors: Olivier Lapicque <olivierl@jps.net>
 */
 
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 #define ULT_16BIT   0x04
 #define ULT_LOOP    0x08
 #define ULT_BIDI    0x10

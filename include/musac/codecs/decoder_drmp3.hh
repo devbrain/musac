@@ -2,12 +2,12 @@
 #pragma once
 
 #include <musac/sdk/decoder.hh>
-
+#include <musac/codecs/export_musac_codecs.h>
 namespace musac {
     /*!
      * \brief dr_mp3 decoder.
      */
-    class decoder_drmp3 : public decoder {
+    class MUSAC_CODECS_EXPORT decoder_drmp3 : public decoder {
         public:
             decoder_drmp3();
             ~decoder_drmp3() override;

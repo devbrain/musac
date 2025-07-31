@@ -2,9 +2,8 @@
 #include <cstring>
 #include <vector>
 
-#include "patches.h"
-#include "player.h"
-
+#include "musac/codecs/seq/patches.h"
+#include "musac/codecs/seq/player.h"
 namespace ymfmidi {
 	// ----------------------------------------------------------------------------
 	bool OPLPatch::load(OPLPatchSet& patches, const char *path)

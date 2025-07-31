@@ -8,8 +8,7 @@
 // DSIK Internal Format (DSM) module loader //
 //////////////////////////////////////////////
 
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 #pragma pack(1)
 
 #define DSMID_RIFF	0x46464952	// "RIFF"

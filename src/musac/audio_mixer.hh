@@ -6,9 +6,8 @@
 
 #include <memory>
 #include <vector>
-#include "../../include/musac/sdk/buffer.hh"
-#include "../../include/musac/audio_device_data.hh"
-
+#include <musac/sdk/buffer.hh>
+#include <musac/audio_device_data.hh>
 namespace musac {
     class audio_stream;
 

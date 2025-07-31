@@ -1,11 +1,10 @@
-#include "musac/codecs/decoder_drwav.hh"
-
+#include <musac/codecs/decoder_drwav.hh>
 
 #define DR_WAV_NO_STDIO
 #define DR_WAV_IMPLEMENTATION
 #define DRWAV_API static
 #define DRWAV_PRIVATE static
-#include "codecs/dr_libs/dr_wav.h"
+#include "musac/codecs/dr_libs/dr_wav.h"
 
 
 namespace chrono = std::chrono;

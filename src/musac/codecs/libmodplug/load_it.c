@@ -7,8 +7,7 @@
  *
 */
 
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 static const
 BYTE autovibit2xm[8] =
 { 0, 3, 1, 4, 2, 0, 0, 0 };

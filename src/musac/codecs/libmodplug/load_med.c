@@ -5,8 +5,7 @@
  *          Adam Goode       <adam@evdebs.org> (endian and char fixes for PPC)
 */
 
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 //////////////////////////////////////////////////////////
 // OctaMed MED file support (import only)
 //

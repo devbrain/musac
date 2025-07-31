@@ -24,7 +24,7 @@
 #pragma once
 #include <stdint.h>
 
-#include "codecs/opl/opl_command.h"
+#include <musac/sdk/opl/opl_command.h>
 
 #ifdef __cplusplus
 extern "C" {

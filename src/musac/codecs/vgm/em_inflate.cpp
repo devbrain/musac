@@ -28,8 +28,7 @@
 
 #include <sys/types.h>
 #include <cstring>
-#include "em_inflate.h"
-
+#include "musac/codecs/vgm/em_inflate.h"
 /* Comment out this define to disable checksum verification */
 #define EM_INFLATE_VERIFY_CHECKSUM
 

@@ -5,7 +5,7 @@
 #include <iostream>
 #include <chrono>
 #include <musac/codecs/decoder_vgm.hh>
-#include "codecs/vgm/vgm_player.hh"
+#include "musac/codecs/vgm/vgm_player.hh"
 
 #define SAMPLE_RATE 44100
 

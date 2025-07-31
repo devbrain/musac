@@ -1,7 +1,6 @@
 // This is copyrighted software. More information is at the end of this file.
-#include "resampler_speex.hh"
-
-#include "../../../include/musac/sdk/decoder.hh"
+#include "musac/resampler/resampler_speex.hh"
+#include <musac/sdk/decoder.hh>
 #define OUTSIDE_SPEEX
 #define RANDOM_PREFIX zopa_
 #include "resampler/speex/speex_resampler.h"

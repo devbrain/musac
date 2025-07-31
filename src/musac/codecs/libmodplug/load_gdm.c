@@ -8,8 +8,7 @@
 // General Digital Music module loader
 ////////////////////////////////////////////////////////////
 
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 static const DWORD GDM_SIG = 0xfe4d4447; // GDM\xFE
 static const DWORD GMFS_SIG = 0x53464d47; // GMFS
 

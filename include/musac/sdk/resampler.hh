@@ -4,7 +4,7 @@
 
 #include <cstddef>
 #include <memory>
-
+#include <musac/sdk/export_musac_sdk.h>
 namespace musac {
     class decoder;
     /*!
@@ -12,7 +12,7 @@ namespace musac {
      *
      * This class receives audio from an Decoder and resamples it to the requested sample rate.
      */
-    class resampler {
+    class MUSAC_SDK_EXPORT resampler {
         public:
             /*!
              * \brief Constructs an audio resampler.

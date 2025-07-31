@@ -78,11 +78,10 @@ static void speex_free(void *ptr) {free(ptr);}
 #ifndef EXPORT
 #define EXPORT
 #endif
-#include "speex_resampler.h"
-#include "arch.h"
-#else /* OUTSIDE_SPEEX */
-
-#include "speex_resampler.h"
+#include "musac/resampler/speex/speex_resampler.h"
+#include "musac/resampler/speex/arch.h"
+#else
+#include "speex/speex_resampler.h"
 #include "arch.h"
 #include "os_support.h"
 #endif /* OUTSIDE_SPEEX */
@@ -106,7 +105,7 @@ static void speex_free(void *ptr) {free(ptr);}
 #endif
 
 #if defined(__SSE__) && !defined(FIXED_POINT)
-#include "resample_sse.h"
+#include "musac/resampler/speex/resample_sse.h"
 #endif
 
 #ifdef USE_NEON

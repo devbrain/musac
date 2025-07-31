@@ -39,8 +39,7 @@ dr_mp3 is a single file library. To use it, do something like the following in o
 
     ```c
     #define DR_MP3_IMPLEMENTATION
-    #include "dr_mp3.h"
-    ```
+    #include "musac/codecs/dr_libs/dr_mp3.h"    ```
 
 You can then #include this file in other parts of the program as you would with any other header file. To decode audio data, do something like the following:
 

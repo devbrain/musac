@@ -1,12 +1,12 @@
 
 #include <cstdio>
 
-#include "sequence.h"
-#include "sequence_hmi.h"
-#include "sequence_hmp.h"
-#include "sequence_mid.h"
-#include "sequence_mus.h"
-#include "sequence_xmi.h"
+#include "musac/codecs/seq/sequence.h"
+#include "musac/codecs/seq/sequence_hmi.h"
+#include "musac/codecs/seq/sequence_hmp.h"
+#include "musac/codecs/seq/sequence_mid.h"
+#include "musac/codecs/seq/sequence_mus.h"
+#include "musac/codecs/seq/sequence_xmi.h"
 namespace ymfmidi {
 	// ----------------------------------------------------------------------------
 	Sequence::~Sequence() {}

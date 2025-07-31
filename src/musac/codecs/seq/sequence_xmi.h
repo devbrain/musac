@@ -1,7 +1,8 @@
 #ifndef __SEQUENCE_XMI_H
 #define __SEQUENCE_XMI_H
 
-#include "sequence_mid.h"
+#include "musac/codecs/seq/sequence_mid.h"
+
 namespace ymfmidi {
 	class SequenceXMI : public SequenceMID
 	{

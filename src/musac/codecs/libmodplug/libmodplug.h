@@ -10,8 +10,7 @@
 #define _INCL_LIBMODPLUG_H_
 
 #define __SDL_SOUND_INTERNAL__
-#include "SDL3/SDL.h"
-
+#include <SDL3/SDL.h>
 #ifdef _WIN32
 
 #ifdef _MSC_VER

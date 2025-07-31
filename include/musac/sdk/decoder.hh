@@ -5,12 +5,13 @@
 #include <chrono>
 #include <memory>
 
+#include <musac/sdk/export_musac_sdk.h>
 
 namespace musac {
     /*!
      * \brief Abstract base class for audio decoders.
      */
-    class decoder {
+    class MUSAC_SDK_EXPORT decoder {
         public:
             decoder();
             virtual ~decoder();

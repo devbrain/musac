@@ -1,6 +1,6 @@
 // This is copyrighted software. More information is at the end of this file.
 #pragma once
-
+#include <musac/sdk/export_musac_sdk.h>
 namespace musac {
     /*!
      * \brief Abstract base class for audio processors.
@@ -8,7 +8,7 @@ namespace musac {
      * A processor receives input samples, processes them and produces output samples. It can be used to
      * alter the audio produced by a decoder. Processors run after resampling (if applicable.)
      */
-    class processor {
+    class MUSAC_SDK_EXPORT processor {
         public:
             processor();
             virtual ~processor();

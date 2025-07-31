@@ -8,8 +8,7 @@
 // Farandole (FAR) module loader      //
 ////////////////////////////////////////
 
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 #define FARFILEMAGIC	0xFE524146	// "FAR"
 
 #pragma pack(1)

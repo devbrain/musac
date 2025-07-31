@@ -1,6 +1,5 @@
 
-#include "sequence_hmp.h"
-
+#include "musac/codecs/seq/sequence_hmp.h"
 #include <cstring>
 namespace ymfmidi {
 #define READ_U32LE(data, pos) ((data[pos+3] << 24) | (data[pos+2] << 16) | (data[pos+1] << 8) | data[pos])

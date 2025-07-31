@@ -14,8 +14,7 @@ This is a single file library. To use it, do something like the following in one
 
     ```c
     #define DR_WAV_IMPLEMENTATION
-    #include "dr_wav.h"
-    ```
+    #include "musac/codecs/dr_libs/dr_wav.h"    ```
 
 You can then #include this file in other parts of the program as you would with any other header file. Do something like the following to read audio data:
 

@@ -5,7 +5,7 @@
 #include <musac/codecs/decoder_cmf.hh>
 #include <vector>
 #include <iostream>
-#include "codecs/cmf/fmdrv.h"
+#include "musac/codecs/cmf/fmdrv.h"
 #include <musac/sdk/samples_converter.hh>
 
 namespace musac {

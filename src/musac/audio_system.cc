@@ -2,7 +2,7 @@
 // Created by igor on 3/17/25.
 //
 
-#include "../../include/musac/audio_system.hh"
+#include <musac/audio_system.hh>
 #include <SDL3/SDL.h>
 namespace musac {
 

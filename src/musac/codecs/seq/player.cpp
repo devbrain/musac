@@ -1,6 +1,5 @@
-#include "player.h"
-#include "sequence.h"
-
+#include "musac/codecs/seq/player.h"
+#include "musac/codecs/seq/sequence.h"
 #include <cmath>
 #include <cstring>
 

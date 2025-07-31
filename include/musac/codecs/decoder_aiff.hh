@@ -6,9 +6,10 @@
 #define  DECODER_AIFF_HH
 
 #include <musac/sdk/proc_decoder.hh>
+#include <musac/codecs/export_musac_codecs.h>
 
 namespace musac {
-    class decoder_aiff : public proc_decoder {
+    class MUSAC_CODECS_EXPORT decoder_aiff : public proc_decoder {
         public:
             decoder_aiff();
             ~decoder_aiff() override;

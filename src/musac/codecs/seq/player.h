@@ -6,8 +6,8 @@
 #include <climits>
 #include <queue>
 #include <vector>
-#include "codecs/opl/ymfm/ymfm_opl.h"
-#include "codecs/seq/patches.h"
+#include <musac/sdk/opl/ymfm/ymfm_opl.h>
+#include "musac/codecs/seq/patches.h"
 namespace ymfmidi {
 	class Sequence;
 

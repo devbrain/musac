@@ -7,7 +7,7 @@ if(NOT SDL3_FOUND)
     set(SDL_VERSION "3.2.16")
     
     # Configure SDL3 build type based on SDLPP_BUILD_SHARED
-    if(SDLPP_BUILD_SHARED)
+    if(MUSAC_BUILD_SHARED)
         set(SDL_STATIC OFF CACHE INTERNAL "")
         set(SDL_SHARED ON CACHE INTERNAL "")
     else()

@@ -7,16 +7,14 @@
 #include <algorithm>
 
 
-#include "vgm_player.hh"
+#include "musac/codecs/vgm/vgm_player.hh"
 
 
-
-#include "codecs/opl/ymfm/ymfm_misc.h"
-#include "codecs/opl/ymfm/ymfm_opl.h"
-#include "codecs/opl/ymfm/ymfm_opm.h"
-#include "codecs/opl/ymfm/ymfm_opn.h"
-#include "em_inflate.h"
-
+#include <musac/sdk/opl/ymfm/ymfm_misc.h>
+#include <musac/sdk/opl/ymfm/ymfm_opl.h>
+#include <musac/sdk/opl/ymfm/ymfm_opm.h>
+#include <musac/sdk/opl/ymfm/ymfm_opn.h>
+#include "musac/codecs/vgm/em_inflate.h"
 
 
 namespace {

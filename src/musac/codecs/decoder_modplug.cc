@@ -2,7 +2,7 @@
 #include <musac/codecs/decoder_modplug.hh>
 
 #include <musac/sdk/buffer.hh>
-#include "codecs/libmodplug/modplug.h"
+#include "musac/codecs/libmodplug/modplug.h"
 #include <limits>
 
 namespace chrono = std::chrono;

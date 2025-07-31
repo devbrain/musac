@@ -14,8 +14,7 @@
 #endif
 #pragma warning(disable : 4242 4244 4018 4267 4389)
 #endif
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 //#pragma warning(disable:4244)
 
 typedef struct tagFILEHEADER669

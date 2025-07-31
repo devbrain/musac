@@ -1,5 +1,5 @@
 // This is copyrighted software. More information is at the end of this file.
-#include "resampler_sdl.hh"
+#include "musac/resampler/resampler_sdl.hh"
 #include <SDL3/SDL.h>
 
 namespace musac {

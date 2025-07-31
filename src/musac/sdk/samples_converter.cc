@@ -2,7 +2,7 @@
 // Created by igor on 3/18/25.
 //
 
-#include "../../../include/musac/sdk/samples_converter.hh"
+#include <musac/sdk/samples_converter.hh>
 #include <limits>
 #include <type_traits>
 #include <algorithm>

@@ -4,10 +4,9 @@
  * Authors: Olivier Lapicque <olivierl@jps.net>
 */
 
-#include "libmodplug.h"
+#include "musac/codecs/libmodplug/libmodplug.h"
 #define SNDMIX_C
-#include "tables.h"
-
+#include "musac/codecs/libmodplug/tables.h"
 // Volume ramp length, in 1/10 ms
 #define VOLUMERAMPLEN	146	// 1.46ms = 64 samples at 44.1kHz
 

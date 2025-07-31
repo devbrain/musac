@@ -1,5 +1,4 @@
-#include "sequence_mus.h"
-
+#include "musac/codecs/seq/sequence_mus.h"
 #include <cmath>
 #include <cstring>
 namespace ymfmidi {

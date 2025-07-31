@@ -1,4 +1,5 @@
-#include "patches.h"
+#include "musac/codecs/seq/patches.h"
+
 namespace ymfmidi {
 	const char* OPLPatch::names[256] =
 	{
