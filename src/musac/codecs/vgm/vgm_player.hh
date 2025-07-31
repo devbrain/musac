@@ -9,7 +9,7 @@
 #include <vector>
 #include <memory>
 #include <SDL3/SDL.h>
-#include "codecs/opl/ymfm_chip.hh"
+#include <musac/sdk/opl/ymfm_chip.hh>
 
 #if defined(_MSC_VER)
 #pragma warning (disable : 4996)

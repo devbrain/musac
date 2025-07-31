@@ -4,12 +4,12 @@
 
 #include <SDL3/SDL.h>
 #include <musac/sdk/decoder.hh>
-
+#include <musac/codecs/export_musac_codecs.h>
 namespace musac {
     /*!
      * \brief dr_wav decoder.
      */
-    class decoder_drwav : public decoder {
+    class MUSAC_CODECS_EXPORT decoder_drwav : public decoder {
         public:
             decoder_drwav();
             ~decoder_drwav() override;

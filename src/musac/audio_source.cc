@@ -2,8 +2,7 @@
 // Created by igor on 3/23/25.
 //
 
-#include "../../include/musac/audio_source.hh"
-
+#include <musac/audio_source.hh>
 musac::audio_source::audio_source(std::unique_ptr <decoder> decoder_obj,
                                   std::unique_ptr <resampler> resampler_obj,
                                   SDL_IOStream* rwops, bool do_close)

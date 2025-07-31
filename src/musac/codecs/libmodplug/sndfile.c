@@ -5,9 +5,8 @@
  *          Adam Goode       <adam@evdebs.org> (endian and char fixes for PPC)
 */
 
-#include "modplug.h"
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/modplug.h"
+#include "musac/codecs/libmodplug/libmodplug.h"
 extern BOOL MMCMP_Unpack(LPCBYTE *ppMemFile, LPDWORD pdwMemLength);
 
 // External decompressors

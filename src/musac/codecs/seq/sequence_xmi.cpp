@@ -1,5 +1,4 @@
-#include "sequence_xmi.h"
-
+#include "musac/codecs/seq/sequence_xmi.h"
 #include <cstring>
 namespace ymfmidi {
 #define READ_U16BE(data, pos) ((data[pos] << 8) | data[pos+1])

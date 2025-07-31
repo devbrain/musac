@@ -1,7 +1,6 @@
 
 
-#include "sequence_hmi.h"
-
+#include "musac/codecs/seq/sequence_hmi.h"
 #include <cstring>
 namespace ymfmidi {
 #define READ_U16LE(data, pos) ((data[pos+1] << 8) | data[pos])

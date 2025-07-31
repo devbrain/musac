@@ -5,8 +5,7 @@
  * Authors: Olivier Lapicque <olivierl@jps.net>
 */
 
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 BOOL PP20_Unpack(LPCBYTE *ppMemFile, LPDWORD pdwMemLength);
 
 #pragma pack(1)

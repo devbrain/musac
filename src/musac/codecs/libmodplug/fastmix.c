@@ -5,7 +5,7 @@
  *          Markus Fick <webmaster@mark-f.de> spline + fir-resampler
 */
 
-#include "libmodplug.h"
+#include "musac/codecs/libmodplug/libmodplug.h"
 #include <math.h>
 
 #include <SDL3/SDL_stdinc.h>

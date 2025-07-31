@@ -29,8 +29,7 @@
 */
 
 #include <SDL3/SDL_endian.h>
-#include "load_aiff.h"
-
+#include "musac/codecs/aiff/load_aiff.h"
 /*********************************************/
 /* Define values for AIFF (IFF audio) format */
 /*********************************************/

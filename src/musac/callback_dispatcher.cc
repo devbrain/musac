@@ -1,5 +1,4 @@
-#include "callback_dispatcher.hh"
-
+#include "musac/callback_dispatcher.hh"
 namespace musac {
     CallbackDispatcher& CallbackDispatcher::instance() {
         static CallbackDispatcher inst;

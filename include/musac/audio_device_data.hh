@@ -5,8 +5,7 @@
 #pragma once
 #include <SDL3/SDL.h>
 #include <memory>
-#include "sdk/from_float_converter.hh"
-
+#include <musac/sdk/from_float_converter.hh>
 namespace musac {
     struct audio_device_data {
         SDL_AudioSpec m_audio_spec;

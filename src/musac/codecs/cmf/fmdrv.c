@@ -29,10 +29,9 @@
 
 // #include "opl.c"
 
-#include "codecs/opl/adlib_emu.h"
+#include <musac/sdk/opl/adlib_emu.h>
 
-#include "fmdrv.h"
-
+#include "musac/codecs/cmf/fmdrv.h"
 typedef struct opl_voice_s {
     uint8_t midi_chn;
     uint8_t block_note;

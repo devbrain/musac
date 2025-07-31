@@ -3,7 +3,7 @@
 //
 
 #include <musac/codecs/decoder_voc.hh>
-#include "codecs/voc/load_voc.h"
+#include "musac/codecs/voc/load_voc.h"
 
 namespace musac {
     decoder_voc::decoder_voc()

@@ -1,6 +1,5 @@
 
-#include "sequence_mid.h"
-
+#include "musac/codecs/seq/sequence_mid.h"
 #include <cmath>
 #include <cstring>
 

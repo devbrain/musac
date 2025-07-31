@@ -5,8 +5,7 @@
 #include <cstring>
 #include <limits>
 #include <algorithm>
-#include "../../../include/musac/sdk/from_float_converter.hh"
-
+#include <musac/sdk/from_float_converter.hh>
 namespace musac {
     // Inline scale helper
     template<typename T>

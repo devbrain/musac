@@ -38,4 +38,4 @@ audio_source load_ ## TYPE (const std::filesystem::path& path, std::unique_ptr<r
     return load_audio_source<decoder_ ## TYPE>(path, std::move(resampler_obj));                                        \
 }
 
-#include "../../include/musac/audio_loader.hh"
+#include <musac/audio_loader.hh>

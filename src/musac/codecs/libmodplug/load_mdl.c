@@ -8,8 +8,7 @@
 // DigiTracker (MDL) module loader          //
 //////////////////////////////////////////////
 
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 typedef struct MDLSONGHEADER
 {
 	DWORD id;	// "DMDL" = 0x4C444D44

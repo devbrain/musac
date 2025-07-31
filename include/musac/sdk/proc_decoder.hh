@@ -7,9 +7,9 @@
 
 #include <memory>
 #include <musac/sdk/decoder.hh>
-
+#include <musac/sdk/export_musac_sdk.h>
 namespace musac {
-    class proc_decoder : public decoder {
+    class MUSAC_SDK_EXPORT proc_decoder : public decoder {
         public:
         using loader_fn_t = SDL_AudioSpec* (*)(SDL_IOStream* src, bool closeio, SDL_AudioSpec* spec,
                                                Uint8** audio_buf, Uint32* audio_len);

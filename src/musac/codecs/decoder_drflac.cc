@@ -5,7 +5,7 @@
 #define DR_FLAC_NO_STDIO
 #define DR_FLAC_IMPLEMENTATION
 #define DRFLAC_API static
-#include "codecs/dr_libs/dr_flac.h"
+#include "musac/codecs/dr_libs/dr_flac.h"
 
 #include <SDL3/SDL.h>
 

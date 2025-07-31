@@ -2,12 +2,12 @@
 #pragma once
 
 #include <musac/sdk/decoder.hh>
-
+#include <musac/codecs/export_musac_codecs.h>
 namespace musac {
     /*!
      * \brief ModPlug decoder.
      */
-    class decoder_modplug : public decoder {
+    class MUSAC_CODECS_EXPORT decoder_modplug : public decoder {
         public:
             decoder_modplug();
             ~decoder_modplug() override;

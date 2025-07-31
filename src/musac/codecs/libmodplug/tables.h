@@ -4,8 +4,7 @@
  * Authors: Olivier Lapicque <olivierl@jps.net>
  */
 
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 #ifdef SNDFX_C
 static const BYTE ImpulseTrackerPortaVolCmd[16] =
 {

@@ -1,13 +1,12 @@
 // This is copyrighted software. More information is at the end of this file.
-#include "musac/codecs/decoder_drmp3.hh"
-
+#include <musac/codecs/decoder_drmp3.hh>
 
 
 #define DRMP3_API static
 #define DR_MP3_NO_STDIO
 #define DR_MP3_IMPLEMENTATION
 
-#include "codecs/dr_libs/dr_mp3.h"
+#include "musac/codecs/dr_libs/dr_mp3.h"
 
 namespace chrono = std::chrono;
 

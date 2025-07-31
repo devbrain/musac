@@ -4,7 +4,7 @@
 
 #include <musac/codecs/decoder_aiff.hh>
 
-#include "codecs/aiff/load_aiff.h"
+#include "musac/codecs/aiff/load_aiff.h"
 
 namespace musac {
     decoder_aiff::decoder_aiff()

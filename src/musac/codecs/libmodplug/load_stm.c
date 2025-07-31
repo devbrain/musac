@@ -4,8 +4,7 @@
  * Authors: Olivier Lapicque <olivierl@jps.net>
 */
 
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 #pragma pack(1)
 
 typedef struct tagSTMNOTE

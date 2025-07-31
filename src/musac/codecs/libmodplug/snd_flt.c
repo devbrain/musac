@@ -4,8 +4,7 @@
  * Authors: Olivier Lapicque <olivierl@jps.net>
 */
 
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 // AWE32: cutoff = reg[0-255] * 31.25 + 100 -> [100Hz-8060Hz]
 // EMU10K1 docs: cutoff = reg[0-127]*62+100
 #define FILTER_PRECISION	8192

@@ -8,8 +8,7 @@
 // DMF DELUSION DIGITAL MUSIC FILEFORMAT (X-Tracker) //
 ///////////////////////////////////////////////////////
 
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 #pragma pack(1)
 
 typedef struct DMFHEADER

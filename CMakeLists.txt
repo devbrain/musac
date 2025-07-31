@@ -9,7 +9,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Build options
 option(MUSAC_BUILD_SHARED "Build MUSAC as a shared library" ON)
+option(MUSAC_BUILD_FPIC "Build MUSAC with position independent code (for static builds)" OFF)
 option(MUSAC_INSTALL "Generate install targets" ON)
+# Build configuration options
+option(MUSAC_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+option(MUSAC_ENABLE_LTO "Enable link-time optimization" OFF)
 
 # Include standard install directories
 include(GNUInstallDirs)
@@ -21,9 +25,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
-# Build configuration options
-option(MUSAC_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
-option(MUSAC_ENABLE_LTO "Enable link-time optimization" OFF)
+
 
 # Set visibility settings for shared libraries
 if(MUSAC_BUILD_SHARED)

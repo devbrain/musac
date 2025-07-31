@@ -8,8 +8,7 @@
 //////////////////////////////////////////////
 // PTM PolyTracker module loader            //
 //////////////////////////////////////////////
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 #pragma pack(1)
 
 typedef struct PTMFILEHEADER

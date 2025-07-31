@@ -3,8 +3,8 @@
 //
 
 #include <musac/codecs/decoder_seq.hh>
-#include "codecs/seq/player.h"
-#include "codecs/seq/midi_opl.h"
+#include "musac/codecs/seq/player.h"
+#include "musac/codecs/seq/midi_opl.h"
 
 namespace musac {
     struct decoder_seq::impl {

@@ -4,9 +4,8 @@
  * Authors: Kenton Varda <temporal@gauge3d.org> (C interface wrapper)
  */
 
-#include "modplug.h"
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/modplug.h"
+#include "musac/codecs/libmodplug/libmodplug.h"
 void ModPlug_Quit(void) {
 }
 int ModPlug_Init(void)

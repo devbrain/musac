@@ -123,8 +123,7 @@ dr_flac is a single file library. To use it, do something like the following in 
 
     ```c
     #define DR_FLAC_IMPLEMENTATION
-    #include "dr_flac.h"
-    ```
+    #include "musac/codecs/dr_libs/dr_flac.h"    ```
 
 You can then #include this file in other parts of the program as you would with any other header file. To decode audio data, do something like the following:
 

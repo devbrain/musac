@@ -2,12 +2,12 @@
 #pragma once
 
 #include <musac/sdk/decoder.hh>
-
+#include <musac/codecs/export_musac_codecs.h>
 namespace musac {
     /*!
      * \brief dr_flac decoder.
      */
-    class decoder_drflac : public decoder {
+    class MUSAC_CODECS_EXPORT decoder_drflac : public decoder {
         public:
             decoder_drflac();
             ~decoder_drflac() override;

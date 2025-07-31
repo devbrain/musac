@@ -7,13 +7,12 @@
 #include <musac/sdk/processor.hh>
 #include <musac/sdk/resampler.hh>
 #include <musac/sdk/buffer.hh>
-#include "mutex.hh"
+#include "musac/mutex.hh"
 #include <musac/audio_source.hh>
-#include "fade_envelop.hh"
-#include "in_use_guard.hh"
-#include "callback_dispatcher.hh"
-#include "audio_mixer.hh"
-
+#include "musac/fade_envelop.hh"
+#include "musac/in_use_guard.hh"
+#include "musac/callback_dispatcher.hh"
+#include "musac/audio_mixer.hh"
 namespace musac {
     // A single mutex that protects all audio_stream public methods
     static std::mutex s_audioMutex;

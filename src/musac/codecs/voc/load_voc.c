@@ -30,8 +30,7 @@
 */
 
 
-#include "load_voc.h"
-
+#include "musac/codecs/voc/load_voc.h"
 /* Private data for VOC file */
 typedef struct vocstuff {
     Uint32  rest;           /* bytes remaining in current block */

@@ -4,8 +4,7 @@
 
 #pragma once
 #include <cstdint>
-#include <atomic>
-
+#include "atomic"
 namespace musac {
     struct InUseGuard {
         std::atomic <uint32_t>& counter;

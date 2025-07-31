@@ -1,5 +1,4 @@
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 #pragma pack(1)
 
 typedef struct _MT2FILEHEADER

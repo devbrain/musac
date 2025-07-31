@@ -2,8 +2,7 @@
 // Created by igor on 4/28/25.
 //
 
-#include "fade_envelop.hh"
-
+#include "musac/fade_envelop.hh"
 #include <cmath>
 
 namespace musac {

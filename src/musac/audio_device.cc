@@ -2,7 +2,7 @@
 // Created by igor on 3/17/25.
 //
 
-#include "../../include/musac/audio_device.hh"
+#include <musac/audio_device.hh>
 #include <musac/sdk/samples_converter.hh>
 #include <musac/sdk/from_float_converter.hh>
 #include <musac/sdk/resampler.hh>

@@ -2,9 +2,8 @@
 // Created by igor on 4/28/25.
 //
 
-#include "audio_mixer.hh"
-#include "../../include/musac/stream.hh"
-
+#include "musac/audio_mixer.hh"
+#include <musac/stream.hh>
 namespace musac {
     audio_device_data audio_mixer::m_audio_device_data {};
 

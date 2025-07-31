@@ -8,8 +8,7 @@
 //////////////////////////////////////////////
 // Oktalyzer (OKT) module loader            //
 //////////////////////////////////////////////
-#include "libmodplug.h"
-
+#include "musac/codecs/libmodplug/libmodplug.h"
 #define MAGIC(a,b,c,d) (((a) << 24UL) | ((b) << 16UL) | ((c) << 8UL) | (d))
 
 #pragma pack(1)

@@ -4,10 +4,9 @@
  * Authors: Olivier Lapicque <olivierl@jps.net>
 */
 
-#include "libmodplug.h"
+#include "musac/codecs/libmodplug/libmodplug.h"
 #define SNDFX_C
-#include "tables.h"
-
+#include "musac/codecs/libmodplug/tables.h"
 DWORD CSoundFile_GetLength(CSoundFile *_this, BOOL bAdjust, BOOL bTotal)
 //----------------------------------------------------
 {

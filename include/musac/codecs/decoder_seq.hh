@@ -7,9 +7,10 @@
 
 #include <memory>
 #include <musac/sdk/decoder.hh>
+#include <musac/codecs/export_musac_codecs.h>
 
 namespace musac {
-    class decoder_seq : public decoder {
+    class MUSAC_CODECS_EXPORT decoder_seq : public decoder {
         public:
             decoder_seq();
             ~decoder_seq() override;
