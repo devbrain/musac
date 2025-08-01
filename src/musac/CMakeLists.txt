@@ -46,7 +46,7 @@ add_library(musac STATIC
 
 )
 
-target_link_libraries(musac PUBLIC SDL3::SDL3 musac_codecs musac_sdk)
+target_link_libraries(musac PUBLIC SDL3::SDL3 musac_codecs musac_sdk thirdparty::failsafe)
 target_include_directories(musac
         PUBLIC 
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>

@@ -10,7 +10,7 @@
 
 namespace musac {
     using to_float_converter_func_t = void (*)(float dst[], const Uint8* buff, unsigned int samples);
-    to_float_converter_func_t get_to_float_conveter(SDL_AudioFormat format);
+    MUSAC_SDK_EXPORT to_float_converter_func_t get_to_float_conveter(SDL_AudioFormat format);
 
     MUSAC_SDK_EXPORT int bytes_per_sample(SDL_AudioFormat format);
 }

@@ -3,6 +3,7 @@
 //
 
 #include <musac/audio_source.hh>
+#include <failsafe/failsafe.hh>
 musac::audio_source::audio_source(std::unique_ptr <decoder> decoder_obj,
                                   std::unique_ptr <resampler> resampler_obj,
                                   SDL_IOStream* rwops, bool do_close)
@@ -41,11 +42,18 @@ bool musac::audio_source::rewind() {
 
 bool musac::audio_source::open(unsigned int rate, unsigned int channels, unsigned int frame_size) {
     if (!m_rwops) {
-        return false;
+        THROW_RUNTIME("No IO stream available for audio source");
     }
-    if (!m_decoder->open(m_rwops)) {
-        return false;
+    
+    try {
+        if (!m_decoder->open(m_rwops)) {
+            return false;
+        }
+    } catch (const std::exception& e) {
+        // Re-throw with more context
+        THROW_RUNTIME("Failed to open audio decoder: ", e.what());
     }
+    
     if (m_resampler) {
         m_resampler->set_spec(rate, channels, frame_size);
     }
