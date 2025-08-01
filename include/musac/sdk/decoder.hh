@@ -1,7 +1,7 @@
 // This is copyrighted software. More information is at the end of this file.
 #pragma once
 
-#include <SDL3/SDL.h>
+#include <musac/sdk/io_stream.h>
 #include <chrono>
 #include <memory>
 
@@ -19,7 +19,7 @@ namespace musac {
             [[nodiscard]] bool is_open() const;
             [[nodiscard]] unsigned int decode(float buf[], unsigned int len, bool& call_again, unsigned int device_channels);
 
-            [[nodiscard]] virtual bool open(SDL_IOStream* rwops) = 0;
+            [[nodiscard]] virtual bool open(io_stream* rwops) = 0;
             [[nodiscard]] virtual unsigned int get_channels() const = 0;
             [[nodiscard]] virtual unsigned int get_rate() const = 0;
             virtual bool rewind() = 0;

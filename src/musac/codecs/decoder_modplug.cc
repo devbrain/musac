@@ -42,7 +42,7 @@ namespace musac {
         settings.mSurroundDepth = 20;
         settings.mSurroundDelay = 20;
         settings.mChannels = 2;
-        settings.mBits = SDL_AUDIO_BITSIZE(SDL_AudioFormat::SDL_AUDIO_S32);
+        settings.mBits = SDL_AUDIO_BITSIZE(SDL_AUDIO_S32);
         settings.mFrequency = 44100;
         settings.mResamplingMode = MODPLUG_RESAMPLE_FIR;
         settings.mLoopCount = 0;

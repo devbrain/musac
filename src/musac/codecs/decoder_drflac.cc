@@ -7,7 +7,7 @@
 #define DRFLAC_API static
 #include "musac/codecs/dr_libs/dr_flac.h"
 
-#include <SDL3/SDL.h>
+#include <musac/sdk/sdl_compat.h>
 
 namespace chrono = std::chrono;
 

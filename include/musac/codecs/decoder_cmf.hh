@@ -5,8 +5,8 @@
 #ifndef  DECODER_CMF_HH
 #define  DECODER_CMF_HH
 
-
 #include <memory>
+#include <musac/sdk/sdl_compat.h>
 #include <musac/sdk/decoder.hh>
 #include <musac/codecs/export_musac_codecs.h>
 

@@ -8,7 +8,7 @@
 
 #include <vector>
 #include <memory>
-#include <SDL3/SDL.h>
+#include <musac/sdk/sdl_compat.h>
 #include <musac/sdk/opl/ymfm_chip.hh>
 
 #if defined(_MSC_VER)

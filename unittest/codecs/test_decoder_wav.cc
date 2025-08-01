@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 #include <musac/codecs/decoder_drwav.hh>
-#include <SDL3/SDL.h>
+#include <musac/sdk/io_stream.h>
 #include <vector>
 #include <cstring>
 #include <cmath>
@@ -62,28 +62,26 @@ std::vector<uint8_t> createTestWAV(uint16_t channels = 1,
 TEST_SUITE("Codecs::DecoderWAV") {
     TEST_CASE("Open valid WAV file") {
         auto wavData = createTestWAV(2, 16, 44100, 1000);
-        SDL_IOStream* io = SDL_IOFromConstMem(wavData.data(), wavData.size());
+        auto io = musac::io_from_memory(wavData.data(), wavData.size());
         REQUIRE(io != nullptr);
         
         musac::decoder_drwav decoder;
         
         SUBCASE("Successfully opens") {
-            CHECK(decoder.open(io));
+            CHECK(decoder.open(io.get()));
             CHECK(decoder.is_open());
             CHECK(decoder.get_channels() == 2);
             CHECK(decoder.get_rate() == 44100);
         }
-        
-        SDL_CloseIO(io);
     }
     
     TEST_CASE("Decode WAV data") {
         auto wavData = createTestWAV(1, 16, 44100, 100);
-        SDL_IOStream* io = SDL_IOFromConstMem(wavData.data(), wavData.size());
+        auto io = musac::io_from_memory(wavData.data(), wavData.size());
         REQUIRE(io != nullptr);
         
         musac::decoder_drwav decoder;
-        REQUIRE(decoder.open(io));
+        REQUIRE(decoder.open(io.get()));
         
         SUBCASE("Decode samples") {
             float buffer[100];
@@ -118,66 +116,56 @@ TEST_SUITE("Codecs::DecoderWAV") {
             CHECK(allSamples.size() > 0);
             INFO("Decoded " << allSamples.size() << " samples from 100 input samples");
         }
-        
-        SDL_CloseIO(io);
     }
     
     TEST_CASE("Different WAV formats") {
         SUBCASE("8-bit mono") {
             auto wavData = createTestWAV(1, 8, 22050, 50);
-            SDL_IOStream* io = SDL_IOFromConstMem(wavData.data(), wavData.size());
+            auto io = musac::io_from_memory(wavData.data(), wavData.size());
             
             musac::decoder_drwav decoder;
-            CHECK(decoder.open(io));
+            CHECK(decoder.open(io.get()));
             CHECK(decoder.get_channels() == 1);
             CHECK(decoder.get_rate() == 22050);
-            
-            SDL_CloseIO(io);
         }
         
         SUBCASE("24-bit stereo") {
             auto wavData = createTestWAV(2, 24, 48000, 50);
-            SDL_IOStream* io = SDL_IOFromConstMem(wavData.data(), wavData.size());
+            auto io = musac::io_from_memory(wavData.data(), wavData.size());
             
             musac::decoder_drwav decoder;
-            CHECK(decoder.open(io));
+            CHECK(decoder.open(io.get()));
             CHECK(decoder.get_channels() == 2);
             CHECK(decoder.get_rate() == 48000);
-            
-            SDL_CloseIO(io);
         }
     }
     
     TEST_CASE("Invalid WAV data") {
         SUBCASE("Not WAV format") {
             uint8_t badData[] = {'F', 'O', 'R', 'M', 0, 0, 0, 0, 'A', 'I', 'F', 'F'};
-            SDL_IOStream* io = SDL_IOFromConstMem(badData, sizeof(badData));
+            auto io = musac::io_from_memory(badData, sizeof(badData));
             
             musac::decoder_drwav decoder;
-            CHECK_FALSE(decoder.open(io));
-            
-            SDL_CloseIO(io);
+            CHECK_FALSE(decoder.open(io.get()));
         }
         
         SUBCASE("Truncated file") {
             auto wavData = createTestWAV();
             wavData.resize(20);  // Cut off most of the file
             
-            SDL_IOStream* io = SDL_IOFromConstMem(wavData.data(), wavData.size());
+            auto io = musac::io_from_memory(wavData.data(), wavData.size());
             
             musac::decoder_drwav decoder;
-            CHECK_FALSE(decoder.open(io));
-            
-            SDL_CloseIO(io);
+            CHECK_FALSE(decoder.open(io.get()));
         }
     }
     
     TEST_CASE("Seeking in WAV") {
         auto wavData = createTestWAV(2, 16, 44100, 44100);  // 1 second
-        SDL_IOStream* io = SDL_IOFromConstMem(wavData.data(), wavData.size());
+        auto io = musac::io_from_memory(wavData.data(), wavData.size());
         
         musac::decoder_drwav decoder;
-        REQUIRE(decoder.open(io));
+        REQUIRE(decoder.open(io.get()));
         
         SUBCASE("Seek to time") {
             // Seek to 0.5 seconds
@@ -192,44 +180,38 @@ TEST_SUITE("Codecs::DecoderWAV") {
             // Should have data remaining
             CHECK(call_again);
         }
-        
-        SDL_CloseIO(io);
     }
     
     TEST_CASE("Duration calculation") {
         SUBCASE("1 second mono") {
             auto wavData = createTestWAV(1, 16, 44100, 44100);
-            SDL_IOStream* io = SDL_IOFromConstMem(wavData.data(), wavData.size());
+            auto io = musac::io_from_memory(wavData.data(), wavData.size());
             
             musac::decoder_drwav decoder;
-            REQUIRE(decoder.open(io));
+            REQUIRE(decoder.open(io.get()));
             
             auto duration = decoder.duration();
             CHECK(duration == std::chrono::seconds(1));
-            
-            SDL_CloseIO(io);
         }
         
         SUBCASE("500ms stereo") {
             auto wavData = createTestWAV(2, 16, 48000, 24000);
-            SDL_IOStream* io = SDL_IOFromConstMem(wavData.data(), wavData.size());
+            auto io = musac::io_from_memory(wavData.data(), wavData.size());
             
             musac::decoder_drwav decoder;
-            REQUIRE(decoder.open(io));
+            REQUIRE(decoder.open(io.get()));
             
             auto duration = decoder.duration();
             CHECK(duration == std::chrono::milliseconds(500));
-            
-            SDL_CloseIO(io);
         }
     }
     
     TEST_CASE("Rewind functionality") {
         auto wavData = createTestWAV(1, 16, 44100, 200);
-        SDL_IOStream* io = SDL_IOFromConstMem(wavData.data(), wavData.size());
+        auto io = musac::io_from_memory(wavData.data(), wavData.size());
         
         musac::decoder_drwav decoder;
-        REQUIRE(decoder.open(io));
+        REQUIRE(decoder.open(io.get()));
         
         // Decode some data
         float buffer[100];
@@ -249,7 +231,5 @@ TEST_SUITE("Codecs::DecoderWAV") {
         for (int i = 0; i < 100; i++) {
             CHECK(buffer[i] == buffer2[i]);
         }
-        
-        SDL_CloseIO(io);
     }
 }

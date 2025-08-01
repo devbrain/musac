@@ -40,14 +40,14 @@ namespace ymfmidi {
 	bool OPLPatch::load(OPLPatchSet& patches, SDL_IOStream* file, int offset, size_t size) {
 		if (!size)
 		{
-			SDL_SeekIO(file, offset, SDL_IOWhence::SDL_IO_SEEK_END);
+			SDL_SeekIO(file, offset, SDL_IO_SEEK_END);
 			auto p = SDL_TellIO(file);
 			if (p < 0)
 				return false;
 			size = p - offset;
 		}
 
-		SDL_SeekIO(file, offset, SDL_IOWhence::SDL_IO_SEEK_SET);
+		SDL_SeekIO(file, offset, SDL_IO_SEEK_SET);
 		std::vector<uint8_t> data(size);
 
 		if (SDL_ReadIO(file, data.data(), size) != size)

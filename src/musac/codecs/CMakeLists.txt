@@ -116,7 +116,7 @@ target_include_directories(musac_codecs
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
-target_link_libraries(musac_codecs PUBLIC SDL3::SDL3 musac_sdk thirdparty::failsafe)
+target_link_libraries(musac_codecs PUBLIC musac_sdk thirdparty::failsafe)
 
 if (MUSAC_BUILD_SHARED)
     set(CMAKE_CXX_VISIBILITY_PRESET hidden)
