@@ -41,7 +41,11 @@ namespace musac {
 
     bool decoder_opb::open(SDL_IOStream* rwops) {
         auto rc = OPB_BinaryToOpl(StreamReader, rwops, impl::ReceiveOpbBuffer, m_pimpl.get());
-        return rc == 0;
+        if (rc == 0) {
+            set_is_open(true);
+            return true;
+        }
+        return false;
     }
 
     unsigned int decoder_opb::get_channels() const {

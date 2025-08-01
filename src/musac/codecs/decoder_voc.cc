@@ -427,9 +427,9 @@ bool decoder_voc::open(SDL_IOStream* rwops) {
         m_pimpl->m_consumed = 0;
         return true;
     } catch (const std::exception& e) {
-        THROW_RUNTIME("Failed to load VOC file: ", e.what());
+        // Return false on error instead of throwing
+        return false;
     }
-    return false;
 }
 
 unsigned int decoder_voc::get_channels() const {

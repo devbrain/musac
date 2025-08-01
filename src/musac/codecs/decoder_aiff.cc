@@ -9,17 +9,18 @@
 #include <vector>
 #include <cstring>
 #include <algorithm>
+#include <iostream>
 
 namespace musac {
 
-// AIFF format constants
-static constexpr Uint32 FORM = 0x4d524f46;  // "FORM"
-static constexpr Uint32 AIFF = 0x46464941;  // "AIFF"
-static constexpr Uint32 SSND = 0x444e5353;  // "SSND"
-static constexpr Uint32 COMM = 0x4d4d4f43;  // "COMM"
-static constexpr Uint32 _8SVX = 0x58565338; // "8SVX"
-static constexpr Uint32 VHDR = 0x52444856;  // "VHDR"
-static constexpr Uint32 BODY = 0x59444F42;  // "BODY"
+// AIFF format constants (big-endian)
+static constexpr Uint32 FORM = 0x464f524d;  // "FORM"
+static constexpr Uint32 AIFF = 0x41494646;  // "AIFF"
+static constexpr Uint32 SSND = 0x53534e44;  // "SSND"
+static constexpr Uint32 COMM = 0x434f4d4d;  // "COMM"
+static constexpr Uint32 _8SVX = 0x38535658; // "8SVX"
+static constexpr Uint32 VHDR = 0x56484452;  // "VHDR"
+static constexpr Uint32 BODY = 0x424f4459;  // "BODY"
 
 struct decoder_aiff::impl {
     SDL_IOStream* m_rwops = nullptr;
@@ -54,7 +55,7 @@ struct decoder_aiff::impl {
         Uint32 chunk_length;
         Uint32 AIFFmagic;
         
-        if (!SDL_ReadU32LE(m_rwops, &FORMchunk) ||
+        if (!SDL_ReadU32BE(m_rwops, &FORMchunk) ||
             !SDL_ReadU32BE(m_rwops, &chunk_length)) {
             THROW_RUNTIME("Failed to read AIFF header");
         }
@@ -64,7 +65,7 @@ struct decoder_aiff::impl {
             chunk_length = FORMchunk;
             FORMchunk = FORM;
         } else {
-            if (!SDL_ReadU32LE(m_rwops, &AIFFmagic)) {
+            if (!SDL_ReadU32BE(m_rwops, &AIFFmagic)) {
                 THROW_RUNTIME("Failed to read AIFF magic");
             }
         }
@@ -89,7 +90,7 @@ struct decoder_aiff::impl {
             Uint32 chunk_type;
             Uint32 chunk_len;
             
-            if (!SDL_ReadU32LE(m_rwops, &chunk_type) ||
+            if (!SDL_ReadU32BE(m_rwops, &chunk_type) ||
                 !SDL_ReadU32BE(m_rwops, &chunk_len)) {
                 break;
             }
@@ -200,7 +201,7 @@ struct decoder_aiff::impl {
                 m_spec.format = SDL_AUDIO_S16BE;
                 break;
             default:
-                THROW_RUNTIME("Unsupported AIFF samplesize");
+                THROW_RUNTIME("Unsupported AIFF samplesize: ", samplesize);
         }
         
         // Calculate total size and allocate buffer
@@ -258,9 +259,9 @@ bool decoder_aiff::open(SDL_IOStream* rwops) {
         m_pimpl->m_consumed = 0;
         return true;
     } catch (const std::exception& e) {
-        THROW_RUNTIME("Failed to load AIFF file: ", e.what());
+        // Return false on error instead of throwing
+        return false;
     }
-    return false;
 }
 
 unsigned int decoder_aiff::get_channels() const {

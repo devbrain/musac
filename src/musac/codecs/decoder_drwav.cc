@@ -80,8 +80,9 @@ namespace musac {
         return true;
     }
 
-    unsigned int decoder_drwav::do_decode(float* const buf, unsigned int len, bool& /*callAgain*/) {
+    unsigned int decoder_drwav::do_decode(float* const buf, unsigned int len, bool& callAgain) {
         if (m_pimpl->m_eof || !is_open()) {
+            callAgain = false;
             return 0;
         }
 
@@ -89,6 +90,9 @@ namespace musac {
             drwav_read_pcm_frames_f32(&m_pimpl->m_handle, len / get_channels(), buf) * get_channels();
         if (ret < static_cast <drwav_uint64>(len)) {
             m_pimpl->m_eof = true;
+            callAgain = false;
+        } else {
+            callAgain = true;
         }
         return static_cast<unsigned int>(ret);
     }

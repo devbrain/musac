@@ -126,6 +126,12 @@ add_subdirectory(ext)
 add_subdirectory(src/musac)
 add_subdirectory(example)
 
+# Add unittest directory
+add_subdirectory(unittest)
+
+# Add tools directory
+add_subdirectory(tools)
+
 # Test decoder output program
 add_executable(test_decoder_output test_decoder_output.cc)
 target_link_libraries(test_decoder_output musac SDL3::SDL3)

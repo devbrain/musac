@@ -14,11 +14,19 @@ namespace musac {
     template<typename T>
     float as_float(T src) {
         static_assert(std::is_integral_v <T>, "T must be an integral type");
-        constexpr double max_v = std::numeric_limits <T>::max();
-        constexpr double min_v = std::numeric_limits <T>::min();
-        constexpr double delta = max_v - min_v;
-        constexpr auto scale = static_cast<float>(2.0 / delta);
-        return static_cast <float>(static_cast <double>(src) - min_v) * scale - 1.0f;
+        if constexpr (std::is_signed_v<T>) {
+            // For signed types, normalize to [-1.0, 1.0]
+            // Note: We add 1 to max to handle asymmetry (e.g., -128 to 127)
+            constexpr double max_val = static_cast<double>(std::numeric_limits<T>::max()) + 1.0;
+            return static_cast<float>(static_cast<double>(src) / max_val);
+        } else {
+            // For unsigned types, shift to signed range then normalize
+            constexpr double max_v = std::numeric_limits<T>::max();
+            constexpr double min_v = std::numeric_limits<T>::min();
+            constexpr double delta = max_v - min_v;
+            constexpr auto scale = static_cast<float>(2.0 / delta);
+            return static_cast<float>(static_cast<double>(src) - min_v) * scale - 1.0f;
+        }
     }
 
     void as_float_u8(float out[], const Uint8* buff, unsigned int samples) {
@@ -199,9 +207,9 @@ namespace musac {
             case SDL_AUDIO_S16BE:
                 return as_float_s16_be;
             case SDL_AUDIO_S32LE:
-                return as_float_f32_le;
+                return as_float_s32_le;
             case SDL_AUDIO_S32BE:
-                return as_float_f32_be;
+                return as_float_s32_be;
             case SDL_AUDIO_F32LE:
                 return as_float_f32_le;
             case SDL_AUDIO_F32BE:
