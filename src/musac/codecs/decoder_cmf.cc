@@ -40,9 +40,27 @@ namespace musac {
         m_pimpl->m_song.resize((size_t)sz);
         SDL_ReadIO(rwops, m_pimpl->m_song.data(), (size_t)sz);
         auto* data = m_pimpl->m_song.data();
+        
+        // Validate minimum size for CMF header
+        if (sz < 0x26) {
+            return false;
+        }
+        
+        // Check for "CTMF" header
+        if (data[0] != 'C' || data[1] != 'T' || data[2] != 'M' || data[3] != 'F') {
+            return false;
+        }
+        
+        // Check that speed value is not zero to avoid division by zero
+        uint16_t speed_value = READ_16LE(&data[0x0c]);
+        if (speed_value == 0) {
+            return false;
+        }
+        
         sbfm_instrument(m_pimpl->m_decoder, &data[READ_16LE(&data[0x06])], READ_16LE(&data[0x24]));
-        sbfm_song_speed(m_pimpl->m_decoder, (uint16_t)(0x1234dc / READ_16LE(&data[0x0c])));
+        sbfm_song_speed(m_pimpl->m_decoder, (uint16_t)(0x1234dc / speed_value));
         sbfm_play_music(m_pimpl->m_decoder, &data[READ_16LE(&data[0x08])]);
+        set_is_open(true);
         return true;
     }
 

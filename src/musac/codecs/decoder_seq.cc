@@ -33,7 +33,11 @@ namespace musac {
     decoder_seq::~decoder_seq() = default;
 
     bool decoder_seq::open(SDL_IOStream* rwops) {
-        return m_pimpl->m_player->loadSequence(rwops);
+        bool result = m_pimpl->m_player->loadSequence(rwops);
+        if (result) {
+            set_is_open(true);
+        }
+        return result;
     }
 
     unsigned int decoder_seq::get_channels() const {
