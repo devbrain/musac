@@ -65,9 +65,6 @@ set(codecs_sources
         ${CODECS_INCLUDE}decoder_voc.hh
 
 
-        aiff/load_aiff.c
-        aiff/load_aiff.h
-
         cmf/fmdrv.c
         cmf/fmdrv.h
 
@@ -95,9 +92,6 @@ set(codecs_sources
         vgm/em_inflate.h
         vgm/vgm_player.cc
         vgm/vgm_player.hh
-
-        voc/load_voc.c
-        voc/load_voc.h
 )
 
 if (MUSAC_BUILD_FPIC)
@@ -122,7 +116,7 @@ target_include_directories(musac_codecs
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
-target_link_libraries(musac_codecs PUBLIC SDL3::SDL3 musac_sdk)
+target_link_libraries(musac_codecs PUBLIC SDL3::SDL3 musac_sdk thirdparty::failsafe)
 
 if (MUSAC_BUILD_SHARED)
     set(CMAKE_CXX_VISIBILITY_PRESET hidden)

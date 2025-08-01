@@ -8,6 +8,7 @@
 #include <musac/sdk/resampler.hh>
 #include <musac/sdk/buffer.hh>
 #include "musac/mutex.hh"
+#include <failsafe/failsafe.hh>
 #include <musac/audio_source.hh>
 #include "musac/fade_envelop.hh"
 #include "musac/in_use_guard.hh"
@@ -316,11 +317,17 @@ namespace musac {
         auto channels = (unsigned int)audio_mixer::m_audio_device_data.m_audio_spec.channels;
         auto frame_size = (unsigned int)audio_mixer::m_audio_device_data.m_frame_size;
 
-        if (m_pimpl->m_audio_source.open(rate, channels, frame_size)) {
-            m_pimpl->m_is_open = true;
-            return true;
+        try {
+            if (m_pimpl->m_audio_source.open(rate, channels, frame_size)) {
+                m_pimpl->m_is_open = true;
+                return true;
+            }
+            return false;
+        } catch (const std::exception& e) {
+            // Log the error but return false to maintain API compatibility
+            SDL_SetError("Failed to open audio stream: %s", e.what());
+            return false;
         }
-        return false;
     }
 
     auto audio_stream::rewind() -> bool {

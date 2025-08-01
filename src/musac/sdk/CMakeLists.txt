@@ -1,7 +1,4 @@
 set (sdk_sources
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/proc_decoder.hh
-        proc_decoder.cc
-
         ${MUSAC_PROJECT_ROOT}/musac/sdk/samples_converter.hh
         samples_converter.cc
 
@@ -75,7 +72,7 @@ target_include_directories(musac_sdk
             $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
-target_link_libraries(musac_sdk PUBLIC SDL3::SDL3)
+target_link_libraries(musac_sdk PUBLIC SDL3::SDL3 thirdparty::failsafe)
 
 if (MUSAC_BUILD_SHARED)
     set(CMAKE_CXX_VISIBILITY_PRESET hidden)

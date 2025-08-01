@@ -125,3 +125,18 @@ set (MUSAC_PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/include)
 add_subdirectory(ext)
 add_subdirectory(src/musac)
 add_subdirectory(example)
+
+# Test decoder output program
+add_executable(test_decoder_output test_decoder_output.cc)
+target_link_libraries(test_decoder_output musac SDL3::SDL3)
+target_include_directories(test_decoder_output PRIVATE include)
+
+# Test single decoder program
+add_executable(test_single_decoder test_single_decoder.cc)
+target_link_libraries(test_single_decoder musac SDL3::SDL3)
+target_include_directories(test_single_decoder PRIVATE include)
+
+# Test simple open program
+add_executable(test_simple_open test_simple_open.cc)
+target_link_libraries(test_simple_open musac_codecs musac_sdk SDL3::SDL3 thirdparty::failsafe)
+target_include_directories(test_simple_open PRIVATE include)
