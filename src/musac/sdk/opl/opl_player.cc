@@ -2,8 +2,9 @@
 // Created by igor on 3/20/25.
 //
 
-#include <SDL3/SDL.h>
+#include <musac/sdk/sdl_compat.h>
 #include <cstring>
+#include <alloca.h>
 
 #include <musac/sdk/opl/opl_player.hh>
 #include <musac/sdk/samples_converter.hh>
@@ -31,13 +32,12 @@ namespace musac {
         if (len <= 0) {
             return len;
         }
-        auto* out = SDL_stack_alloc(int16_t, len);
+        auto* out = (int16_t*)alloca(len * sizeof(int16_t));
         const std::size_t num_pairs = len / 2;
         const auto rc = do_render(out, num_pairs);
         auto out_len = 2 * rc;
         static auto cvt = get_to_float_conveter(SDL_AUDIO_S16);
         cvt(buffer, (uint8_t*)out, (unsigned int)out_len);
-        SDL_stack_free(out);
         return (unsigned int)out_len;
     }
 

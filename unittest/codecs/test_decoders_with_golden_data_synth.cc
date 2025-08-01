@@ -3,7 +3,7 @@
 #include <musac/codecs/decoder_seq.hh>
 #include <musac/codecs/decoder_opb.hh>
 #include <musac/codecs/decoder_vgm.hh>
-#include <SDL3/SDL.h>
+#include <musac/sdk/io_stream.h>
 #include <vector>
 #include <iostream>
 
@@ -18,86 +18,74 @@
 TEST_SUITE("Decoders::Synthesizer") {
     TEST_CASE("Synthesizer Decoders - Basic Functionality") {
         SUBCASE("CMF Decoder") {
-            SDL_IOStream* io = SDL_IOFromConstMem(brix_cmf_input, brix_cmf_input_size);
+            auto io = musac::io_from_memory(brix_cmf_input, brix_cmf_input_size);
             REQUIRE(io != nullptr);
             
             musac::decoder_cmf decoder;
             CHECK(&decoder != nullptr); // Can instantiate
             
-            bool opened = decoder.open(io);
+            bool opened = decoder.open(io.get());
             INFO("CMF decoder open result: " << opened);
-            
-            SDL_CloseIO(io);
         }
         
         SUBCASE("MIDI/MUS/XMI Decoder (seq)") {
             // Test MIDI
             {
-                SDL_IOStream* io = SDL_IOFromConstMem(simon_mid_input, simon_mid_input_size);
+                auto io = musac::io_from_memory(simon_mid_input, simon_mid_input_size);
                 REQUIRE(io != nullptr);
                 
                 musac::decoder_seq decoder;
                 CHECK(&decoder != nullptr);
                 
-                bool opened = decoder.open(io);
+                bool opened = decoder.open(io.get());
                 INFO("MIDI decoder open result: " << opened);
-                
-                SDL_CloseIO(io);
             }
             
             // Test MUS
             {
-                SDL_IOStream* io = SDL_IOFromConstMem(doom_mus_input, doom_mus_input_size);
+                auto io = musac::io_from_memory(doom_mus_input, doom_mus_input_size);
                 REQUIRE(io != nullptr);
                 
                 musac::decoder_seq decoder;
                 CHECK(&decoder != nullptr);
                 
-                bool opened = decoder.open(io);
+                bool opened = decoder.open(io.get());
                 INFO("MUS decoder open result: " << opened);
-                
-                SDL_CloseIO(io);
             }
             
             // Test XMI
             {
-                SDL_IOStream* io = SDL_IOFromConstMem(GCOMP1_XMI_input, GCOMP1_XMI_input_size);
+                auto io = musac::io_from_memory(GCOMP1_XMI_input, GCOMP1_XMI_input_size);
                 REQUIRE(io != nullptr);
                 
                 musac::decoder_seq decoder;
                 CHECK(&decoder != nullptr);
                 
-                bool opened = decoder.open(io);
+                bool opened = decoder.open(io.get());
                 INFO("XMI decoder open result: " << opened);
-                
-                SDL_CloseIO(io);
             }
         }
         
         SUBCASE("OPB Decoder") {
-            SDL_IOStream* io = SDL_IOFromConstMem(doom_opb_input, doom_opb_input_size);
+            auto io = musac::io_from_memory(doom_opb_input, doom_opb_input_size);
             REQUIRE(io != nullptr);
             
             musac::decoder_opb decoder;
             CHECK(&decoder != nullptr);
             
-            bool opened = decoder.open(io);
+            bool opened = decoder.open(io.get());
             INFO("OPB decoder open result: " << opened);
-            
-            SDL_CloseIO(io);
         }
         
         SUBCASE("VGM Decoder") {
-            SDL_IOStream* io = SDL_IOFromConstMem(vgm_vgz_input, vgm_vgz_input_size);
+            auto io = musac::io_from_memory(vgm_vgz_input, vgm_vgz_input_size);
             REQUIRE(io != nullptr);
             
             musac::decoder_vgm decoder;
             CHECK(&decoder != nullptr);
             
-            bool opened = decoder.open(io);
+            bool opened = decoder.open(io.get());
             INFO("VGM decoder open result: " << opened);
-            
-            SDL_CloseIO(io);
         }
     }
     
@@ -110,26 +98,23 @@ TEST_SUITE("Decoders::Synthesizer") {
             
             // CMF should reject non-CMF data
             {
-                SDL_IOStream* io = SDL_IOFromConstMem(bad_data, sizeof(bad_data));
+                auto io = musac::io_from_memory(bad_data, sizeof(bad_data));
                 musac::decoder_cmf decoder;
-                CHECK_FALSE(decoder.open(io));
-                SDL_CloseIO(io);
+                CHECK_FALSE(decoder.open(io.get()));
             }
             
             // OPB should reject non-OPB data
             {
-                SDL_IOStream* io = SDL_IOFromConstMem(bad_data, sizeof(bad_data));
+                auto io = musac::io_from_memory(bad_data, sizeof(bad_data));
                 musac::decoder_opb decoder;
-                CHECK_FALSE(decoder.open(io));
-                SDL_CloseIO(io);
+                CHECK_FALSE(decoder.open(io.get()));
             }
             
             // VGM should reject non-VGM data
             {
-                SDL_IOStream* io = SDL_IOFromConstMem(bad_data, sizeof(bad_data));
+                auto io = musac::io_from_memory(bad_data, sizeof(bad_data));
                 musac::decoder_vgm decoder;
-                CHECK_FALSE(decoder.open(io));
-                SDL_CloseIO(io);
+                CHECK_FALSE(decoder.open(io.get()));
             }
         }
     }

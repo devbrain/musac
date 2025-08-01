@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include <SDL3/SDL.h>
+#include <musac/sdk/sdl_compat.h>
 #include <musac/sdk/decoder.hh>
 #include <musac/codecs/export_musac_codecs.h>
 namespace musac {

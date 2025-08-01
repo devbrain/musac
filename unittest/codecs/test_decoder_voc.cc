@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 #include <musac/codecs/decoder_voc.hh>
-#include <SDL3/SDL.h>
+#include <musac/sdk/io_stream.h>
 #include <vector>
 #include <cstring>
 #include <cmath>
@@ -48,28 +48,26 @@ std::vector<uint8_t> createTestVOC(uint8_t sampleRate = 256 - 45, // ~22050 Hz
 TEST_SUITE("Codecs::DecoderVOC") {
     TEST_CASE("Open valid VOC file") {
         auto vocData = createTestVOC(256 - 45, 1000);
-        SDL_IOStream* io = SDL_IOFromConstMem(vocData.data(), vocData.size());
+        auto io = musac::io_from_memory(vocData.data(), vocData.size());
         REQUIRE(io != nullptr);
         
         musac::decoder_voc decoder;
         
         SUBCASE("Successfully opens") {
-            CHECK(decoder.open(io));
+            CHECK(decoder.open(io.get()));
             CHECK(decoder.is_open());
             CHECK(decoder.get_channels() == 1);  // Converted to mono
             CHECK(decoder.get_rate() == 44100);  // Converted to standard rate
         }
-        
-        SDL_CloseIO(io);
     }
     
     TEST_CASE("Decode VOC data") {
         auto vocData = createTestVOC(256 - 45, 100);
-        SDL_IOStream* io = SDL_IOFromConstMem(vocData.data(), vocData.size());
+        auto io = musac::io_from_memory(vocData.data(), vocData.size());
         REQUIRE(io != nullptr);
         
         musac::decoder_voc decoder;
-        REQUIRE(decoder.open(io));
+        REQUIRE(decoder.open(io.get()));
         
         SUBCASE("Decode samples") {
             float buffer[100];
@@ -102,22 +100,20 @@ TEST_SUITE("Codecs::DecoderVOC") {
             // Should have decoded samples (may be resampled)
             CHECK(allSamples.size() > 0);
         }
-        
-        SDL_CloseIO(io);
     }
     
     TEST_CASE("Real VOC file") {
         // Use real VOC file from data directory
-        SDL_IOStream* io = SDL_IOFromFile("../data/1.voc", "rb");
+        auto io = musac::io_from_file("../data/1.voc", "rb");
         if (io == nullptr) {
             // Try alternative path
-            io = SDL_IOFromFile("../../data/1.voc", "rb");
+            io = musac::io_from_file("../../data/1.voc", "rb");
         }
         REQUIRE(io != nullptr);
         
         musac::decoder_voc decoder;
         
-        CHECK(decoder.open(io));
+        CHECK(decoder.open(io.get()));
         CHECK(decoder.is_open());
         CHECK(decoder.get_channels() == 1);  // VOC is mono
         CHECK(decoder.get_rate() == 44100);  // Converted to standard rate
@@ -137,41 +133,33 @@ TEST_SUITE("Codecs::DecoderVOC") {
         }
         
         CHECK(total_decoded > 0);
-        
-        SDL_CloseIO(io);
     }
     
     TEST_CASE("Invalid VOC data") {
         SUBCASE("Not VOC format") {
             uint8_t badData[] = {'R', 'I', 'F', 'F', 0, 0, 0, 0};
-            SDL_IOStream* io = SDL_IOFromConstMem(badData, sizeof(badData));
+            auto io = musac::io_from_memory(badData, sizeof(badData));
             
             musac::decoder_voc decoder;
-            CHECK_FALSE(decoder.open(io));
-            
-            SDL_CloseIO(io);
+            CHECK_FALSE(decoder.open(io.get()));
         }
         
         SUBCASE("Truncated file") {
             auto vocData = createTestVOC();
             vocData.resize(10);  // Cut off most of the file
             
-            SDL_IOStream* io = SDL_IOFromConstMem(vocData.data(), vocData.size());
+            auto io = musac::io_from_memory(vocData.data(), vocData.size());
             
             musac::decoder_voc decoder;
-            CHECK_FALSE(decoder.open(io));
-            
-            SDL_CloseIO(io);
+            CHECK_FALSE(decoder.open(io.get()));
         }
         
         SUBCASE("Invalid sample rate") {
             auto vocData = createTestVOC(0, 100);  // Rate code 0 is invalid
-            SDL_IOStream* io = SDL_IOFromConstMem(vocData.data(), vocData.size());
+            auto io = musac::io_from_memory(vocData.data(), vocData.size());
             
             musac::decoder_voc decoder;
-            CHECK_FALSE(decoder.open(io));
-            
-            SDL_CloseIO(io);
+            CHECK_FALSE(decoder.open(io.get()));
         }
     }
     
@@ -212,21 +200,19 @@ TEST_SUITE("Codecs::DecoderVOC") {
         // Terminator
         data.push_back(0x00);
         
-        SDL_IOStream* io = SDL_IOFromConstMem(data.data(), data.size());
+        auto io = musac::io_from_memory(data.data(), data.size());
         musac::decoder_voc decoder;
         
-        CHECK(decoder.open(io));
+        CHECK(decoder.open(io.get()));
         CHECK(decoder.get_channels() == 1);
-        
-        SDL_CloseIO(io);
     }
     
     TEST_CASE("Rewind functionality") {
         auto vocData = createTestVOC(256 - 45, 200);
-        SDL_IOStream* io = SDL_IOFromConstMem(vocData.data(), vocData.size());
+        auto io = musac::io_from_memory(vocData.data(), vocData.size());
         
         musac::decoder_voc decoder;
-        REQUIRE(decoder.open(io));
+        REQUIRE(decoder.open(io.get()));
         
         // Decode some data
         float buffer[100];
@@ -246,7 +232,5 @@ TEST_SUITE("Codecs::DecoderVOC") {
         for (int i = 0; i < 100; i++) {
             CHECK(buffer[i] == buffer2[i]);
         }
-        
-        SDL_CloseIO(io);
     }
 }

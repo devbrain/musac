@@ -26,7 +26,7 @@ public:
     }
     
     // Implement virtual functions
-    bool open(SDL_IOStream* /*rwops*/) override {
+    bool open(musac::io_stream* /*rwops*/) override {
         // Simulate opening
         set_is_open(true);
         m_position = 0;

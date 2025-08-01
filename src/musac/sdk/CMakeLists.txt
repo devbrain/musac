@@ -13,6 +13,14 @@ set (sdk_sources
         ${MUSAC_PROJECT_ROOT}/musac/sdk/resampler.hh
         from_float_converter.cc
         ${MUSAC_PROJECT_ROOT}/musac/sdk/from_float_converter.hh
+        
+        # New core headers and sources
+        ${MUSAC_PROJECT_ROOT}/musac/sdk/types.h
+        ${MUSAC_PROJECT_ROOT}/musac/sdk/audio_format.h
+        ${MUSAC_PROJECT_ROOT}/musac/sdk/io_stream.h
+        ${MUSAC_PROJECT_ROOT}/musac/sdk/endian.h
+        ${MUSAC_PROJECT_ROOT}/musac/sdk/memory.h
+        io_stream.cc
 )
 
 set(opl_sources
@@ -72,7 +80,7 @@ target_include_directories(musac_sdk
             $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
-target_link_libraries(musac_sdk PUBLIC SDL3::SDL3 thirdparty::failsafe)
+target_link_libraries(musac_sdk PUBLIC thirdparty::failsafe)
 
 if (MUSAC_BUILD_SHARED)
     set(CMAKE_CXX_VISIBILITY_PRESET hidden)

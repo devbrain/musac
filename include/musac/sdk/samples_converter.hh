@@ -5,7 +5,7 @@
 #ifndef  SAMPLES_CONVERTER_HH
 #define  SAMPLES_CONVERTER_HH
 
-#include <SDL3/SDL.h>
+#include <musac/sdk/sdl_compat.h>
 #include <musac/sdk/export_musac_sdk.h>
 
 namespace musac {

@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 #include <musac/codecs/decoder_aiff.hh>
-#include <SDL3/SDL.h>
+#include <musac/sdk/io_stream.h>
 #include <vector>
 #include <cstring>
 #include <cmath>
@@ -65,28 +65,26 @@ std::vector<uint8_t> createTestAIFF(uint16_t channels = 1,
 TEST_SUITE("Codecs::DecoderAIFF") {
     TEST_CASE("Open valid AIFF file") {
         auto aiffData = createTestAIFF(2, 16, 44100, 1000);
-        SDL_IOStream* io = SDL_IOFromConstMem(aiffData.data(), aiffData.size());
+        auto io = musac::io_from_memory(aiffData.data(), aiffData.size());
         REQUIRE(io != nullptr);
         
         musac::decoder_aiff decoder;
         
         SUBCASE("Successfully opens") {
-            CHECK(decoder.open(io));
+            CHECK(decoder.open(io.get()));
             CHECK(decoder.is_open());
             CHECK(decoder.get_channels() == 1); // Converted to mono
             CHECK(decoder.get_rate() == 44100);
         }
-        
-        SDL_CloseIO(io);
     }
     
     TEST_CASE("Decode AIFF data") {
         auto aiffData = createTestAIFF(1, 16, 44100, 100);
-        SDL_IOStream* io = SDL_IOFromConstMem(aiffData.data(), aiffData.size());
+        auto io = musac::io_from_memory(aiffData.data(), aiffData.size());
         REQUIRE(io != nullptr);
         
         musac::decoder_aiff decoder;
-        REQUIRE(decoder.open(io));
+        REQUIRE(decoder.open(io.get()));
         
         SUBCASE("Decode samples") {
             float buffer[100];
@@ -121,31 +119,25 @@ TEST_SUITE("Codecs::DecoderAIFF") {
             CHECK(allSamples.size() > 0);
             INFO("Decoded " << allSamples.size() << " samples from 100 input samples");
         }
-        
-        SDL_CloseIO(io);
     }
     
     TEST_CASE("Invalid AIFF data") {
         SUBCASE("Not AIFF format") {
             uint8_t badData[] = {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'A', 'V', 'E'};
-            SDL_IOStream* io = SDL_IOFromConstMem(badData, sizeof(badData));
+            auto io = musac::io_from_memory(badData, sizeof(badData));
             
             musac::decoder_aiff decoder;
-            CHECK_FALSE(decoder.open(io));
-            
-            SDL_CloseIO(io);
+            CHECK_FALSE(decoder.open(io.get()));
         }
         
         SUBCASE("Truncated file") {
             auto aiffData = createTestAIFF();
             aiffData.resize(20); // Cut off most of the file
             
-            SDL_IOStream* io = SDL_IOFromConstMem(aiffData.data(), aiffData.size());
+            auto io = musac::io_from_memory(aiffData.data(), aiffData.size());
             
             musac::decoder_aiff decoder;
-            CHECK_FALSE(decoder.open(io));
-            
-            SDL_CloseIO(io);
+            CHECK_FALSE(decoder.open(io.get()));
         }
         
         SUBCASE("Missing COMM chunk") {
@@ -156,12 +148,10 @@ TEST_SUITE("Codecs::DecoderAIFF") {
             data.insert(data.end(), {0, 0, 0, 12});
             data.insert(data.end(), {'A', 'I', 'F', 'F'});
             
-            SDL_IOStream* io = SDL_IOFromConstMem(data.data(), data.size());
+            auto io = musac::io_from_memory(data.data(), data.size());
             
             musac::decoder_aiff decoder;
-            CHECK_FALSE(decoder.open(io));
-            
-            SDL_CloseIO(io);
+            CHECK_FALSE(decoder.open(io.get()));
         }
     }
     
@@ -201,22 +191,20 @@ TEST_SUITE("Codecs::DecoderAIFF") {
         // Sample data
         data.resize(data.size() + 50, 128);  // 8-bit centered at 128
         
-        SDL_IOStream* io = SDL_IOFromConstMem(data.data(), data.size());
+        auto io = musac::io_from_memory(data.data(), data.size());
         
         musac::decoder_aiff decoder;
-        CHECK(decoder.open(io));
+        CHECK(decoder.open(io.get()));
         CHECK(decoder.get_channels() == 1);
         CHECK(decoder.get_rate() == 44100); // Converted from 22050
-        
-        SDL_CloseIO(io);
     }
     
     TEST_CASE("Rewind functionality") {
         auto aiffData = createTestAIFF(1, 16, 44100, 200);
-        SDL_IOStream* io = SDL_IOFromConstMem(aiffData.data(), aiffData.size());
+        auto io = musac::io_from_memory(aiffData.data(), aiffData.size());
         
         musac::decoder_aiff decoder;
-        REQUIRE(decoder.open(io));
+        REQUIRE(decoder.open(io.get()));
         
         // Decode some data
         float buffer[100];
@@ -236,7 +224,5 @@ TEST_SUITE("Codecs::DecoderAIFF") {
         for (int i = 0; i < 100; i++) {
             CHECK(buffer[i] == buffer2[i]);
         }
-        
-        SDL_CloseIO(io);
     }
 }

@@ -1,7 +1,7 @@
 #ifndef __PATCHES_H
 #define __PATCHES_H
 
-#include <SDL3/SDL.h>
+#include <musac/sdk/sdl_compat.h>
 #include <cstddef>
 #include <string>
 #include <unordered_map>

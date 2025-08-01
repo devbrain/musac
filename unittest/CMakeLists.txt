@@ -75,7 +75,6 @@ target_link_libraries(musac_unittest
         doctest::doctest
         musac_sdk
         musac_codecs
-        SDL3::SDL3
         thirdparty::failsafe
 )
 

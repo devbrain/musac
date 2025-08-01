@@ -4,7 +4,7 @@
 
 #include <musac/codecs/decoder_voc.hh>
 #include <musac/sdk/samples_converter.hh>
-#include <SDL3/SDL_endian.h>
+#include <musac/sdk/sdl_compat.h>
 #include <failsafe/failsafe.hh>
 #include <vector>
 #include <cstring>
@@ -386,7 +386,7 @@ struct decoder_voc::impl {
         size_t total_size = temp_buffer.size() & ~(samplesize - 1);
         temp_buffer.resize(total_size);
         
-        // Convert to standard format (S16 mono 44100Hz)
+        // Convert to standard format (S16 mono 44100Hz) as expected by tests
         SDL_AudioSpec dst_spec = { SDL_AUDIO_S16, 1, 44100 };
         Uint8* dst_data = nullptr;
         int dst_len = 0;
