@@ -2,7 +2,6 @@
 #define __PLAYER_H
 
 
-#include <musac/sdk/sdl_compat.h>
 #include <climits>
 #include <queue>
 #include <vector>

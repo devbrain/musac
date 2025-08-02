@@ -8,12 +8,30 @@
 #include <musac/sdk/audio_converter.h>
 #include <musac/sdk/endian.h>
 #include <musac/sdk/memory.h>
+#include <musac/sdk/musac_sdk_config.h>
 #include <failsafe/failsafe.hh>
 #include <vector>
 #include <cstring>
 #include <algorithm>
 
 namespace musac {
+
+// Helper function to convert audio samples and return a vector
+static std::vector<uint8> convert_audio_samples_to_vector(
+    const audio_spec* src_spec, const uint8* src_data, int src_len,
+    const audio_spec* dst_spec) {
+    uint8* dst_data = nullptr;
+    int dst_len = 0;
+    
+    if (!convert_audio_samples(src_spec, src_data, src_len, dst_spec, &dst_data, &dst_len)) {
+        throw std::runtime_error("Failed to convert audio samples");
+    }
+    
+    // Transfer ownership to vector and cleanup
+    std::vector<uint8> result(dst_data, dst_data + dst_len);
+    delete[] dst_data;
+    return result;
+}
 
 // VOC format constants
 static constexpr int ST_SIZE_BYTE = 1;
@@ -107,6 +125,11 @@ struct decoder_voc::impl {
             // Size is an 24-bit value. Ugh.
             sblen = (uint32)((bits24[0]) | (bits24[1] << 8) | (bits24[2] << 16));
             
+            // Sanity check: blocks shouldn't be larger than 16MB
+            if (sblen > 16 * 1024 * 1024) {
+                THROW_RUNTIME("VOC block size too large");
+            }
+            
             switch(block) {
                 case VOC_DATA:
                     if (m_rwops->read( &uc, sizeof(uc)) != sizeof(uc)) {
@@ -125,6 +148,9 @@ struct decoder_voc::impl {
                         }
                         
                         v.rate = uc;
+                        if (v.rate >= 256) {
+                            THROW_RUNTIME("VOC sample rate out of range");
+                        }
                         spec.freq = (uint16)(1000000.0/(256 - v.rate));
                         v.channels = 1;
                     }
@@ -251,6 +277,9 @@ struct decoder_voc::impl {
                         spec.channels = 1;
                     // Needed number of channels before finishing
                     // compute for rate
+                    if (v.rate >= 65536L) {
+                        THROW_RUNTIME("VOC extended rate out of range");
+                    }
                     spec.freq = (256000000L / (65536L - v.rate)) / spec.channels;
                     // An extended block must be followed by a data
                     // block to be valid so loop back to top so it
@@ -313,7 +342,7 @@ struct decoder_voc::impl {
             
             v.rest = (uint32)(v.rest - done);
             if (v.size == ST_SIZE_WORD) {
-                #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+                #if MUSAC_BIG_ENDIAN
                 uint16 *samples = (uint16 *)buf;
                 size_t sample_count = done / 2;
                 for (size_t i = 0; i < sample_count; i++) {
@@ -391,24 +420,15 @@ struct decoder_voc::impl {
         
         // Convert to standard format (S16 mono 44100Hz) as expected by tests
         audio_spec dst_spec = { audio_s16sys, 1, 44100 };
-        uint8* dst_data = nullptr;
-        int dst_len = 0;
         
         if (!temp_buffer.empty()) {
-            if (!convert_audio_samples(&m_spec, temp_buffer.data(), (int)temp_buffer.size(), 
-                                         &dst_spec, &dst_data, &dst_len)) {
-                THROW_RUNTIME("Failed to convert audio samples");
-            }
+            m_buffer = convert_audio_samples_to_vector(&m_spec, temp_buffer.data(), (int)temp_buffer.size(), &dst_spec);
         } else {
             THROW_RUNTIME("No audio data read from VOC file");
         }
         
-        // Store converted data
-        m_buffer.assign(dst_data, dst_data + dst_len);
-        delete[] dst_data;
-        
         m_spec = dst_spec;
-        m_total_samples = dst_len / sizeof(int16_t);
+        m_total_samples = m_buffer.size() / sizeof(int16_t);
         m_converter = get_to_float_conveter(m_spec.format);
         
         return true;

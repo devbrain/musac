@@ -16,6 +16,23 @@
 
 namespace musac {
 
+// Helper function to convert audio samples and return a vector
+static std::vector<uint8> convert_audio_samples_to_vector(
+    const audio_spec* src_spec, const uint8* src_data, int src_len,
+    const audio_spec* dst_spec) {
+    uint8* dst_data = nullptr;
+    int dst_len = 0;
+    
+    if (!convert_audio_samples(src_spec, src_data, src_len, dst_spec, &dst_data, &dst_len)) {
+        throw std::runtime_error("Failed to convert audio samples");
+    }
+    
+    // Transfer ownership to vector and cleanup
+    std::vector<uint8> result(dst_data, dst_data + dst_len);
+    delete[] dst_data;
+    return result;
+}
+
 // AIFF format constants (big-endian)
 static constexpr uint32 FORM = 0x464f524d;  // "FORM"
 static constexpr uint32 AIFF = 0x41494646;  // "AIFF"
@@ -208,7 +225,22 @@ struct decoder_aiff::impl {
         }
         
         // Calculate total size and allocate buffer
-        size_t total_size = channels * numsamples * (samplesize / 8);
+        // Check for overflow
+        size_t bytes_per_sample = samplesize / 8;
+        if (bytes_per_sample == 0) {
+            THROW_RUNTIME("Invalid sample size");
+        }
+        
+        // Check for overflow in multiplication
+        if (numsamples > 0 && channels > SIZE_MAX / numsamples) {
+            THROW_RUNTIME("Sample count overflow");
+        }
+        size_t total_samples = channels * numsamples;
+        if (total_samples > SIZE_MAX / bytes_per_sample) {
+            THROW_RUNTIME("Total size overflow");
+        }
+        
+        size_t total_size = total_samples * bytes_per_sample;
         if (data_length > 0 && data_length < total_size) {
             total_size = data_length;
         }
@@ -222,38 +254,36 @@ struct decoder_aiff::impl {
         }
         
         // Don't return a buffer that isn't a multiple of samplesize
-        total_size &= ~((samplesize / 8) - 1);
+        total_size &= ~(bytes_per_sample - 1);
         m_buffer.resize(total_size);
         
         // Convert to standard format (S16 mono 44100Hz) as expected by tests
         audio_spec dst_spec = { audio_s16sys, 1, 44100 };
-        uint8* dst_data = nullptr;
-        int dst_len = 0;
         
-        // First try to convert to target format
-        if (!convert_audio_samples(&m_spec, m_buffer.data(), m_buffer.size(), 
-                                     &dst_spec, &dst_data, &dst_len)) {
+        try {
+            // First try to convert to target format
+            m_buffer = convert_audio_samples_to_vector(&m_spec, m_buffer.data(), m_buffer.size(), &dst_spec);
+        } catch (const std::exception&) {
             // If conversion fails, try intermediate conversion
             if (m_spec.format == audio_format::s16be || m_spec.format == audio_format::s8) {
                 // Convert to S16LE first, then resample if needed
                 audio_spec intermediate_spec = m_spec;
                 intermediate_spec.format = audio_format::s16le;
                 
-                if (convert_audio_samples(&m_spec, m_buffer.data(), m_buffer.size(),
-                                           &intermediate_spec, &dst_data, &dst_len)) {
-                    // Now convert from intermediate to final format
-                    std::vector<uint8> temp_buffer(dst_data, dst_data + dst_len);
-                    delete[] dst_data;
+                try {
+                    std::vector<uint8> temp_buffer = convert_audio_samples_to_vector(
+                        &m_spec, m_buffer.data(), m_buffer.size(), &intermediate_spec);
                     
-                    if (!convert_audio_samples(&intermediate_spec, temp_buffer.data(), temp_buffer.size(),
-                                                &dst_spec, &dst_data, &dst_len)) {
+                    // Now convert from intermediate to final format
+                    try {
+                        m_buffer = convert_audio_samples_to_vector(
+                            &intermediate_spec, temp_buffer.data(), temp_buffer.size(), &dst_spec);
+                    } catch (const std::exception&) {
                         // If still failing, just keep intermediate format
-                        dst_data = new uint8[temp_buffer.size()];
-                        memcpy(dst_data, temp_buffer.data(), temp_buffer.size());
-                        dst_len = temp_buffer.size();
+                        m_buffer = temp_buffer;
                         dst_spec = intermediate_spec;
                     }
-                } else {
+                } catch (const std::exception&) {
                     THROW_RUNTIME("Failed to convert audio samples");
                 }
             } else {
@@ -261,12 +291,8 @@ struct decoder_aiff::impl {
             }
         }
         
-        // Replace buffer with converted data
-        m_buffer.assign(dst_data, dst_data + dst_len);
-        delete[] dst_data;
-        
         m_spec = dst_spec;
-        m_total_samples = dst_len / (audio_format_byte_size(m_spec.format) * m_spec.channels);
+        m_total_samples = m_buffer.size() / (audio_format_byte_size(m_spec.format) * m_spec.channels);
         
         m_converter = get_to_float_conveter(m_spec.format);
         

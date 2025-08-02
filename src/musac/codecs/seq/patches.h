@@ -1,7 +1,6 @@
 #ifndef __PATCHES_H
 #define __PATCHES_H
 
-#include <musac/sdk/sdl_compat.h>
 #include <musac/sdk/io_stream.h>
 #include <cstddef>
 #include <string>
@@ -24,7 +23,7 @@ namespace ymfmidi {
 		double finetune = 1.0; // frequency multiplier
 	};
 
-	typedef std::unordered_map<uint16_t, struct OPLPatch> OPLPatchSet;
+	using OPLPatchSet = std::unordered_map<uint16_t, struct OPLPatch>;
 
 	struct OPLPatch
 	{

@@ -7,7 +7,7 @@
 #include <musac/codecs/decoder_vgm.hh>
 #include "musac/codecs/vgm/vgm_player.hh"
 
-#define SAMPLE_RATE 44100
+constexpr unsigned int SAMPLE_RATE = 44100;
 
 namespace musac {
     struct decoder_vgm::impl {

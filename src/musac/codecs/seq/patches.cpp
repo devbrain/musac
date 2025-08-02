@@ -70,7 +70,7 @@ namespace ymfmidi {
 	{
 		if (size < 19)
 			return false;
-		if (strcmp((const char*)data, "WOPL3-BANK") != 0)
+		if (std::memcmp(data, "WOPL3-BANK", 10) != 0)
 			return false;
 
 		// mixed endianness? why???

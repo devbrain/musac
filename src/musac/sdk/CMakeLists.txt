@@ -21,6 +21,7 @@ set (sdk_sources
         ${MUSAC_PROJECT_ROOT}/musac/sdk/endian.h
         ${MUSAC_PROJECT_ROOT}/musac/sdk/memory.h
         ${MUSAC_PROJECT_ROOT}/musac/sdk/audio_converter.h
+        ${CMAKE_CURRENT_BINARY_DIR}/musac/sdk/musac_sdk_config.h
         io_stream.cc
         audio_converter.cc
 )
@@ -58,6 +59,16 @@ set(opl_sources
         ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/ymfm/ymfm_ssg.h
         opl/ymfm_chip.cc
         ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/ymfm_chip.hh
+)
+
+# Test for endianness
+include(TestBigEndian)
+test_big_endian(IS_BIG_ENDIAN)
+
+# Generate configuration header
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/musac_sdk_config.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/musac/sdk/musac_sdk_config.h
 )
 
 if (MUSAC_BUILD_FPIC)

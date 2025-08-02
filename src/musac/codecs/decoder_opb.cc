@@ -10,7 +10,7 @@
 
 
 
-#define SAMPLE_RATE 44100
+constexpr unsigned int SAMPLE_RATE = 44100;
 
 namespace musac {
     struct decoder_opb::impl {
@@ -19,7 +19,7 @@ namespace musac {
         }
 
         static int ReceiveOpbBuffer(OPB_Command* commandStream, size_t commandCount, void* context) {
-            auto* self = (impl*)context;
+            auto* self = static_cast<impl*>(context);
             self->m_player.copy(commandStream, commandCount);
             return 0;
         }
@@ -28,7 +28,7 @@ namespace musac {
     };
 
     static size_t StreamReader(void* buffer, size_t elementSize, size_t elementCount, void* context) {
-        auto rwops = (io_stream*)context;
+        auto rwops = static_cast<io_stream*>(context);
         rwops->read( buffer, elementSize * elementCount);
         return elementCount;
     }

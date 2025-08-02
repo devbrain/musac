@@ -2,12 +2,13 @@
 #define MUSAC_SDK_ENDIAN_H
 
 #include <musac/sdk/types.h>
+#include <musac/sdk/musac_sdk_config.h>
 #include <cstring>
 
 namespace musac {
 
-// Platform endianness detection
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+// Platform endianness detection using CMake-generated config
+#if MUSAC_BIG_ENDIAN
     constexpr bool is_big_endian = true;
     constexpr bool is_little_endian = false;
 #else
