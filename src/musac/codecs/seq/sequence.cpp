@@ -42,20 +42,20 @@ namespace ymfmidi {
 		return load(data.data(), size);
 	}
 
-	Sequence* Sequence::load(SDL_IOStream* file, int offset, size_t size) {
+	Sequence* Sequence::load(musac::io_stream* file, int offset, size_t size) {
 		if (!size)
 		{
-			SDL_SeekIO(file, offset, SDL_IO_SEEK_END);
-			auto p = SDL_TellIO(file);
+			file->seek( offset, musac::seek_origin::end);
+			auto p = file->tell();
 			if (p < 0)
 				return nullptr;
 			size = p - offset;
 		}
 
-		SDL_SeekIO(file, offset, SDL_IO_SEEK_SET);
+		file->seek( offset, musac::seek_origin::set);
 		std::vector<uint8_t> data(size);
 
-		if (SDL_ReadIO(file, data.data(), size) != size)
+		if (file->read( data.data(), size) != size)
 			return nullptr;
 
 		return load(data.data(), size);

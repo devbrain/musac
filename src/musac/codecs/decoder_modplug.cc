@@ -2,6 +2,7 @@
 #include <musac/codecs/decoder_modplug.hh>
 
 #include <musac/sdk/buffer.hh>
+#include <musac/sdk/memory.h>
 #include "musac/codecs/libmodplug/modplug.h"
 #include <limits>
 
@@ -26,7 +27,7 @@ namespace musac {
             ModPlug_Init();
             initialized = true;
         }
-        SDL_zero(settings);
+        musac::zero(settings);
 
         /* The settings will require some experimenting. I've borrowed some
             of them from the XMMS ModPlug plugin. */
@@ -42,7 +43,7 @@ namespace musac {
         settings.mSurroundDepth = 20;
         settings.mSurroundDelay = 20;
         settings.mChannels = 2;
-        settings.mBits = SDL_AUDIO_BITSIZE(SDL_AUDIO_S32);
+        settings.mBits = 32; // 32-bit audio
         settings.mFrequency = 44100;
         settings.mResamplingMode = MODPLUG_RESAMPLE_FIR;
         settings.mLoopCount = 0;
@@ -54,17 +55,17 @@ namespace musac {
 
     decoder_modplug::~decoder_modplug() = default;
 
-    bool decoder_modplug::open(SDL_IOStream* rwops) {
+    bool decoder_modplug::open(io_stream* rwops) {
         if (is_open()) {
             return true;
         }
         // FIXME: error reporting
-        Sint64 dataSize = SDL_GetIOSize(rwops);
+        int64 dataSize = rwops->get_size();
         if (dataSize <= 0 || dataSize > std::numeric_limits <int>::max()) {
             return false;
         }
-        buffer <Uint8> data(static_cast <unsigned >(dataSize));
-        if (SDL_ReadIO(rwops, data.data(), data.size()) != static_cast<size_t>(dataSize)) {
+        buffer <uint8> data(static_cast <unsigned >(dataSize));
+        if (rwops->read( data.data(), data.size()) != static_cast<size_t>(dataSize)) {
             return false;
         }
         m_pimpl->handle.reset(ModPlug_Load(data.data(), (int)data.size(), &m_pimpl->settings));
@@ -89,7 +90,7 @@ namespace musac {
         if (m_pimpl->m_eof || !is_open()) {
             return 0;
         }
-        buffer <Sint32> tmpBuf(len);
+        buffer <int32> tmpBuf(len);
         int ret = ModPlug_Read(m_pimpl->handle.get(), tmpBuf.data(), (int)len * 4);
         // Convert from 32-bit to float.
         for (unsigned int i = 0; i < len; ++i) {

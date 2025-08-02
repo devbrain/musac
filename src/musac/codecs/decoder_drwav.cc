@@ -1,5 +1,7 @@
 #include <musac/codecs/decoder_drwav.hh>
 
+#include <musac/sdk/io_stream.h>
+
 #define DR_WAV_NO_STDIO
 #define DR_WAV_IMPLEMENTATION
 #define DRWAV_API static
@@ -11,18 +13,18 @@ namespace chrono = std::chrono;
 
 extern "C" {
 static size_t drwav_read_callback(void* const rwops, void* const dst, const size_t len) {
-    return SDL_ReadIO(static_cast <SDL_IOStream*>(rwops), dst, len);
+    return static_cast <musac::io_stream*>(rwops)->read( dst, len);
 }
 
 static drwav_bool32 drwav_seek_callback(void* const rwops_void, const int offset, const drwav_seek_origin origin) {
-    SDL_ClearError();
+    // SDL_ClearError() removed - no longer needed
 
-    auto* const rwops = static_cast <SDL_IOStream*>(rwops_void);
-    const auto rwops_size = SDL_GetIOSize(rwops);
-    const auto cur_pos = SDL_TellIO(rwops);
+    auto* const rwops = static_cast <musac::io_stream*>(rwops_void);
+    const auto rwops_size = rwops->get_size();
+    const auto cur_pos = rwops->tell();
 
     auto seekIsPastEof = [=] {
-        const auto abs_offset = (Sint64)(offset + (origin == drwav_seek_origin_current ? cur_pos : 0));
+        const auto abs_offset = (int64_t)(offset + (origin == drwav_seek_origin_current ? cur_pos : 0));
         return abs_offset >= rwops_size;
     };
 
@@ -33,18 +35,18 @@ static drwav_bool32 drwav_seek_callback(void* const rwops_void, const int offset
         return false;
     }
 
-    SDL_IOWhence whence;
+    musac::seek_origin whence;
     switch (origin) {
         case drwav_seek_origin_start:
-            whence = SDL_IO_SEEK_SET;
+            whence = musac::seek_origin::set;
             break;
         case drwav_seek_origin_current:
-            whence = SDL_IO_SEEK_CUR;
+            whence = musac::seek_origin::cur;
             break;
         default:
             return false;
     }
-    return !seekIsPastEof() && SDL_SeekIO(rwops, offset, whence) >= 0;
+    return !seekIsPastEof() && rwops->seek( offset, whence) >= 0;
 }
 } // extern "C"
 
@@ -65,7 +67,7 @@ namespace musac {
         drwav_uninit(&m_pimpl->m_handle);
     }
 
-    auto decoder_drwav::open(SDL_IOStream* const rwops)
+    auto decoder_drwav::open(io_stream* const rwops)
         ->
         bool {
         if (is_open()) {
@@ -73,7 +75,7 @@ namespace musac {
         }
 
         if (!drwav_init(&m_pimpl->m_handle, drwav_read_callback, drwav_seek_callback, rwops, nullptr)) {
-            SDL_SetError("drwav_init failed.");
+            // SDL_SetError("drwav_init failed.") removed - error handling simplified
             return false;
         }
         set_is_open(true);

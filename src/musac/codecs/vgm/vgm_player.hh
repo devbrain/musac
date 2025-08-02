@@ -8,7 +8,7 @@
 
 #include <vector>
 #include <memory>
-#include <musac/sdk/sdl_compat.h>
+#include <musac/sdk/io_stream.h>
 #include <musac/sdk/opl/ymfm_chip.hh>
 
 #if defined(_MSC_VER)
@@ -22,7 +22,7 @@ namespace musac {
     class vgm_player {
         public:
             vgm_player();
-            bool load(SDL_IOStream* file);
+            bool load(io_stream* file);
 
             int render(float* buff, int len);
             bool done() const {

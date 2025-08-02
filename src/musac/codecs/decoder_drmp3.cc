@@ -1,6 +1,7 @@
 // This is copyrighted software. More information is at the end of this file.
 #include <musac/codecs/decoder_drmp3.hh>
 
+#include <musac/sdk/io_stream.h>
 
 #define DRMP3_API static
 #define DR_MP3_NO_STDIO
@@ -12,15 +13,15 @@ namespace chrono = std::chrono;
 
 extern "C" {
 static size_t drmp3ReadCb(void* const rwops, void* const dst, const size_t len) {
-    return SDL_ReadIO(static_cast <SDL_IOStream*>(rwops), dst, len);
+    return static_cast <musac::io_stream*>(rwops)->read( dst, len);
 }
 
 static drmp3_bool32 drmp3SeekCb(void* const rwops_void, const int offset, const drmp3_seek_origin origin) {
-    SDL_ClearError();
+    // Clear any previous errors
 
-    auto* const rwops = static_cast <SDL_IOStream*>(rwops_void);
-    const auto rwops_size = SDL_GetIOSize(rwops);
-    const auto cur_pos = SDL_TellIO(rwops);
+    auto* const rwops = static_cast <musac::io_stream*>(rwops_void);
+    const auto rwops_size = rwops->get_size();
+    const auto cur_pos = rwops->tell();
 
     auto seekIsPastEof = [=] {
         const auto abs_offset = offset + (origin == drmp3_seek_origin_current ? cur_pos : 0);
@@ -34,18 +35,18 @@ static drmp3_bool32 drmp3SeekCb(void* const rwops_void, const int offset, const 
         return false;
     }
 
-    SDL_IOWhence whence;
+    musac::seek_origin whence;
     switch (origin) {
         case drmp3_seek_origin_start:
-            whence = SDL_IO_SEEK_SET;
+            whence = musac::seek_origin::set;
             break;
         case drmp3_seek_origin_current:
-            whence = SDL_IO_SEEK_CUR;
+            whence = musac::seek_origin::cur;
             break;
         default:
             return false;
     }
-    return !seekIsPastEof() && SDL_SeekIO(rwops, offset, whence) >= 0;
+    return !seekIsPastEof() && rwops->seek( offset, whence) >= 0;
 }
 } // extern "C"
 
@@ -67,18 +68,18 @@ namespace musac {
         drmp3_uninit(&m_pimpl->handle_);
     }
 
-    bool decoder_drmp3::open(SDL_IOStream* const rwops) {
+    bool decoder_drmp3::open(io_stream* const rwops) {
         if (is_open()) {
             return true;
         }
 
         if (!drmp3_init(&m_pimpl->handle_, drmp3ReadCb, drmp3SeekCb, rwops, nullptr)) {
-            SDL_SetError("drmp3_init failed.");
+            // drmp3_init failed
             return false;
         }
         // Calculating the duration on an MP3 stream involves iterating over every frame in it, which is
         // only possible when the total size of the stream is known.
-        if (SDL_GetIOSize(rwops) > 0) {
+        if (rwops->get_size() > 0) {
             m_pimpl->duration_ = chrono::duration_cast <chrono::microseconds>(chrono::duration <double>(
                 static_cast <double>(drmp3_get_pcm_frame_count(&m_pimpl->handle_)) / get_rate()));
         }

@@ -32,13 +32,13 @@ namespace musac {
 
     decoder_cmf::~decoder_cmf() = default;
 
-    bool decoder_cmf::open(SDL_IOStream* rwops) {
-        auto sz = SDL_GetIOSize(rwops);
+    bool decoder_cmf::open(io_stream* rwops) {
+        auto sz = rwops->get_size();
         if (sz <= 0) {
             return false;
         }
         m_pimpl->m_song.resize((size_t)sz);
-        SDL_ReadIO(rwops, m_pimpl->m_song.data(), (size_t)sz);
+        rwops->read( m_pimpl->m_song.data(), (size_t)sz);
         auto* data = m_pimpl->m_song.data();
         
         // Validate minimum size for CMF header

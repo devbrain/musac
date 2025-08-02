@@ -2,7 +2,7 @@
 // Created by igor on 3/20/25.
 //
 
-#include <musac/sdk/sdl_compat.h>
+#include <musac/sdk/audio_format.h>
 #include <cstring>
 #include <alloca.h>
 
@@ -36,7 +36,7 @@ namespace musac {
         const std::size_t num_pairs = len / 2;
         const auto rc = do_render(out, num_pairs);
         auto out_len = 2 * rc;
-        static auto cvt = get_to_float_conveter(SDL_AUDIO_S16);
+        static auto cvt = get_to_float_conveter(audio_s16sys);
         cvt(buffer, (uint8_t*)out, (unsigned int)out_len);
         return (unsigned int)out_len;
     }

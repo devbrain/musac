@@ -2,6 +2,7 @@
 #define __PATCHES_H
 
 #include <musac/sdk/sdl_compat.h>
+#include <musac/sdk/io_stream.h>
 #include <cstddef>
 #include <string>
 #include <unordered_map>
@@ -40,7 +41,7 @@ namespace ymfmidi {
 
 		static bool load(OPLPatchSet& patches, const char *path);
 		static bool load(OPLPatchSet& patches, FILE *file, int offset = 0, size_t size = 0);
-		static bool load(OPLPatchSet& patches, SDL_IOStream *file, int offset = 0, size_t size = 0);
+		static bool load(OPLPatchSet& patches, musac::io_stream *file, int offset = 0, size_t size = 0);
 		static bool load(OPLPatchSet& patches, const uint8_t *data, size_t size);
 
 		private:

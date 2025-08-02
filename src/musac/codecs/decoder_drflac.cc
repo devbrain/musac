@@ -1,27 +1,26 @@
 #include <musac/codecs/decoder_drflac.hh>
 
-
+#include <musac/sdk/io_stream.h>
 
 #define DR_FLAC_NO_STDIO
 #define DR_FLAC_IMPLEMENTATION
 #define DRFLAC_API static
 #include "musac/codecs/dr_libs/dr_flac.h"
 
-#include <musac/sdk/sdl_compat.h>
 
 namespace chrono = std::chrono;
 
 extern "C" {
 static size_t drflacReadCb(void* const rwops, void* const dst, const size_t len) {
-    return SDL_ReadIO(static_cast <SDL_IOStream*>(rwops), dst, len);
+    return static_cast <musac::io_stream*>(rwops)->read( dst, len);
 }
 
 static drflac_bool32 drflacSeekCb(void* const rwops_void, const int offset, const drflac_seek_origin origin) {
-    SDL_ClearError();
+    // SDL_ClearError() removed - no longer needed
 
-    auto* const rwops = static_cast <SDL_IOStream*>(rwops_void);
-    const auto rwops_size = SDL_GetIOSize(rwops);
-    const auto cur_pos = SDL_TellIO(rwops);
+    auto* const rwops = static_cast <musac::io_stream*>(rwops_void);
+    const auto rwops_size = rwops->get_size();
+    const auto cur_pos = rwops->tell();
 
     auto seekIsPastEof = [=] {
         const auto abs_offset = offset + (origin == drflac_seek_origin_current ? cur_pos : 0);
@@ -35,18 +34,18 @@ static drflac_bool32 drflacSeekCb(void* const rwops_void, const int offset, cons
         return false;
     }
 
-    SDL_IOWhence whence;
+    musac::seek_origin whence;
     switch (origin) {
         case drflac_seek_origin_start:
-            whence = SDL_IO_SEEK_SET;
+            whence = musac::seek_origin::set;
             break;
         case drflac_seek_origin_current:
-            whence = SDL_IO_SEEK_CUR;
+            whence = musac::seek_origin::cur;
             break;
         default:
             return false;
     }
-    return !seekIsPastEof() && SDL_SeekIO(rwops, offset, whence) >= 0;
+    return !seekIsPastEof() && rwops->seek( offset, whence) >= 0;
 }
 } // extern "C"
 
@@ -62,14 +61,14 @@ namespace musac {
 
     decoder_drflac::~decoder_drflac() = default;
 
-    bool decoder_drflac::open(SDL_IOStream* const rwops) {
+    bool decoder_drflac::open(io_stream* const rwops) {
         if (is_open()) {
             return true;
         }
 
         m_pimpl->m_handle = {drflac_open(drflacReadCb, drflacSeekCb, rwops, nullptr), drflac_close};
         if (!m_pimpl->m_handle) {
-            SDL_SetError("drflac_open returned null.");
+            // SDL_SetError("drflac_open returned null.") removed - error handling simplified
             return false;
         }
         set_is_open(true);

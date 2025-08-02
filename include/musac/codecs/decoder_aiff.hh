@@ -6,7 +6,6 @@
 #define  DECODER_AIFF_HH
 
 #include <memory>
-#include <musac/sdk/sdl_compat.h>
 #include <musac/sdk/decoder.hh>
 #include <musac/codecs/export_musac_codecs.h>
 
@@ -16,7 +15,7 @@ namespace musac {
             decoder_aiff();
             ~decoder_aiff() override;
             
-            [[nodiscard]] bool open(SDL_IOStream* rwops) override;
+            [[nodiscard]] bool open(io_stream* rwops) override;
             [[nodiscard]] unsigned int get_channels() const override;
             [[nodiscard]] unsigned int get_rate() const override;
             bool rewind() override;

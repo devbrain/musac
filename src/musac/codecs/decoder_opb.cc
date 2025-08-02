@@ -28,8 +28,8 @@ namespace musac {
     };
 
     static size_t StreamReader(void* buffer, size_t elementSize, size_t elementCount, void* context) {
-        auto rwops = (SDL_IOStream*)context;
-        SDL_ReadIO(rwops, buffer, elementSize * elementCount);
+        auto rwops = (io_stream*)context;
+        rwops->read( buffer, elementSize * elementCount);
         return elementCount;
     }
 
@@ -39,7 +39,7 @@ namespace musac {
 
     decoder_opb::~decoder_opb() = default;
 
-    bool decoder_opb::open(SDL_IOStream* rwops) {
+    bool decoder_opb::open(io_stream* rwops) {
         auto rc = OPB_BinaryToOpl(StreamReader, rwops, impl::ReceiveOpbBuffer, m_pimpl.get());
         if (rc == 0) {
             set_is_open(true);

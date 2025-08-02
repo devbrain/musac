@@ -3,6 +3,7 @@
 //
 
 #include <musac/sdk/samples_converter.hh>
+#include <musac/sdk/endian.h>
 #include <limits>
 #include <type_traits>
 #include <algorithm>
@@ -29,16 +30,16 @@ namespace musac {
         }
     }
 
-    void as_float_u8(float out[], const Uint8* buff, unsigned int samples) {
+    void as_float_u8(float out[], const uint8* buff, unsigned int samples) {
         for (unsigned int i = 0; i < samples; i++) {
             out[i] = as_float(buff[i]);
         }
     }
 
-    void as_float_s8(float out[], const Uint8* buff, unsigned int samples) {
+    void as_float_s8(float out[], const uint8* buff, unsigned int samples) {
         union {
-            const Uint8* x;
-            const Sint8* buff;
+            const uint8* x;
+            const int8* buff;
         } data {};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
@@ -46,189 +47,140 @@ namespace musac {
         }
     }
 
-    void as_float_u16_le(float out[], const Uint8* buff, unsigned int samples) {
+    void as_float_u16_le(float out[], const uint8* buff, unsigned int samples) {
         union {
-            const Uint8* x;
-            const Uint16* buff;
+            const uint8* x;
+            const uint16* buff;
         } data {};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN
-            out[i] = as_float(data.buff[i]);
-#else
-            out[i] = as_float(SDL_Swap16(data.buff[i]));
-#endif
+            out[i] = as_float(swap16le(data.buff[i]));
         }
     }
 
-    void as_float_u16_be(float out[], const Uint8* buff, unsigned int samples) {
+    void as_float_u16_be(float out[], const uint8* buff, unsigned int samples) {
         union {
-            const Uint8* x;
-            const Uint16* buff;
+            const uint8* x;
+            const uint16* buff;
         } data{};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN
-            out[i] = as_float(SDL_Swap16(data.buff[i]));
-#else
-            out[i] = as_float(data.buff[i]);
-#endif
+            out[i] = as_float(swap16be(data.buff[i]));
         }
     }
 
-    void as_float_s16_le(float out[], const Uint8* buff, unsigned int samples) {
+    void as_float_s16_le(float out[], const uint8* buff, unsigned int samples) {
         union {
-            const Uint8* x;
-            const Sint16* buff;
+            const uint8* x;
+            const int16* buff;
         } data {};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN
-            out[i] = as_float(data.buff[i]);
-#else
-            out[i] = as_float(SDL_Swap16(data.buff[i]));
-#endif
+            out[i] = as_float(static_cast<int16>(swap16le(data.buff[i])));
         }
     }
 
-    void as_float_s16_be(float out[], const Uint8* buff, unsigned int samples) {
+    void as_float_s16_be(float out[], const uint8* buff, unsigned int samples) {
         union {
-            const Uint8* x;
-            const Uint16* buff;
+            const uint8* x;
+            const uint16* buff;
         } data{};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN
-            out[i] = as_float(static_cast<Sint16>(SDL_Swap16(data.buff[i])));
-#else
-            out[i] = as_float(data.buff[i]);
-#endif
+            out[i] = as_float(static_cast<int16>(swap16be(data.buff[i])));
         }
     }
 
-    void as_float_s32_le(float out[], const Uint8* buff, unsigned int samples) {
+    void as_float_s32_le(float out[], const uint8* buff, unsigned int samples) {
         union {
-            const Uint8* x;
-            const Sint32* buff;
+            const uint8* x;
+            const int32* buff;
         } data{};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN
-            out[i] = as_float(data.buff[i]);
-#else
-            out[i] = as_float(SDL_Swap32(data.buff[i]));
-#endif
+            out[i] = as_float(static_cast<int32>(swap32le(data.buff[i])));
         }
     }
 
-    void as_float_s32_be(float out[], const Uint8* buff, unsigned int samples) {
+    void as_float_s32_be(float out[], const uint8* buff, unsigned int samples) {
         union {
-            const Uint8* x;
-            const Uint32* buff;
+            const uint8* x;
+            const uint32* buff;
         } data{};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN
-            out[i] = as_float(static_cast<Sint32>(SDL_Swap32(data.buff[i])));
-#else
-            out[i] = as_float(data.buff[i]);
-#endif
+            out[i] = as_float(static_cast<int32>(swap32be(data.buff[i])));
         }
     }
 
-    void as_float_u32_le(float out[], const Uint8* buff, unsigned int samples) {
+    void as_float_u32_le(float out[], const uint8* buff, unsigned int samples) {
         union {
-            const Uint8* x;
-            const Uint32* buff;
+            const uint8* x;
+            const uint32* buff;
         } data{};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN
-            out[i] = as_float(data.buff[i]);
-#else
-            out[i] = as_float(SDL_Swap32(data.buff[i]));
-#endif
+            out[i] = as_float(swap32le(data.buff[i]));
         }
     }
 
-    void as_float_u32_be(float out[], const Uint8* buff, unsigned int samples) {
+    void as_float_u32_be(float out[], const uint8* buff, unsigned int samples) {
         union {
-            const Uint8* x;
-            const Uint32* buff;
+            const uint8* x;
+            const uint32* buff;
         } data {};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN
-            out[i] = as_float(SDL_Swap32(data.buff[i]));
-#else
-            out[i] = as_float(data.buff[i]);
-#endif
+            out[i] = as_float(swap32be(data.buff[i]));
         }
     }
 
-    void as_float_f32_le(float out[], const Uint8* buff, unsigned int samples) {
+    void as_float_f32_le(float out[], const uint8* buff, unsigned int samples) {
         union {
-            const Uint8* x;
+            const uint8* x;
             const float* buff;
         } data {};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN
-            out[i] = data.buff[i];
-#else
-            out[i] = SDL_SwapFloat(data.buff[i]);
-#endif
+            out[i] = swap_float_le(data.buff[i]);
         }
     }
 
-    void as_float_f32_be(float out[], const Uint8* buff, unsigned int samples) {
+    void as_float_f32_be(float out[], const uint8* buff, unsigned int samples) {
         union {
-            const Uint8* x;
+            const uint8* x;
             const float* buff;
         } data {};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
-#if SDL_BYTEORDER == SDL_LIL_ENDIAN
-            out[i] = SDL_SwapFloat(data.buff[i]);
-#else
-            out[i] = data.buff[i];
-#endif
+            out[i] = swap_float_be(data.buff[i]);
         }
     }
 
-    to_float_converter_func_t get_to_float_conveter(SDL_AudioFormat format) {
+    to_float_converter_func_t get_to_float_conveter(audio_format format) {
         switch (format) {
-            case SDL_AUDIO_S8:
+            case audio_format::s8:
                 return as_float_s8;
-            case SDL_AUDIO_U8:
+            case audio_format::u8:
                 return as_float_u8;
-            case SDL_AUDIO_S16LE:
+            case audio_format::s16le:
                 return as_float_s16_le;
-            case SDL_AUDIO_S16BE:
+            case audio_format::s16be:
                 return as_float_s16_be;
-            case SDL_AUDIO_S32LE:
+            case audio_format::s32le:
                 return as_float_s32_le;
-            case SDL_AUDIO_S32BE:
+            case audio_format::s32be:
                 return as_float_s32_be;
-            case SDL_AUDIO_F32LE:
+            case audio_format::f32le:
                 return as_float_f32_le;
-            case SDL_AUDIO_F32BE:
+            case audio_format::f32be:
                 return as_float_f32_be;
             default:
                 return nullptr;
         }
     }
 
-    int bytes_per_sample(SDL_AudioFormat format) {
-        switch (format) {
-            case SDL_AUDIO_S8:
-            case SDL_AUDIO_U8:
-                return 1;
-            case SDL_AUDIO_S16LE:
-            case SDL_AUDIO_S16BE:
-                return 2;
-            default:
-                return 4;
-        }
+    int bytes_per_sample(audio_format format) {
+        return audio_format_byte_size(format);
     }
 }
