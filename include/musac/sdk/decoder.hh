@@ -2,10 +2,9 @@
 #pragma once
 
 #include <musac/sdk/io_stream.h>
+#include <musac/sdk/export_musac_sdk.h>
 #include <chrono>
 #include <memory>
-
-#include <musac/sdk/export_musac_sdk.h>
 
 namespace musac {
     /*!

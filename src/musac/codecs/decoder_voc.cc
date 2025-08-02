@@ -10,9 +10,9 @@
 #include <musac/sdk/memory.h>
 #include <musac/sdk/musac_sdk_config.h>
 #include <failsafe/failsafe.hh>
-#include <vector>
-#include <cstring>
 #include <algorithm>
+#include <cstring>
+#include <vector>
 
 namespace musac {
 
@@ -50,7 +50,7 @@ static constexpr int VOC_DATA_16 = 9;
 
 static constexpr uint32 VOC_BAD_RATE = ~((uint32)0);
 
-struct vocstuff {
+struct voc_data {
     uint32 rest;           // bytes remaining in current block
     uint32 rate;           // rate code (byte) of this chunk
     int silent;            // sound or silence?
@@ -99,7 +99,7 @@ struct decoder_voc::impl {
         return true;
     }
     
-    bool get_block(vocstuff& v, audio_spec& spec) {
+    bool get_block(voc_data& v, audio_spec& spec) {
         uint8 bits24[3];
         uint8 uc, block;
         uint32 sblen;
@@ -308,7 +308,7 @@ struct decoder_voc::impl {
         return true;
     }
     
-    uint32 voc_read(vocstuff& v, uint8* buf, uint32 buf_size, audio_spec& spec) {
+    uint32 voc_read(voc_data& v, uint8* buf, uint32 buf_size, audio_spec& spec) {
         int64 done = 0;
         uint8 silence = 0x80;
         
@@ -365,7 +365,7 @@ struct decoder_voc::impl {
             return false;
         }
         
-        vocstuff v;
+        voc_data v;
         musac::zero(v);
         v.rate = VOC_BAD_RATE;
         v.rest = 0;
@@ -391,6 +391,8 @@ struct decoder_voc::impl {
         
         // Read all audio data
         std::vector<uint8> temp_buffer;
+        // Reserve space to avoid reallocations (estimate based on typical VOC file size)
+        temp_buffer.reserve(1024 * 1024); // 1MB initial reservation
         const size_t chunk_size = 4096;
         uint8 chunk[chunk_size];
         

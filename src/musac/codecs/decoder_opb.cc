@@ -3,10 +3,8 @@
 //
 
 #include <musac/codecs/decoder_opb.hh>
-#include <musac/sdk/samples_converter.hh>
-
-#include "musac/codecs/opb_lib/opblib.h"
 #include <musac/sdk/opl/opl_player.hh>
+#include "musac/codecs/opb_lib/opblib.h"
 
 
 

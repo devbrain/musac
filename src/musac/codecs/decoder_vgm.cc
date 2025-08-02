@@ -2,9 +2,8 @@
 // Created by igor on 3/20/25.
 //
 
-#include <iostream>
-#include <chrono>
 #include <musac/codecs/decoder_vgm.hh>
+#include <chrono>
 #include "musac/codecs/vgm/vgm_player.hh"
 
 constexpr unsigned int SAMPLE_RATE = 44100;
