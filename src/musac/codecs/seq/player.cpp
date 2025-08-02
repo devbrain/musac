@@ -121,7 +121,7 @@ namespace ymfmidi {
 		return m_sequence != nullptr;
 	}
 
-	bool OPLPlayer::loadSequence(SDL_IOStream* file, int offset, size_t size) {
+	bool OPLPlayer::loadSequence(musac::io_stream* file, int offset, size_t size) {
 		delete m_sequence;
 		m_sequence = Sequence::load(file, offset, size);
 

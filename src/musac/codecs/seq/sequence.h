@@ -17,7 +17,7 @@ namespace ymfmidi {
 		// load a sequence from the given path/file
 		static Sequence* load(const char *path);
 		static Sequence* load(FILE *path, int offset = 0, size_t size = 0);
-		static Sequence* load(SDL_IOStream *path, int offset = 0, size_t size = 0);
+		static Sequence* load(musac::io_stream *path, int offset = 0, size_t size = 0);
 		static Sequence* load(const uint8_t *data, size_t size);
 
 		// reset track to beginning

@@ -32,7 +32,7 @@ namespace musac {
 
     decoder_seq::~decoder_seq() = default;
 
-    bool decoder_seq::open(SDL_IOStream* rwops) {
+    bool decoder_seq::open(io_stream* rwops) {
         bool result = m_pimpl->m_player->loadSequence(rwops);
         if (result) {
             set_is_open(true);

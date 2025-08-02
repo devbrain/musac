@@ -6,7 +6,6 @@
 #define  DECODER_CMF_HH
 
 #include <memory>
-#include <musac/sdk/sdl_compat.h>
 #include <musac/sdk/decoder.hh>
 #include <musac/codecs/export_musac_codecs.h>
 
@@ -15,7 +14,7 @@ namespace musac {
         public:
             decoder_cmf();
             ~decoder_cmf() override;
-            bool open(SDL_IOStream* rwops) override;
+            bool open(io_stream* rwops) override;
             [[nodiscard]] unsigned int get_channels() const override;
             [[nodiscard]] unsigned int get_rate() const override;
             bool rewind() override;

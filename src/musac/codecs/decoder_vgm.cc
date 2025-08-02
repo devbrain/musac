@@ -24,7 +24,7 @@ namespace musac {
 
     decoder_vgm::~decoder_vgm() = default;
 
-    bool decoder_vgm::open(SDL_IOStream* rwops) {
+    bool decoder_vgm::open(io_stream* rwops) {
         bool result = m_pimpl->m_player.load(rwops);
         if (result) {
             set_is_open(true);

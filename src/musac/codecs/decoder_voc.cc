@@ -4,7 +4,10 @@
 
 #include <musac/codecs/decoder_voc.hh>
 #include <musac/sdk/samples_converter.hh>
-#include <musac/sdk/sdl_compat.h>
+#include <musac/sdk/audio_format.h>
+#include <musac/sdk/audio_converter.h>
+#include <musac/sdk/endian.h>
+#include <musac/sdk/memory.h>
 #include <failsafe/failsafe.hh>
 #include <vector>
 #include <cstring>
@@ -27,69 +30,69 @@ static constexpr int VOC_LOOPEND = 7;
 static constexpr int VOC_EXTENDED = 8;
 static constexpr int VOC_DATA_16 = 9;
 
-static constexpr Uint32 VOC_BAD_RATE = ~((Uint32)0);
+static constexpr uint32 VOC_BAD_RATE = ~((uint32)0);
 
 struct vocstuff {
-    Uint32 rest;           // bytes remaining in current block
-    Uint32 rate;           // rate code (byte) of this chunk
+    uint32 rest;           // bytes remaining in current block
+    uint32 rate;           // rate code (byte) of this chunk
     int silent;            // sound or silence?
-    Uint32 srate;          // rate code (byte) of silence
-    Uint32 blockseek;      // start of current output block
-    Uint32 samples;        // number of samples output
-    Uint32 size;           // word length of data
-    Uint8 channels;        // number of sound channels
+    uint32 srate;          // rate code (byte) of silence
+    uint32 blockseek;      // start of current output block
+    uint32 samples;        // number of samples output
+    uint32 size;           // word length of data
+    uint8 channels;        // number of sound channels
     int has_extended;      // Has an extended block been read?
 };
 
 struct decoder_voc::impl {
-    SDL_IOStream* m_rwops = nullptr;
-    SDL_AudioSpec m_spec = {};
-    std::vector<Uint8> m_buffer;
+    io_stream* m_rwops = nullptr;
+    audio_spec m_spec = {};
+    std::vector<uint8> m_buffer;
     size_t m_total_samples = 0;
     size_t m_consumed = 0;
     to_float_converter_func_t m_converter = nullptr;
     
     bool check_header() {
         // VOC magic header
-        Uint8 signature[20];  // "Creative Voice File\032"
-        Uint16 datablockofs;
+        uint8 signature[20];  // "Creative Voice File\032"
+        uint16 datablockofs;
         
-        SDL_SeekIO(m_rwops, 0, SDL_IO_SEEK_SET);
+        m_rwops->seek( 0, musac::seek_origin::set);
         
-        if (SDL_ReadIO(m_rwops, signature, sizeof(signature)) != sizeof(signature)) {
+        if (m_rwops->read( signature, sizeof(signature)) != sizeof(signature)) {
             return false;
         }
         
-        if (SDL_memcmp(signature, "Creative Voice File\032", sizeof(signature)) != 0) {
+        if (std::memcmp(signature, "Creative Voice File\032", sizeof(signature)) != 0) {
             THROW_RUNTIME("Unrecognized file type (not VOC)");
         }
         
         // get the offset where the first datablock is located
-        if (SDL_ReadIO(m_rwops, &datablockofs, sizeof(Uint16)) != sizeof(Uint16)) {
+        if (m_rwops->read( &datablockofs, sizeof(uint16)) != sizeof(uint16)) {
             return false;
         }
         
-        datablockofs = SDL_Swap16LE(datablockofs);
+        datablockofs = musac::swap16le(datablockofs);
         
-        if (SDL_SeekIO(m_rwops, datablockofs, SDL_IO_SEEK_SET) != datablockofs) {
+        if (m_rwops->seek( datablockofs, musac::seek_origin::set) != datablockofs) {
             return false;
         }
         
         return true;
     }
     
-    bool get_block(vocstuff& v, SDL_AudioSpec& spec) {
-        Uint8 bits24[3];
-        Uint8 uc, block;
-        Uint32 sblen;
-        Uint16 new_rate_short;
-        Uint32 new_rate_long;
-        Uint8 trash[6];
-        Uint16 period;
+    bool get_block(vocstuff& v, audio_spec& spec) {
+        uint8 bits24[3];
+        uint8 uc, block;
+        uint32 sblen;
+        uint16 new_rate_short;
+        uint32 new_rate_long;
+        uint8 trash[6];
+        uint16 period;
         
         v.silent = 0;
         while (v.rest == 0) {
-            if (SDL_ReadIO(m_rwops, &block, sizeof(block)) != sizeof(block)) {
+            if (m_rwops->read( &block, sizeof(block)) != sizeof(block)) {
                 return true;  // assume that's the end of the file.
             }
             
@@ -97,16 +100,16 @@ struct decoder_voc::impl {
                 return true;
             }
             
-            if (SDL_ReadIO(m_rwops, bits24, sizeof(bits24)) != sizeof(bits24)) {
+            if (m_rwops->read( bits24, sizeof(bits24)) != sizeof(bits24)) {
                 return true;  // assume that's the end of the file.
             }
             
             // Size is an 24-bit value. Ugh.
-            sblen = (Uint32)((bits24[0]) | (bits24[1] << 8) | (bits24[2] << 16));
+            sblen = (uint32)((bits24[0]) | (bits24[1] << 8) | (bits24[2] << 16));
             
             switch(block) {
                 case VOC_DATA:
-                    if (SDL_ReadIO(m_rwops, &uc, sizeof(uc)) != sizeof(uc)) {
+                    if (m_rwops->read( &uc, sizeof(uc)) != sizeof(uc)) {
                         return false;
                     }
                     
@@ -122,11 +125,11 @@ struct decoder_voc::impl {
                         }
                         
                         v.rate = uc;
-                        spec.freq = (Uint16)(1000000.0/(256 - v.rate));
+                        spec.freq = (uint16)(1000000.0/(256 - v.rate));
                         v.channels = 1;
                     }
                     
-                    if (SDL_ReadIO(m_rwops, &uc, sizeof(uc)) != sizeof(uc)) {
+                    if (m_rwops->read( &uc, sizeof(uc)) != sizeof(uc)) {
                         return false;
                     }
                     
@@ -140,10 +143,10 @@ struct decoder_voc::impl {
                     return true;
                     
                 case VOC_DATA_16:
-                    if (SDL_ReadIO(m_rwops, &new_rate_long, sizeof(new_rate_long)) != sizeof(new_rate_long)) {
+                    if (m_rwops->read( &new_rate_long, sizeof(new_rate_long)) != sizeof(new_rate_long)) {
                         return false;
                     }
-                    new_rate_long = SDL_Swap32LE(new_rate_long);
+                    new_rate_long = musac::swap32le(new_rate_long);
                     if (new_rate_long == 0) {
                         THROW_RUNTIME("VOC Sample rate is zero?");
                     }
@@ -153,7 +156,7 @@ struct decoder_voc::impl {
                     v.rate = new_rate_long;
                     spec.freq = (int)new_rate_long;
                     
-                    if (SDL_ReadIO(m_rwops, &uc, sizeof(uc)) != sizeof(uc)) {
+                    if (m_rwops->read( &uc, sizeof(uc)) != sizeof(uc)) {
                         return false;
                     }
                     
@@ -164,11 +167,11 @@ struct decoder_voc::impl {
                             THROW_RUNTIME("VOC with unknown data size");
                     }
                     
-                    if (SDL_ReadIO(m_rwops, &v.channels, sizeof(Uint8)) != sizeof(Uint8)) {
+                    if (m_rwops->read( &v.channels, sizeof(uint8)) != sizeof(uint8)) {
                         return false;
                     }
                     
-                    if (SDL_ReadIO(m_rwops, trash, 6) != 6) {
+                    if (m_rwops->read( trash, 6) != 6) {
                         return false;
                     }
                     
@@ -180,12 +183,12 @@ struct decoder_voc::impl {
                     return true;
                     
                 case VOC_SILENCE:
-                    if (SDL_ReadIO(m_rwops, &period, sizeof(period)) != sizeof(period)) {
+                    if (m_rwops->read( &period, sizeof(period)) != sizeof(period)) {
                         return false;
                     }
-                    period = SDL_Swap16LE(period);
+                    period = musac::swap16le(period);
                     
-                    if (SDL_ReadIO(m_rwops, &uc, sizeof(uc)) != sizeof(uc)) {
+                    if (m_rwops->read( &uc, sizeof(uc)) != sizeof(uc)) {
                         return false;
                     }
                     if (uc == 0) {
@@ -196,7 +199,7 @@ struct decoder_voc::impl {
                     // different sample rate codes in silence.
                     // Adjust period.
                     if ((v.rate != VOC_BAD_RATE) && (uc != v.rate))
-                        period = (Uint16)((period * (256 - uc))/(256 - v.rate));
+                        period = (uint16)((period * (256 - uc))/(256 - v.rate));
                     else
                         v.rate = uc;
                     v.rest = period;
@@ -206,7 +209,7 @@ struct decoder_voc::impl {
                 case VOC_LOOP:
                 case VOC_LOOPEND:
                     for (unsigned int i = 0; i < sblen; i++) { // skip repeat loops.
-                        if (SDL_ReadIO(m_rwops, trash, sizeof(Uint8)) != sizeof(Uint8)) {
+                        if (m_rwops->read( trash, sizeof(uint8)) != sizeof(uint8)) {
                             return false;
                         }
                     }
@@ -218,10 +221,10 @@ struct decoder_voc::impl {
                     // value from the extended block and not the
                     // data block.
                     v.has_extended = 1;
-                    if (SDL_ReadIO(m_rwops, &new_rate_short, sizeof(new_rate_short)) != sizeof(new_rate_short)) {
+                    if (m_rwops->read( &new_rate_short, sizeof(new_rate_short)) != sizeof(new_rate_short)) {
                         return false;
                     }
-                    new_rate_short = SDL_Swap16LE(new_rate_short);
+                    new_rate_short = musac::swap16le(new_rate_short);
                     if (new_rate_short == 0) {
                         THROW_RUNTIME("VOC sample rate is zero");
                     }
@@ -230,7 +233,7 @@ struct decoder_voc::impl {
                     }
                     v.rate = new_rate_short;
                     
-                    if (SDL_ReadIO(m_rwops, &uc, sizeof(uc)) != sizeof(uc)) {
+                    if (m_rwops->read( &uc, sizeof(uc)) != sizeof(uc)) {
                         return false;
                     }
                     
@@ -238,7 +241,7 @@ struct decoder_voc::impl {
                         THROW_RUNTIME("VOC decoder only interprets 8-bit data");
                     }
                     
-                    if (SDL_ReadIO(m_rwops, &uc, sizeof(uc)) != sizeof(uc)) {
+                    if (m_rwops->read( &uc, sizeof(uc)) != sizeof(uc)) {
                         return false;
                     }
                     
@@ -255,14 +258,14 @@ struct decoder_voc::impl {
                     continue;
                     
                 case VOC_MARKER:
-                    if (SDL_ReadIO(m_rwops, trash, 2) != 2) {
+                    if (m_rwops->read( trash, 2) != 2) {
                         return false;
                     }
                     // fallthrough
                     
                 default:  // text block or other krapola.
                     for (unsigned int i = 0; i < sblen; i++) {
-                        if (SDL_ReadIO(m_rwops, trash, sizeof(Uint8)) != sizeof(Uint8)) {
+                        if (m_rwops->read( trash, sizeof(uint8)) != sizeof(uint8)) {
                             return false;
                         }
                     }
@@ -276,9 +279,9 @@ struct decoder_voc::impl {
         return true;
     }
     
-    Uint32 voc_read(vocstuff& v, Uint8* buf, Uint32 buf_size, SDL_AudioSpec& spec) {
-        Sint64 done = 0;
-        Uint8 silence = 0x80;
+    uint32 voc_read(vocstuff& v, uint8* buf, uint32 buf_size, audio_spec& spec) {
+        int64 done = 0;
+        uint8 silence = 0x80;
         
         if (v.rest == 0) {
             if (!get_block(v, spec)) {
@@ -296,32 +299,32 @@ struct decoder_voc::impl {
             }
             
             // Fill in silence (limited by buffer size)
-            Uint32 to_fill = (v.rest < buf_size) ? v.rest : buf_size;
-            SDL_memset(buf, silence, to_fill);
+            uint32 to_fill = (v.rest < buf_size) ? v.rest : buf_size;
+            musac::memset(buf, silence, to_fill);
             done = to_fill;
             v.rest -= to_fill;
         }
         else {
-            Uint32 to_read = (v.rest < buf_size) ? v.rest : buf_size;
-            done = SDL_ReadIO(m_rwops, buf, to_read);
+            uint32 to_read = (v.rest < buf_size) ? v.rest : buf_size;
+            done = m_rwops->read( buf, to_read);
             if (done <= 0) {
                 return 0;
             }
             
-            v.rest = (Uint32)(v.rest - done);
+            v.rest = (uint32)(v.rest - done);
             if (v.size == ST_SIZE_WORD) {
-                #if (SDL_BYTEORDER == SDL_BIG_ENDIAN)
-                Uint16 *samples = (Uint16 *)buf;
+                #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+                uint16 *samples = (uint16 *)buf;
                 size_t sample_count = done / 2;
                 for (size_t i = 0; i < sample_count; i++) {
-                    samples[i] = SDL_Swap16LE(samples[i]);
+                    samples[i] = musac::swap16le(samples[i]);
                 }
                 #endif
                 done >>= 1;
             }
         }
         
-        return (Uint32)done;
+        return (uint32)done;
     }
     
     bool load_voc() {
@@ -334,11 +337,11 @@ struct decoder_voc::impl {
         }
         
         vocstuff v;
-        SDL_zero(v);
+        musac::zero(v);
         v.rate = VOC_BAD_RATE;
         v.rest = 0;
         v.has_extended = 0;
-        SDL_zero(m_spec);
+        musac::zero(m_spec);
         
         if (!get_block(v, m_spec)) {
             return false;
@@ -352,18 +355,18 @@ struct decoder_voc::impl {
             THROW_RUNTIME("VOC data had invalid word size!");
         }
         
-        m_spec.format = ((v.size == ST_SIZE_WORD) ? SDL_AUDIO_S16 : SDL_AUDIO_U8);
+        m_spec.format = ((v.size == ST_SIZE_WORD) ? audio_s16sys : audio_format::u8);
         if (m_spec.channels == 0) {
             m_spec.channels = v.channels;
         }
         
         // Read all audio data
-        std::vector<Uint8> temp_buffer;
+        std::vector<uint8> temp_buffer;
         const size_t chunk_size = 4096;
-        Uint8 chunk[chunk_size];
+        uint8 chunk[chunk_size];
         
         while (true) {
-            Uint32 read = voc_read(v, chunk, chunk_size, m_spec);
+            uint32 read = voc_read(v, chunk, chunk_size, m_spec);
             if (read == 0) {
                 // Try to get next block
                 if (!get_block(v, m_spec)) {
@@ -382,19 +385,19 @@ struct decoder_voc::impl {
         }
         
         // Don't return a buffer that isn't a multiple of samplesize
-        int samplesize = ((m_spec.format & 0xFF)/8) * m_spec.channels;
+        int samplesize = audio_format_byte_size(m_spec.format) * m_spec.channels;
         size_t total_size = temp_buffer.size() & ~(samplesize - 1);
         temp_buffer.resize(total_size);
         
         // Convert to standard format (S16 mono 44100Hz) as expected by tests
-        SDL_AudioSpec dst_spec = { SDL_AUDIO_S16, 1, 44100 };
-        Uint8* dst_data = nullptr;
+        audio_spec dst_spec = { audio_s16sys, 1, 44100 };
+        uint8* dst_data = nullptr;
         int dst_len = 0;
         
         if (!temp_buffer.empty()) {
-            if (!SDL_ConvertAudioSamples(&m_spec, temp_buffer.data(), (int)temp_buffer.size(), 
+            if (!convert_audio_samples(&m_spec, temp_buffer.data(), (int)temp_buffer.size(), 
                                          &dst_spec, &dst_data, &dst_len)) {
-                THROW_RUNTIME("Failed to convert audio samples: ", SDL_GetError());
+                THROW_RUNTIME("Failed to convert audio samples");
             }
         } else {
             THROW_RUNTIME("No audio data read from VOC file");
@@ -402,7 +405,7 @@ struct decoder_voc::impl {
         
         // Store converted data
         m_buffer.assign(dst_data, dst_data + dst_len);
-        SDL_free(dst_data);
+        delete[] dst_data;
         
         m_spec = dst_spec;
         m_total_samples = dst_len / sizeof(int16_t);
@@ -416,7 +419,7 @@ decoder_voc::decoder_voc() : m_pimpl(std::make_unique<impl>()) {}
 
 decoder_voc::~decoder_voc() = default;
 
-bool decoder_voc::open(SDL_IOStream* rwops) {
+bool decoder_voc::open(io_stream* rwops) {
     m_pimpl->m_rwops = rwops;
     
     try {
@@ -459,7 +462,7 @@ unsigned int decoder_voc::do_decode(float* buf, unsigned int len, bool& call_aga
     
     if (take > 0) {
         // m_buffer contains int16_t samples stored as bytes
-        const Uint8* sample_ptr = m_pimpl->m_buffer.data() + (m_pimpl->m_consumed * sizeof(int16_t));
+        const uint8* sample_ptr = m_pimpl->m_buffer.data() + (m_pimpl->m_consumed * sizeof(int16_t));
         m_pimpl->m_converter(buf, sample_ptr, take);
         m_pimpl->m_consumed += take;
     }

@@ -20,7 +20,9 @@ set (sdk_sources
         ${MUSAC_PROJECT_ROOT}/musac/sdk/io_stream.h
         ${MUSAC_PROJECT_ROOT}/musac/sdk/endian.h
         ${MUSAC_PROJECT_ROOT}/musac/sdk/memory.h
+        ${MUSAC_PROJECT_ROOT}/musac/sdk/audio_converter.h
         io_stream.cc
+        audio_converter.cc
 )
 
 set(opl_sources

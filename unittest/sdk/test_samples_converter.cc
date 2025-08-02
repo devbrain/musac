@@ -1,5 +1,6 @@
 #include <doctest/doctest.h>
 #include <musac/sdk/samples_converter.hh>
+#include <musac/sdk/audio_format.h>
 #include <vector>
 #include <cmath>
 #include <algorithm>
@@ -7,10 +8,10 @@
 TEST_SUITE("SDK::SamplesConverter") {
     TEST_CASE("to_float_converter function selection") {
         // Test that we get the correct converter for each format
-        auto converter_u8 = musac::get_to_float_conveter(SDL_AUDIO_U8);
-        auto converter_s16 = musac::get_to_float_conveter(SDL_AUDIO_S16);
-        auto converter_s32 = musac::get_to_float_conveter(SDL_AUDIO_S32);
-        auto converter_f32 = musac::get_to_float_conveter(SDL_AUDIO_F32);
+        auto converter_u8 = musac::get_to_float_conveter(musac::audio_format::u8);
+        auto converter_s16 = musac::get_to_float_conveter(musac::audio_s16sys);
+        auto converter_s32 = musac::get_to_float_conveter(musac::audio_s32sys);
+        auto converter_f32 = musac::get_to_float_conveter(musac::audio_f32sys);
         
         CHECK(converter_u8 != nullptr);
         CHECK(converter_s16 != nullptr);
@@ -24,14 +25,14 @@ TEST_SUITE("SDK::SamplesConverter") {
     }
     
     TEST_CASE("U8 to float conversion") {
-        auto converter = musac::get_to_float_conveter(SDL_AUDIO_U8);
+        auto converter = musac::get_to_float_conveter(musac::audio_format::u8);
         REQUIRE(converter != nullptr);
         
         SUBCASE("Basic conversion") {
             uint8_t src[] = {0, 64, 128, 192, 255};
             float dst[5];
             
-            converter(dst, reinterpret_cast<const Uint8*>(src), 5);
+            converter(dst, reinterpret_cast<const musac::uint8*>(src), 5);
             
             // U8: 0-255, 128 = silence
             // Float: -1.0 to 1.0, 0.0 = silence
@@ -46,7 +47,7 @@ TEST_SUITE("SDK::SamplesConverter") {
             uint8_t src[] = {0, 128, 255};
             float dst[3];
             
-            converter(dst, reinterpret_cast<const Uint8*>(src), 3);
+            converter(dst, reinterpret_cast<const musac::uint8*>(src), 3);
             
             CHECK(dst[0] <= -0.99f);
             CHECK(std::abs(dst[1]) < 0.01f);
@@ -55,14 +56,14 @@ TEST_SUITE("SDK::SamplesConverter") {
     }
     
     TEST_CASE("S16 to float conversion") {
-        auto converter = musac::get_to_float_conveter(SDL_AUDIO_S16);
+        auto converter = musac::get_to_float_conveter(musac::audio_s16sys);
         REQUIRE(converter != nullptr);
         
         SUBCASE("Basic conversion") {
             int16_t src[] = {-32768, -16384, 0, 16384, 32767};
             float dst[5];
             
-            converter(dst, reinterpret_cast<const Uint8*>(src), 5);
+            converter(dst, reinterpret_cast<const musac::uint8*>(src), 5);
             
             CHECK(dst[0] == doctest::Approx(-1.0f));
             CHECK(dst[1] == doctest::Approx(-0.5f));
@@ -75,7 +76,7 @@ TEST_SUITE("SDK::SamplesConverter") {
             int16_t src[] = {-1, 0, 1};
             float dst[3];
             
-            converter(dst, reinterpret_cast<const Uint8*>(src), 3);
+            converter(dst, reinterpret_cast<const musac::uint8*>(src), 3);
             
             CHECK(dst[0] < 0.0f);
             CHECK(dst[1] == 0.0f);
@@ -86,14 +87,14 @@ TEST_SUITE("SDK::SamplesConverter") {
     }
     
     TEST_CASE("S32 to float conversion") {
-        auto converter = musac::get_to_float_conveter(SDL_AUDIO_S32);
+        auto converter = musac::get_to_float_conveter(musac::audio_s32sys);
         REQUIRE(converter != nullptr);
         
         SUBCASE("Basic conversion") {
             int32_t src[] = {INT32_MIN, INT32_MIN/2, 0, INT32_MAX/2, INT32_MAX};
             float dst[5];
             
-            converter(dst, reinterpret_cast<const Uint8*>(src), 5);
+            converter(dst, reinterpret_cast<const musac::uint8*>(src), 5);
             
             CHECK(dst[0] == doctest::Approx(-1.0f));
             CHECK(dst[1] == doctest::Approx(-0.5f));
@@ -104,14 +105,14 @@ TEST_SUITE("SDK::SamplesConverter") {
     }
     
     TEST_CASE("F32 to float conversion") {
-        auto converter = musac::get_to_float_conveter(SDL_AUDIO_F32);
+        auto converter = musac::get_to_float_conveter(musac::audio_f32sys);
         REQUIRE(converter != nullptr);
         
         SUBCASE("Pass-through") {
             float src[] = {-1.0f, -0.5f, 0.0f, 0.5f, 1.0f};
             float dst[5];
             
-            converter(dst, reinterpret_cast<const Uint8*>(src), 5);
+            converter(dst, reinterpret_cast<const musac::uint8*>(src), 5);
             
             // Should be a direct copy
             CHECK(dst[0] == src[0]);
@@ -125,7 +126,7 @@ TEST_SUITE("SDK::SamplesConverter") {
             float src[] = {-2.0f, 2.0f, -1.5f, 1.5f};
             float dst[4];
             
-            converter(dst, reinterpret_cast<const Uint8*>(src), 4);
+            converter(dst, reinterpret_cast<const musac::uint8*>(src), 4);
             
             // Converter might clip or pass through
             // This depends on implementation
@@ -135,7 +136,7 @@ TEST_SUITE("SDK::SamplesConverter") {
     }
     
     TEST_CASE("Large buffer conversion") {
-        auto converter = musac::get_to_float_conveter(SDL_AUDIO_S16);
+        auto converter = musac::get_to_float_conveter(musac::audio_s16sys);
         REQUIRE(converter != nullptr);
         
         // Create a sine wave
@@ -148,7 +149,7 @@ TEST_SUITE("SDK::SamplesConverter") {
             src[i] = static_cast<int16_t>(std::sin(phase) * 32767.0f);
         }
         
-        converter(dst.data(), reinterpret_cast<const Uint8*>(src.data()), sample_count);
+        converter(dst.data(), reinterpret_cast<const musac::uint8*>(src.data()), sample_count);
         
         // Verify the sine wave is preserved
         for (size_t i = 0; i < sample_count; i++) {
@@ -164,18 +165,18 @@ TEST_SUITE("SDK::SamplesConverter") {
     
     TEST_CASE("Null and edge cases") {
         SUBCASE("Unknown format") {
-            auto converter = musac::get_to_float_conveter(SDL_AUDIO_UNKNOWN);
+            auto converter = musac::get_to_float_conveter(musac::audio_format::unknown);
             CHECK(converter == nullptr);
         }
         
         SUBCASE("Zero samples") {
-            auto converter = musac::get_to_float_conveter(SDL_AUDIO_S16);
+            auto converter = musac::get_to_float_conveter(musac::audio_s16sys);
             REQUIRE(converter != nullptr);
             
             int16_t src[1] = {1000};
             float dst[1] = {999.0f};
             
-            converter(dst, reinterpret_cast<const Uint8*>(src), 0);
+            converter(dst, reinterpret_cast<const musac::uint8*>(src), 0);
             
             // Should not modify dst
             CHECK(dst[0] == 999.0f);

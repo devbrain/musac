@@ -170,7 +170,7 @@ TEST_SUITE("SDK::AudioConverter") {
             CHECK(f32_stereo[5] == doctest::Approx(-0.25f));    // R3
         }
     }
-    
+
     TEST_CASE("Resampling placeholder") {
         SUBCASE("Simple 2x upsampling") {
             // This is a placeholder for resampling tests

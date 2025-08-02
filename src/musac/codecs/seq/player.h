@@ -87,7 +87,7 @@ namespace ymfmidi {
 		// load MIDI data from an already opened file, optionally at a given offset
 		// if 'size' is 0, the full file will be read (starting from 'offset')
 		bool loadSequence(FILE *file, int offset = 0, size_t size = 0);
-		bool loadSequence(SDL_IOStream *file, int offset = 0, size_t size = 0);
+		bool loadSequence(musac::io_stream *file, int offset = 0, size_t size = 0);
 
 		// load MIDI data from a block of memory
 		bool loadSequence(const uint8_t *data, size_t size);

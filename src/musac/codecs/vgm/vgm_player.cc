@@ -40,13 +40,13 @@ namespace musac {
           m_output_pos(0) {
     }
 
-    bool vgm_player::load(SDL_IOStream* file) {
-        auto file_size = SDL_GetIOSize(file);
+    bool vgm_player::load(io_stream* file) {
+        auto file_size = file->get_size();
         if (file_size <= 0) {
             return false;
         }
         m_input.resize(file_size);
-        if (SDL_ReadIO(file, m_input.data(), file_size) != static_cast<size_t>(file_size)) {
+        if (file->read( m_input.data(), file_size) != static_cast<size_t>(file_size)) {
             return false;
         }
         if (m_input.size() >= 10 && m_input[0] == 0x1f && m_input[1] == 0x8b && m_input[2] == 0x08) {
