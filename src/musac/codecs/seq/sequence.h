@@ -2,7 +2,6 @@
 #define __SEQUENCE_H
 
 #include "musac/codecs/seq/player.h"
-#include <musac/sdk/sdl_compat.h>
 namespace ymfmidi {
 	class Sequence
 	{

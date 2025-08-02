@@ -57,9 +57,18 @@ namespace musac {
             return false;
         }
         
-        sbfm_instrument(m_pimpl->m_decoder, &data[READ_16LE(&data[0x06])], READ_16LE(&data[0x24]));
+        // Validate offsets before using them
+        uint16_t instr_offset = READ_16LE(&data[0x06]);
+        uint16_t music_offset = READ_16LE(&data[0x08]);
+        uint16_t instr_count = READ_16LE(&data[0x24]);
+        
+        if (instr_offset >= sz || music_offset >= sz) {
+            return false;
+        }
+        
+        sbfm_instrument(m_pimpl->m_decoder, &data[instr_offset], instr_count);
         sbfm_song_speed(m_pimpl->m_decoder, (uint16_t)(0x1234dc / speed_value));
-        sbfm_play_music(m_pimpl->m_decoder, &data[READ_16LE(&data[0x08])]);
+        sbfm_play_music(m_pimpl->m_decoder, &data[music_offset]);
         set_is_open(true);
         return true;
     }

@@ -1,6 +1,7 @@
 #include "musac/codecs/seq/sequence_mus.h"
 #include <cmath>
 #include <cstring>
+#include <algorithm>
 namespace ymfmidi {
 	// ----------------------------------------------------------------------------
 	SequenceMUS::SequenceMUS()
@@ -8,7 +9,7 @@ namespace ymfmidi {
 	{
 		// cheap safety measure - fill the whole song buffer w/ "end of track" commands
 		// (m_pos is 16 bits, so a malformed track will either hit this or just wrap around)
-		memset(m_data, 0x60, sizeof(m_data));
+		std::fill(std::begin(m_data), std::end(m_data), 0x60);
 		setDefaults();
 	}
 
@@ -32,7 +33,7 @@ namespace ymfmidi {
 			{
 				if (pos + length > size)
 					length = size - pos;
-				memcpy(m_data, data + pos, length);
+				std::copy(data + pos, data + pos + length, m_data);
 			}
 		}
 	}
@@ -48,7 +49,7 @@ namespace ymfmidi {
 	void SequenceMUS::setDefaults()
 	{
 		m_pos = 0;
-		memset(m_lastVol, 0x7f, sizeof(m_lastVol));
+		std::fill(std::begin(m_lastVol), std::end(m_lastVol), 0x7f);
 	}
 
 	// ----------------------------------------------------------------------------

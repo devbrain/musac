@@ -2,6 +2,7 @@
 #define MUSAC_SDK_AUDIO_FORMAT_H
 
 #include <musac/sdk/types.h>
+#include <musac/sdk/musac_sdk_config.h>
 
 namespace musac {
 
@@ -38,8 +39,8 @@ inline constexpr bool audio_format_is_float(audio_format fmt) {
     return (static_cast<uint16>(fmt) & 0x0100) != 0;
 }
 
-// Platform-specific native format
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+// Platform-specific native format using CMake-generated config
+#if MUSAC_BIG_ENDIAN
 inline constexpr audio_format audio_s16sys = audio_format::s16be;
 inline constexpr audio_format audio_s32sys = audio_format::s32be;
 inline constexpr audio_format audio_f32sys = audio_format::f32be;

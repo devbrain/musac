@@ -5,11 +5,11 @@
 #include <musac/codecs/decoder_seq.hh>
 #include "musac/codecs/seq/player.h"
 #include "musac/codecs/seq/midi_opl.h"
+#include <memory>
 
 namespace musac {
     struct decoder_seq::impl {
-        impl() {
-            m_player = new ymfmidi::OPLPlayer;
+        impl() : m_player(std::make_unique<ymfmidi::OPLPlayer>()) {
             m_player->loadPatches(GENMIDI_wopl, GENMIDI_wopl_size);
             m_player->setLoop(false);
             unsigned int sampleRate = 44100;
@@ -20,10 +20,8 @@ namespace musac {
 	        m_player->setFilter(filter);
 	        m_player->setStereo(true);
         }
-        ~impl() {
-            delete m_player;
-        }
-        ymfmidi::OPLPlayer* m_player;
+        ~impl() = default;
+        std::unique_ptr<ymfmidi::OPLPlayer> m_player;
     };
 
     decoder_seq::decoder_seq()

@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <memory>
+#include <string>
 #include <musac/sdk/io_stream.h>
 #include <musac/sdk/opl/ymfm_chip.hh>
 
@@ -34,10 +35,10 @@ namespace musac {
                 uint32_t clockval = clock & 0x3fffffff;
                 int numchips = (clock & 0x40000000) ? 2 : 1;
                 for (int index = 0; index < numchips; index++) {
-                    char name[100];
-                    sprintf(name, "%s #%d", chipname, index);
+                    std::string name = (numchips == 2) ? 
+                        std::string(chipname) + " #" + std::to_string(index) : chipname;
                     m_active_chips.push_back(
-                        std::make_unique <ymfm_chip <ChipType>>(clockval, type, (numchips == 2) ? name : chipname));
+                        std::make_unique <ymfm_chip <ChipType>>(clockval, type, name.c_str()));
                 }
             }
 

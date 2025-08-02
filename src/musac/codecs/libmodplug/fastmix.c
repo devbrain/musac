@@ -8,8 +8,7 @@
 #include "musac/codecs/libmodplug/libmodplug.h"
 #include <math.h>
 
-#include <musac/sdk/sdl_compat.h>
-#define floor SDL_floor
+/* floor function is already available from math.h */
 
 /*
  *-----------------------------------------------------------------------------

@@ -24,7 +24,7 @@
 #define _EM_INFLATE_H
 
 #include <sys/types.h>
-#include <stdlib.h>
+#include <cstdlib>
 
 #ifdef __cplusplus
 extern "C" {

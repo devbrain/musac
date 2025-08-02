@@ -5,9 +5,12 @@
 #include <cmath>
 #include <iostream>
 #include <algorithm>
-
+#include <failsafe/failsafe.hh>
 
 #include "musac/codecs/vgm/vgm_player.hh"
+
+// Helper macro for unsupported chip warnings
+#define WARN_UNSUPPORTED_CHIP(name) LOG_WARN("VGM", "Clock for " name " specified, but not supported")
 
 
 #include <musac/sdk/opl/ymfm/ymfm_misc.h>
@@ -76,7 +79,7 @@ namespace musac {
         // +04: parse the size
         uint32_t size = parse_uint32(m_input, offset);
         if (offset - 4 + size > m_input.size()) {
-            fprintf(stderr, "Total size for file is too small; file may be truncated\n");
+            LOG_ERROR("VGM", "Total size for file is too small; file may be truncated");
             size = (uint32_t)(m_input.size() - 4);
         }
         m_input.resize(size + 4);
@@ -160,12 +163,12 @@ namespace musac {
         // +08: parse the version
         uint32_t version = parse_uint32(buffer, offset);
         if (version > 0x171)
-            fprintf(stderr, "Warning: version > 1.71 detected, some things may not work\n");
+            LOG_WARN("VGM", "Version > 1.71 detected, some things may not work");
 
         // +0C: SN76489 clock
         uint32_t clock = parse_uint32(buffer, offset);
         if (clock != 0)
-            fprintf(stderr, "Warning: clock for SN76489 specified (%d), but not supported\n", clock);
+            LOG_WARN("VGM", "Clock for SN76489 specified:", clock, "but not supported");
 
         // +10: YM2413 clock
         clock = parse_uint32(buffer, offset);
@@ -209,7 +212,7 @@ namespace musac {
         // +38: Sega PCM clock
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
-            fprintf(stderr, "Warning: clock for Sega PCM specified, but not supported\n");
+            LOG_WARN("VGM", "Clock for Sega PCM specified, but not supported");
 
         // +3C: Sega PCM interface register
         dummy = parse_uint32(buffer, offset);
@@ -219,7 +222,7 @@ namespace musac {
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
-            fprintf(stderr, "Warning: clock for RF5C68 specified, but not supported\n");
+            LOG_WARN("VGM", "Clock for RF5C68 specified, but not supported");
 
         // +44: YM2203 clock
         if (offset + 4 > data_start)
@@ -286,35 +289,35 @@ namespace musac {
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
-            fprintf(stderr, "Warning: clock for YMF271 specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("YMF271");
 
         // +68: YMF280B clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
-            fprintf(stderr, "Warning: clock for YMF280B specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("YMF280B");
 
         // +6C: RF5C164 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
-            fprintf(stderr, "Warning: clock for RF5C164 specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("RF5C164");
 
         // +70: PWM clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
-            fprintf(stderr, "Warning: clock for PWM specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("PWM");
 
         // +74: AY8910 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0) {
-            fprintf(stderr, "Warning: clock for AY8910 specified, substituting YM2149\n");
+            LOG_WARN("VGM", "Clock for AY8910 specified, substituting YM2149");
             add_chips <ymfm::ym2149>(clock, CHIP_YM2149, "YM2149");
         }
 
@@ -328,42 +331,42 @@ namespace musac {
             return data_start;
         dummy = parse_uint32(buffer, offset);
         if ((dummy & 0xff) != 0)
-            printf("Volume modifier: %02X (=%d)\n", dummy & 0xff, int(pow(2, double(dummy & 0xff) / 0x20)));
+            LOG_DEBUG("VGM", "Volume modifier:", (dummy & 0xff), "(=", int(pow(2, double(dummy & 0xff) / 0x20)), ")");
 
         // +80: GameBoy DMG clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
-            fprintf(stderr, "Warning: clock for GameBoy DMG specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("GameBoy DMG");
 
         // +84: NES APU clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
-            fprintf(stderr, "Warning: clock for NES APU specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("NES APU");
 
         // +88: MultiPCM clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
-            fprintf(stderr, "Warning: clock for MultiPCM specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("MultiPCM");
 
         // +8C: uPD7759 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
-            fprintf(stderr, "Warning: clock for uPD7759 specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("uPD7759");
 
         // +90: OKIM6258 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
-            fprintf(stderr, "Warning: clock for OKIM6258 specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("OKIM6258");
 
         // +94: OKIM6258 Flags / K054539 Flags / C140 Chip Type / reserved
         if (offset + 4 > data_start)
@@ -375,63 +378,63 @@ namespace musac {
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
-            fprintf(stderr, "Warning: clock for OKIM6295 specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("OKIM6295");
 
         // +9C: K051649 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
-            fprintf(stderr, "Warning: clock for K051649 specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("K051649");
 
         // +A0: K054539 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
-            fprintf(stderr, "Warning: clock for K054539 specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("K054539");
 
         // +A4: HuC6280 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
-            fprintf(stderr, "Warning: clock for HuC6280 specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("HuC6280");
 
         // +A8: C140 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
-            fprintf(stderr, "Warning: clock for C140 specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("C140");
 
         // +AC: K053260 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
-            fprintf(stderr, "Warning: clock for K053260 specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("K053260");
 
         // +B0: Pokey clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
-            fprintf(stderr, "Warning: clock for Pokey specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("Pokey");
 
         // +B4: QSound clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
-            fprintf(stderr, "Warning: clock for QSound specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("QSound");
 
         // +B8: SCSP clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
-            fprintf(stderr, "Warning: clock for SCSP specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("SCSP");
 
         // +BC: extra header offset
         if (offset + 4 > data_start)
@@ -443,35 +446,35 @@ namespace musac {
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
-            fprintf(stderr, "Warning: clock for WonderSwan specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("WonderSwan");
 
         // +C4: VSU clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
-            fprintf(stderr, "Warning: clock for VSU specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("VSU");
 
         // +C8: SAA1099 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
-            fprintf(stderr, "Warning: clock for SAA1099 specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("SAA1099");
 
         // +CC: ES5503 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
-            fprintf(stderr, "Warning: clock for ES5503 specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("ES5503");
 
         // +D0: ES5505/ES5506 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
-            fprintf(stderr, "Warning: clock for ES5505/ES5506 specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("ES5505/ES5506");
 
         // +D4: ES5503 output channels / ES5505/ES5506 amount of output channels / C352 clock divider
         if (offset + 4 > data_start)
@@ -483,21 +486,21 @@ namespace musac {
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
-            fprintf(stderr, "Warning: clock for X1-010 specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("X1-010");
 
         // +DC: C352 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
-            fprintf(stderr, "Warning: clock for C352 specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("C352");
 
         // +E0: GA20 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
-            fprintf(stderr, "Warning: clock for GA20 specified, but not supported\n");
+            WARN_UNSUPPORTED_CHIP("GA20");
         return data_start;
     }
 
