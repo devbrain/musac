@@ -3,6 +3,7 @@
 
 #include <musac/sdk/decoder.hh>
 #include <musac/codecs/export_musac_codecs.h>
+#include <memory>
 namespace musac {
     /*!
      * \brief ModPlug decoder.

@@ -9,10 +9,9 @@
 #include <musac/sdk/endian.h>
 #include <musac/sdk/memory.h>
 #include <failsafe/failsafe.hh>
-#include <vector>
-#include <cstring>
 #include <algorithm>
-#include <iostream>
+#include <cstring>
+#include <vector>
 
 namespace musac {
 
@@ -245,6 +244,10 @@ struct decoder_aiff::impl {
             total_size = data_length;
         }
         
+        // Calculate final size that's a multiple of samplesize
+        total_size &= ~(bytes_per_sample - 1);
+        
+        // Resize buffer only once to final size
         m_buffer.resize(total_size);
         
         // Read audio data
@@ -252,10 +255,6 @@ struct decoder_aiff::impl {
         if (m_rwops->read( m_buffer.data(), total_size) != total_size) {
             THROW_RUNTIME("Unable to read audio data");
         }
-        
-        // Don't return a buffer that isn't a multiple of samplesize
-        total_size &= ~(bytes_per_sample - 1);
-        m_buffer.resize(total_size);
         
         // Convert to standard format (S16 mono 44100Hz) as expected by tests
         audio_spec dst_spec = { audio_s16sys, 1, 44100 };

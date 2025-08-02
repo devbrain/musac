@@ -1,10 +1,10 @@
 // This is copyrighted software. More information is at the end of this file.
 #include <musac/codecs/decoder_modplug.hh>
-
 #include <musac/sdk/buffer.hh>
 #include <musac/sdk/memory.h>
 #include "musac/codecs/libmodplug/modplug.h"
 #include <limits>
+#include <vector>
 
 namespace chrono = std::chrono;
 
@@ -16,6 +16,7 @@ namespace musac {
         bool m_eof = false;
         chrono::microseconds m_duration{};
         ModPlug_Settings settings;
+        std::vector<int32> m_decode_buffer;  // Reusable decode buffer
         static bool initialized;
     };
 
@@ -90,11 +91,14 @@ namespace musac {
         if (m_pimpl->m_eof || !is_open()) {
             return 0;
         }
-        buffer <int32> tmpBuf(len);
-        int ret = ModPlug_Read(m_pimpl->handle.get(), tmpBuf.data(), (int)len * 4);
+        // Resize buffer only if needed
+        if (m_pimpl->m_decode_buffer.size() < len) {
+            m_pimpl->m_decode_buffer.resize(len);
+        }
+        int ret = ModPlug_Read(m_pimpl->handle.get(), m_pimpl->m_decode_buffer.data(), (int)len * 4);
         // Convert from 32-bit to float.
         for (unsigned int i = 0; i < len; ++i) {
-            buf[i] = (float)tmpBuf[i] / 2147483648.f;
+            buf[i] = (float)m_pimpl->m_decode_buffer[i] / 2147483648.f;
         }
         if (ret == 0) {
             m_pimpl->m_eof = true;

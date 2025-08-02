@@ -3,10 +3,9 @@
 //
 
 #include <musac/codecs/decoder_cmf.hh>
-#include <vector>
-#include <iostream>
-#include "musac/codecs/cmf/fmdrv.h"
 #include <musac/sdk/samples_converter.hh>
+#include "musac/codecs/cmf/fmdrv.h"
+#include <vector>
 
 namespace musac {
     struct decoder_cmf::impl {
