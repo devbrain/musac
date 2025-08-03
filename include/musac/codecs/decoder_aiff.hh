@@ -15,7 +15,7 @@ namespace musac {
             decoder_aiff();
             ~decoder_aiff() override;
             
-            [[nodiscard]] bool open(io_stream* rwops) override;
+            void open(io_stream* rwops) override;
             [[nodiscard]] unsigned int get_channels() const override;
             [[nodiscard]] unsigned int get_rate() const override;
             bool rewind() override;

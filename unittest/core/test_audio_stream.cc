@@ -35,7 +35,7 @@ TEST_SUITE("audio_stream") {
         
         {
             auto stream = device.create_stream(std::move(*source));
-            CHECK(stream.open());
+            REQUIRE_NOTHROW(stream.open());
         }
         // Stream should be properly destroyed here
     }
@@ -47,7 +47,7 @@ TEST_SUITE("audio_stream") {
         SUBCASE("immediate stop") {
             auto source = create_mock_source(44100); // 1 second
             auto stream = device.create_stream(std::move(*source));
-            CHECK(stream.open());
+            REQUIRE_NOTHROW(stream.open());
             
             CHECK(stream.play());
             CHECK(stream.is_playing());
@@ -58,7 +58,7 @@ TEST_SUITE("audio_stream") {
         SUBCASE("stop with fade") {
             auto source = create_mock_source(44100); // 1 second
             auto stream = device.create_stream(std::move(*source));
-            CHECK(stream.open());
+            REQUIRE_NOTHROW(stream.open());
             
             CHECK(stream.play());
             CHECK(stream.is_playing());
@@ -79,7 +79,7 @@ TEST_SUITE("audio_stream") {
         auto source = create_mock_source();
         
         auto stream = device.create_stream(std::move(*source));
-        CHECK(stream.open());
+        REQUIRE_NOTHROW(stream.open());
         device.resume();
         
         CHECK(stream.play());
@@ -99,7 +99,7 @@ TEST_SUITE("audio_stream") {
         auto source = create_mock_source(4410); // 0.1 second at 44.1kHz
         
         auto stream = device.create_stream(std::move(*source));
-        CHECK(stream.open());
+        REQUIRE_NOTHROW(stream.open());
         device.resume();
         
         std::atomic<bool> callback_called{false};
@@ -127,7 +127,7 @@ TEST_SUITE("audio_stream") {
         auto source = create_mock_source(4410); // 0.1 second
         
         auto stream = device.create_stream(std::move(*source));
-        CHECK(stream.open());
+        REQUIRE_NOTHROW(stream.open());
         device.resume();
         
         std::atomic<int> loop_count{0};
@@ -153,7 +153,7 @@ TEST_SUITE("audio_stream") {
         auto source = create_mock_source();
         
         auto stream = device.create_stream(std::move(*source));
-        CHECK(stream.open());
+        REQUIRE_NOTHROW(stream.open());
         
         CHECK(stream.volume() == doctest::Approx(1.0f));
         
@@ -172,7 +172,7 @@ TEST_SUITE("audio_stream") {
         auto source = create_mock_source();
         
         auto stream = device.create_stream(std::move(*source));
-        CHECK(stream.open());
+        REQUIRE_NOTHROW(stream.open());
         
         CHECK(stream.get_stereo_position() == doctest::Approx(0.0f));
         
@@ -191,7 +191,7 @@ TEST_SUITE("audio_stream") {
         auto source = create_mock_source();
         
         auto stream = device.create_stream(std::move(*source));
-        CHECK(stream.open());
+        REQUIRE_NOTHROW(stream.open());
         
         CHECK_FALSE(stream.is_muted());
         
@@ -207,7 +207,7 @@ TEST_SUITE("audio_stream") {
         auto source = create_mock_source(44100); // 1 second
         
         auto stream = device.create_stream(std::move(*source));
-        CHECK(stream.open());
+        REQUIRE_NOTHROW(stream.open());
         
         CHECK(stream.duration() == std::chrono::seconds(1));
         
@@ -230,7 +230,7 @@ TEST_SUITE("audio_stream") {
             auto source = create_mock_source(2205); // 0.05 second
             auto stream_ptr = std::make_unique<audio_stream>(device.create_stream(std::move(*source)));
             
-            stream_ptr->open();
+            REQUIRE_NOTHROW(stream_ptr->open());
             stream_ptr->set_finish_callback([&total_callbacks](audio_stream& /*s*/) {
                 total_callbacks++;
             });
@@ -261,7 +261,7 @@ TEST_SUITE("audio_stream") {
         {
             auto source = create_mock_source(44100); // 1 second
             auto stream = device.create_stream(std::move(*source));
-            stream.open();
+            REQUIRE_NOTHROW(stream.open());
             
             stream.set_finish_callback([&callback_called](audio_stream& /*s*/) {
                 callback_called = true;
@@ -286,7 +286,7 @@ TEST_SUITE("audio_stream") {
         auto source = create_mock_source(4410); // 0.1 second
         
         auto stream = device.create_stream(std::move(*source));
-        stream.open();
+        REQUIRE_NOTHROW(stream.open());
         device.resume();
         
         std::atomic<bool> finish_called{false};
@@ -319,7 +319,7 @@ TEST_SUITE("audio_stream") {
         
         auto source = create_mock_source(44100);
         auto stream = device.create_stream(std::move(*source));
-        stream.open();
+        REQUIRE_NOTHROW(stream.open());
         
         // Rapid play/stop cycles
         for (int i = 0; i < 10; ++i) {
@@ -341,7 +341,7 @@ TEST_SUITE("audio_stream") {
         auto stream = device.create_stream(std::move(*source));
         
         // State: Uninitialized -> Initialized
-        CHECK(stream.open());
+        REQUIRE_NOTHROW(stream.open());
         CHECK_FALSE(stream.is_playing());
         CHECK_FALSE(stream.is_paused());
         
@@ -393,7 +393,7 @@ TEST_SUITE("audio_stream") {
         for (int i = 0; i < num_streams; ++i) {
             auto source = create_mock_source(2205); // 0.05 second
             auto stream = std::make_unique<audio_stream>(device.create_stream(std::move(*source)));
-            stream->open();
+            REQUIRE_NOTHROW(stream->open());
             
             int stream_id = i;
             stream->set_finish_callback([&callback_count, &callback_mutex, &callback_log, stream_id](audio_stream& /*s*/) {
@@ -447,7 +447,7 @@ TEST_SUITE("audio_stream") {
         {
             auto source = create_mock_source(2205); // 0.05 second
             auto stream = device.create_stream(std::move(*source));
-            stream.open();
+            REQUIRE_NOTHROW(stream.open());
             
             stream.set_finish_callback([&callback_executions, &stream_destroyed](audio_stream& /*s*/) {
                 // Simulate slow callback
@@ -482,7 +482,7 @@ TEST_SUITE("audio_stream") {
         
         auto source = create_mock_source(44100); // 1 second
         auto stream = device.create_stream(std::move(*source));
-        stream.open();
+        REQUIRE_NOTHROW(stream.open());
         
         std::atomic<bool> finish_called{false};
         std::atomic<bool> was_playing_during_pause{false};
@@ -523,7 +523,7 @@ TEST_SUITE("audio_stream") {
         
         auto source = create_mock_source(44100 * 2); // 2 seconds
         auto stream = device.create_stream(std::move(*source));
-        stream.open();
+        REQUIRE_NOTHROW(stream.open());
         
         stream.play();
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -544,7 +544,7 @@ TEST_SUITE("audio_stream") {
         
         auto source = create_mock_source(4410); // 0.1 second
         auto stream = device.create_stream(std::move(*source));
-        stream.open();
+        REQUIRE_NOTHROW(stream.open());
         
         std::atomic<int> callback1_count{0};
         std::atomic<int> callback2_count{0};
@@ -580,7 +580,7 @@ TEST_SUITE("audio_stream") {
         for (int i = 0; i < 5; ++i) {
             auto source = create_mock_source(2205);
             auto stream = std::make_shared<audio_stream>(device.create_stream(std::move(*source)));
-            stream->open();
+            REQUIRE_NOTHROW(stream->open());
             
             if (i > 0) {
                 // Create circular references through callbacks

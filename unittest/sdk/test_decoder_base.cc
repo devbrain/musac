@@ -26,11 +26,10 @@ public:
     }
     
     // Implement virtual functions
-    bool open(musac::io_stream* /*rwops*/) override {
+    void open(musac::io_stream* /*rwops*/) override {
         // Simulate opening
         set_is_open(true);
         m_position = 0;
-        return true;
     }
     
     unsigned int get_channels() const override {
@@ -97,7 +96,7 @@ TEST_SUITE("SDK::DecoderBase") {
         }
         
         SUBCASE("Open and close") {
-            CHECK(decoder.open(nullptr));
+            CHECK_NOTHROW(decoder.open(nullptr));
             CHECK(decoder.is_open());
             
             // Decoder doesn't have explicit close in the interface

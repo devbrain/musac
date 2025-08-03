@@ -8,6 +8,7 @@
 #include <musac/sdk/audio_converter.h>
 #include <musac/sdk/endian.h>
 #include <musac/sdk/memory.h>
+#include <musac/error.hh>
 #include <failsafe/failsafe.hh>
 #include <algorithm>
 #include <cstring>
@@ -303,20 +304,14 @@ decoder_aiff::decoder_aiff() : m_pimpl(std::make_unique<impl>()) {}
 
 decoder_aiff::~decoder_aiff() = default;
 
-bool decoder_aiff::open(io_stream* rwops) {
+void decoder_aiff::open(io_stream* rwops) {
     m_pimpl->m_rwops = rwops;
     
-    try {
-        if (!m_pimpl->load_aiff()) {
-            return false;
-        }
-        set_is_open(true);
-        m_pimpl->m_consumed = 0;
-        return true;
-    } catch (const std::exception& e) {
-        // Return false on error instead of throwing
-        return false;
+    if (!m_pimpl->load_aiff()) {
+        THROW_RUNTIME("Failed to load AIFF file");
     }
+    set_is_open(true);
+    m_pimpl->m_consumed = 0;
 }
 
 unsigned int decoder_aiff::get_channels() const {

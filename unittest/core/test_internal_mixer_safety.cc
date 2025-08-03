@@ -106,7 +106,7 @@ TEST_SUITE("internal_mixer_thread_safety") {
                 for (int i = start; i < end; ++i) {
                     auto source = create_mock_source(44100 * 2); // 2 seconds
                     auto stream = device.create_stream(std::move(*source));
-                    stream.open();
+                    REQUIRE_NOTHROW(stream.open());
                     stream.play();
                     playing_count++;
                     local_streams.push_back(std::move(stream));
@@ -197,7 +197,7 @@ TEST_SUITE("internal_mixer_thread_safety") {
                 while (!stop) {
                     auto source = create_mock_source(44100);
                     auto stream = device.create_stream(std::move(*source));
-                    stream.open();
+                    REQUIRE_NOTHROW(stream.open());
                     stream.play();
                     created++;
                     
@@ -231,7 +231,7 @@ TEST_SUITE("internal_mixer_thread_safety") {
         for (int i = 0; i < 10; ++i) {
             auto source = create_mock_source(44100 * 10); // 10 seconds
             auto stream = device.create_stream(std::move(*source));
-            stream.open();
+            REQUIRE_NOTHROW(stream.open());
             stream.play();
             streams.push_back(std::move(stream));
         }

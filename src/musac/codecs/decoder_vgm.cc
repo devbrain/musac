@@ -3,6 +3,8 @@
 //
 
 #include <musac/codecs/decoder_vgm.hh>
+#include <musac/error.hh>
+#include <failsafe/failsafe.hh>
 #include <chrono>
 #include "musac/codecs/vgm/vgm_player.hh"
 
@@ -23,12 +25,12 @@ namespace musac {
 
     decoder_vgm::~decoder_vgm() = default;
 
-    bool decoder_vgm::open(io_stream* rwops) {
+    void decoder_vgm::open(io_stream* rwops) {
         bool result = m_pimpl->m_player.load(rwops);
-        if (result) {
-            set_is_open(true);
+        if (!result) {
+            THROW_RUNTIME("Failed to load VGM file");
         }
-        return result;
+        set_is_open(true);
     }
 
     unsigned int decoder_vgm::get_channels() const {

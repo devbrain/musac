@@ -9,6 +9,7 @@
 #include <musac/sdk/endian.h>
 #include <musac/sdk/memory.h>
 #include <musac/sdk/musac_sdk_config.h>
+#include <musac/error.hh>
 #include <failsafe/failsafe.hh>
 #include <algorithm>
 #include <cstring>
@@ -441,20 +442,14 @@ decoder_voc::decoder_voc() : m_pimpl(std::make_unique<impl>()) {}
 
 decoder_voc::~decoder_voc() = default;
 
-bool decoder_voc::open(io_stream* rwops) {
+void decoder_voc::open(io_stream* rwops) {
     m_pimpl->m_rwops = rwops;
     
-    try {
-        if (!m_pimpl->load_voc()) {
-            return false;
-        }
-        set_is_open(true);
-        m_pimpl->m_consumed = 0;
-        return true;
-    } catch (const std::exception& e) {
-        // Return false on error instead of throwing
-        return false;
+    if (!m_pimpl->load_voc()) {
+        THROW_RUNTIME("Failed to load VOC file");
     }
+    set_is_open(true);
+    m_pimpl->m_consumed = 0;
 }
 
 unsigned int decoder_voc::get_channels() const {

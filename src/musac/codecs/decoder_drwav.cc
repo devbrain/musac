@@ -1,4 +1,6 @@
 #include <musac/codecs/decoder_drwav.hh>
+#include <musac/error.hh>
+#include <failsafe/failsafe.hh>
 
 #include <musac/sdk/io_stream.h>
 
@@ -67,19 +69,15 @@ namespace musac {
         drwav_uninit(&m_pimpl->m_handle);
     }
 
-    auto decoder_drwav::open(io_stream* const rwops)
-        ->
-        bool {
+    void decoder_drwav::open(io_stream* const rwops) {
         if (is_open()) {
-            return true;
+            return;
         }
 
         if (!drwav_init(&m_pimpl->m_handle, drwav_read_callback, drwav_seek_callback, rwops, nullptr)) {
-            // SDL_SetError("drwav_init failed.") removed - error handling simplified
-            return false;
+            THROW_RUNTIME("drwav_init failed");
         }
         set_is_open(true);
-        return true;
     }
 
     unsigned int decoder_drwav::do_decode(float* const buf, unsigned int len, bool& callAgain) {

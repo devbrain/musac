@@ -50,11 +50,9 @@ namespace musac {
              * Although calling this function is not required, you can use it in order to determine whether
              * the stream can be loaded successfully prior to starting playback.
              *
-             * \return
-             *  \retval true Stream was opened successfully.
-             *  \retval false The stream could not be opened.
+             * \throws musac_error if the stream cannot be opened.
              */
-            virtual bool open();
+            virtual void open();
 
             /*!
              * \brief Start playback.

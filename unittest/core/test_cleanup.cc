@@ -63,7 +63,7 @@ TEST_SUITE("cleanup") {
             auto device = audio_device::open_default_device();
             auto source = create_mock_source();
             auto stream = device.create_stream(std::move(*source));
-            stream.open();
+            REQUIRE_NOTHROW(stream.open());
             stream.play();
             
             // Device and stream will be destroyed together
@@ -90,7 +90,7 @@ TEST_SUITE("cleanup") {
                 bool callback_executed = false;
                 auto source = create_lifecycle_source(&source_destroyed);
                 auto stream = device.create_stream(std::move(*source));
-                stream.open();
+                REQUIRE_NOTHROW(stream.open());
                 
                 stream.set_finish_callback([&callback_executed](audio_stream& /*s*/) {
                     // Callback does NOT hold a reference to the stream
@@ -128,7 +128,7 @@ TEST_SUITE("cleanup") {
             for (int i = 0; i < 5; ++i) {
                 auto source = create_mock_source();
                 auto stream = std::make_unique<audio_stream>(device.create_stream(std::move(*source)));
-                stream->open();
+                REQUIRE_NOTHROW(stream->open());
                 stream->play();
                 streams.push_back(std::move(stream));
             }
@@ -174,7 +174,7 @@ TEST_SUITE("cleanup") {
             {
                 auto source = create_mock_source();
                 auto stream = device.create_stream(std::move(*source));
-                stream.open();
+                REQUIRE_NOTHROW(stream.open());
                 
                 stream.set_finish_callback([&callback_executed](audio_stream& /*s*/) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -207,7 +207,7 @@ TEST_SUITE("cleanup") {
             
             auto source = create_mock_source();
             auto stream = device.create_stream(std::move(*source));
-            stream.open();
+            REQUIRE_NOTHROW(stream.open());
             stream.play();
             
             // Pause stream
@@ -232,7 +232,7 @@ TEST_SUITE("cleanup") {
             for (int i = 0; i < 100; ++i) {
                 auto source = create_mock_source();
                 auto stream = device.create_stream(std::move(*source));
-                stream.open();
+                REQUIRE_NOTHROW(stream.open());
                 
                 if (i % 2 == 0) {
                     stream.play();
@@ -308,7 +308,7 @@ TEST_SUITE("cleanup") {
                     auto stream = std::make_unique<audio_stream>(
                         device.create_stream(std::move(*source))
                     );
-                    stream->open();
+                    REQUIRE_NOTHROW(stream->open());
                     
                     if (i % 3 == 0) {
                         stream->set_finish_callback([](audio_stream& /*s*/) {

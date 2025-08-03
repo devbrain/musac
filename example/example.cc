@@ -63,7 +63,12 @@ int main(int argc, char* argv[]) {
             std::cout << "Stream finished!" << std::endl;
             done = true;
         });
-        stream.open();
+        try {
+            stream.open();
+        } catch (const std::exception& e) {
+            std::cerr << "Failed to open stream: " << e.what() << std::endl;
+            return 1;
+        }
         stream.play();
         float s = 0;
         bool in_stop = false;

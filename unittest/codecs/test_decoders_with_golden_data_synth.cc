@@ -24,7 +24,13 @@ TEST_SUITE("Decoders::Synthesizer") {
             musac::decoder_cmf decoder;
             CHECK(&decoder != nullptr); // Can instantiate
             
-            bool opened = decoder.open(io.get());
+            bool opened = false;
+            try {
+                decoder.open(io.get());
+                opened = true;
+            } catch (const std::exception&) {
+                opened = false;
+            }
             INFO("CMF decoder open result: " << opened);
         }
         
@@ -37,7 +43,13 @@ TEST_SUITE("Decoders::Synthesizer") {
                 musac::decoder_seq decoder;
                 CHECK(&decoder != nullptr);
                 
-                bool opened = decoder.open(io.get());
+                bool opened = false;
+                try {
+                    decoder.open(io.get());
+                    opened = true;
+                } catch (const std::exception&) {
+                    opened = false;
+                }
                 INFO("MIDI decoder open result: " << opened);
             }
             
@@ -49,7 +61,13 @@ TEST_SUITE("Decoders::Synthesizer") {
                 musac::decoder_seq decoder;
                 CHECK(&decoder != nullptr);
                 
-                bool opened = decoder.open(io.get());
+                bool opened = false;
+                try {
+                    decoder.open(io.get());
+                    opened = true;
+                } catch (const std::exception&) {
+                    opened = false;
+                }
                 INFO("MUS decoder open result: " << opened);
             }
             
@@ -61,7 +79,13 @@ TEST_SUITE("Decoders::Synthesizer") {
                 musac::decoder_seq decoder;
                 CHECK(&decoder != nullptr);
                 
-                bool opened = decoder.open(io.get());
+                bool opened = false;
+                try {
+                    decoder.open(io.get());
+                    opened = true;
+                } catch (const std::exception&) {
+                    opened = false;
+                }
                 INFO("XMI decoder open result: " << opened);
             }
         }
@@ -73,7 +97,13 @@ TEST_SUITE("Decoders::Synthesizer") {
             musac::decoder_opb decoder;
             CHECK(&decoder != nullptr);
             
-            bool opened = decoder.open(io.get());
+            bool opened = false;
+            try {
+                decoder.open(io.get());
+                opened = true;
+            } catch (const std::exception&) {
+                opened = false;
+            }
             INFO("OPB decoder open result: " << opened);
         }
         
@@ -84,7 +114,13 @@ TEST_SUITE("Decoders::Synthesizer") {
             musac::decoder_vgm decoder;
             CHECK(&decoder != nullptr);
             
-            bool opened = decoder.open(io.get());
+            bool opened = false;
+            try {
+                decoder.open(io.get());
+                opened = true;
+            } catch (const std::exception&) {
+                opened = false;
+            }
             INFO("VGM decoder open result: " << opened);
         }
     }
@@ -100,21 +136,21 @@ TEST_SUITE("Decoders::Synthesizer") {
             {
                 auto io = musac::io_from_memory(bad_data, sizeof(bad_data));
                 musac::decoder_cmf decoder;
-                CHECK_FALSE(decoder.open(io.get()));
+                CHECK_THROWS(decoder.open(io.get()));
             }
             
             // OPB should reject non-OPB data
             {
                 auto io = musac::io_from_memory(bad_data, sizeof(bad_data));
                 musac::decoder_opb decoder;
-                CHECK_FALSE(decoder.open(io.get()));
+                CHECK_THROWS(decoder.open(io.get()));
             }
             
             // VGM should reject non-VGM data
             {
                 auto io = musac::io_from_memory(bad_data, sizeof(bad_data));
                 musac::decoder_vgm decoder;
-                CHECK_FALSE(decoder.open(io.get()));
+                CHECK_THROWS(decoder.open(io.get()));
             }
         }
     }

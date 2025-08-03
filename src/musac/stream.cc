@@ -12,6 +12,7 @@
 #include <musac/sdk/buffer.hh>
 #include <failsafe/failsafe.hh>
 #include <musac/audio_source.hh>
+#include <musac/error.hh>
 #include "musac/fade_envelop.hh"
 #include "musac/in_use_guard.hh"
 #include "musac/audio_mixer.hh"
@@ -460,32 +461,27 @@ namespace musac {
         return *this;
     }
 
-    bool audio_stream::open() {
+    void audio_stream::open() {
         impl::state_lock lock(m_pimpl.get());
 
         if (m_pimpl->m_is_open) {
-            return true;
+            return;
         }
 
         auto rate = (unsigned int)audio_mixer::m_audio_device_data.m_audio_spec.freq;
         auto channels = (unsigned int)audio_mixer::m_audio_device_data.m_audio_spec.channels;
         auto frame_size = (unsigned int)audio_mixer::m_audio_device_data.m_frame_size;
 
-        try {
-            if (m_pimpl->m_audio_source.open(rate, channels, frame_size)) {
-                m_pimpl->m_is_open = true;
-                return true;
-            }
-            return false;
-        } catch (const std::exception& e) {
-            // Log the error but return false to maintain API compatibility
-            LOG_ERROR("audio", "Failed to open audio stream: %s", e.what());
-            return false;
-        }
+        m_pimpl->m_audio_source.open(rate, channels, frame_size);
+        
+        m_pimpl->m_is_open = true;
     }
 
     bool audio_stream::rewind() {
-        if (!open()) {
+        try {
+            open();
+        } catch (const std::exception& e) {
+            LOG_ERROR("audio_stream", "Failed to open stream during rewind: %s", e.what());
             return false;
         }
 
@@ -638,7 +634,10 @@ namespace musac {
 
 
     bool audio_stream::play(unsigned int iterations, std::chrono::microseconds fadeTime) {
-        if (!open()) {
+        try {
+            open();
+        } catch (const std::exception& e) {
+            LOG_ERROR("audio_stream", "Failed to open stream during play: %s", e.what());
             return false;
         }
 
@@ -681,7 +680,12 @@ namespace musac {
     }
 
     void audio_stream::pause(std::chrono::microseconds fadeTime) {
-        if (!open()) return;
+        try {
+            open();
+        } catch (const std::exception& e) {
+            LOG_ERROR("audio_stream", "Failed to open stream during pause: %s", e.what());
+            return;
+        }
         impl::state_lock locker(m_pimpl.get());
         if (m_pimpl->m_is_paused) return;
 

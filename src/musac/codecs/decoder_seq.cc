@@ -3,6 +3,8 @@
 //
 
 #include <musac/codecs/decoder_seq.hh>
+#include <musac/error.hh>
+#include <failsafe/failsafe.hh>
 #include "musac/codecs/seq/player.h"
 #include "musac/codecs/seq/midi_opl.h"
 #include <memory>
@@ -30,12 +32,12 @@ namespace musac {
 
     decoder_seq::~decoder_seq() = default;
 
-    bool decoder_seq::open(io_stream* rwops) {
+    void decoder_seq::open(io_stream* rwops) {
         bool result = m_pimpl->m_player->loadSequence(rwops);
-        if (result) {
-            set_is_open(true);
+        if (!result) {
+            THROW_RUNTIME("Failed to load SEQ file");
         }
-        return result;
+        set_is_open(true);
     }
 
     unsigned int decoder_seq::get_channels() const {

@@ -4,6 +4,8 @@
 
 #include <musac/codecs/decoder_opb.hh>
 #include <musac/sdk/opl/opl_player.hh>
+#include <musac/error.hh>
+#include <failsafe/failsafe.hh>
 #include "musac/codecs/opb_lib/opblib.h"
 
 
@@ -37,13 +39,12 @@ namespace musac {
 
     decoder_opb::~decoder_opb() = default;
 
-    bool decoder_opb::open(io_stream* rwops) {
+    void decoder_opb::open(io_stream* rwops) {
         auto rc = OPB_BinaryToOpl(StreamReader, rwops, impl::ReceiveOpbBuffer, m_pimpl.get());
-        if (rc == 0) {
-            set_is_open(true);
-            return true;
+        if (rc != 0) {
+            THROW_RUNTIME("Failed to load OPB file");
         }
-        return false;
+        set_is_open(true);
     }
 
     unsigned int decoder_opb::get_channels() const {

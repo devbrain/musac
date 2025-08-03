@@ -110,9 +110,8 @@ public:
           m_channels(2),
           m_sample_rate(44100) {}
     
-    bool open(musac::io_stream* /*rwops*/) override {
+    void open(musac::io_stream* /*rwops*/) override {
         set_is_open(true);
-        return true;
     }
     
     unsigned int get_channels() const override {
@@ -229,13 +228,12 @@ public:
     // Factory method
     static std::unique_ptr<mock_audio_source> create(musac::size total_frames = 44100);
     
-    bool open(unsigned int rate, unsigned int channels, unsigned int frame_size) override {
+    void open(unsigned int rate, unsigned int channels, unsigned int frame_size) override {
         m_state->rate = rate;
         m_state->channels = channels;
         m_state->frame_size = frame_size;
         m_state->is_open = true;
         m_state->open_count++;
-        return true;
     }
     
     bool rewind() override {

@@ -5,6 +5,7 @@
 #include <musac/stream.hh>
 #include <musac/audio_device_data.hh>
 #include <musac/sdk/from_float_converter.hh>
+#include <musac/error.hh>
 #include <failsafe/failsafe.hh>
 #include <vector>
 #include <memory>

@@ -1,4 +1,6 @@
 #include <musac/codecs/decoder_drflac.hh>
+#include <musac/error.hh>
+#include <failsafe/failsafe.hh>
 
 #include <musac/sdk/io_stream.h>
 
@@ -61,18 +63,16 @@ namespace musac {
 
     decoder_drflac::~decoder_drflac() = default;
 
-    bool decoder_drflac::open(io_stream* const rwops) {
+    void decoder_drflac::open(io_stream* const rwops) {
         if (is_open()) {
-            return true;
+            return;
         }
 
         m_pimpl->m_handle = {drflac_open(drflacReadCb, drflacSeekCb, rwops, nullptr), drflac_close};
         if (!m_pimpl->m_handle) {
-            // SDL_SetError("drflac_open returned null.") removed - error handling simplified
-            return false;
+            THROW_RUNTIME("drflac_open failed");
         }
         set_is_open(true);
-        return true;
     }
 
     unsigned int decoder_drflac::do_decode(float* const buf, unsigned int len, bool& /*callAgain*/) {

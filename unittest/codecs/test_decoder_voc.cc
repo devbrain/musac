@@ -55,7 +55,7 @@ TEST_SUITE("Codecs::DecoderVOC") {
         musac::decoder_voc decoder;
         
         SUBCASE("Successfully opens") {
-            CHECK(decoder.open(io.get()));
+            CHECK_NOTHROW(decoder.open(io.get()));
             CHECK(decoder.is_open());
             CHECK(decoder.get_channels() == 1);  // Converted to mono
             CHECK(decoder.get_rate() == 44100);  // Converted to standard rate
@@ -68,7 +68,7 @@ TEST_SUITE("Codecs::DecoderVOC") {
         REQUIRE(io != nullptr);
         
         musac::decoder_voc decoder;
-        REQUIRE(decoder.open(io.get()));
+        REQUIRE_NOTHROW(decoder.open(io.get()));
         
         SUBCASE("Decode samples") {
             float buffer[100];
@@ -110,7 +110,7 @@ TEST_SUITE("Codecs::DecoderVOC") {
         
         musac::decoder_voc decoder;
         
-        CHECK(decoder.open(io.get()));
+        CHECK_NOTHROW(decoder.open(io.get()));
         CHECK(decoder.is_open());
         CHECK(decoder.get_channels() == 1);  // VOC is mono
         CHECK(decoder.get_rate() == 44100);  // Converted to standard rate
@@ -138,7 +138,7 @@ TEST_SUITE("Codecs::DecoderVOC") {
             auto io = musac::io_from_memory(badData, sizeof(badData));
             
             musac::decoder_voc decoder;
-            CHECK_FALSE(decoder.open(io.get()));
+            CHECK_THROWS(decoder.open(io.get()));
         }
         
         SUBCASE("Truncated file") {
@@ -148,7 +148,7 @@ TEST_SUITE("Codecs::DecoderVOC") {
             auto io = musac::io_from_memory(vocData.data(), vocData.size());
             
             musac::decoder_voc decoder;
-            CHECK_FALSE(decoder.open(io.get()));
+            CHECK_THROWS(decoder.open(io.get()));
         }
         
         SUBCASE("Invalid sample rate") {
@@ -156,7 +156,7 @@ TEST_SUITE("Codecs::DecoderVOC") {
             auto io = musac::io_from_memory(vocData.data(), vocData.size());
             
             musac::decoder_voc decoder;
-            CHECK_FALSE(decoder.open(io.get()));
+            CHECK_THROWS(decoder.open(io.get()));
         }
     }
     
@@ -200,7 +200,7 @@ TEST_SUITE("Codecs::DecoderVOC") {
         auto io = musac::io_from_memory(data.data(), data.size());
         musac::decoder_voc decoder;
         
-        CHECK(decoder.open(io.get()));
+        CHECK_NOTHROW(decoder.open(io.get()));
         CHECK(decoder.get_channels() == 1);
     }
     
@@ -209,7 +209,7 @@ TEST_SUITE("Codecs::DecoderVOC") {
         auto io = musac::io_from_memory(vocData.data(), vocData.size());
         
         musac::decoder_voc decoder;
-        REQUIRE(decoder.open(io.get()));
+        REQUIRE_NOTHROW(decoder.open(io.get()));
         
         // Decode some data
         float buffer[100];

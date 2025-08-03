@@ -76,6 +76,9 @@ endif()
 
 target_link_libraries(musac PUBLIC musac_codecs musac_sdk thirdparty::failsafe)
 
+# Set logger category for musac
+target_compile_definitions(musac PRIVATE LOGGER_DEFAULT_CATEGORY=musac)
+
 # Conditionally link SDL3
 if(MUSAC_USE_SDL3)
     target_link_libraries(musac PRIVATE SDL3::SDL3)
