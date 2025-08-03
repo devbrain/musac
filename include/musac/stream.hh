@@ -43,6 +43,7 @@ namespace musac {
             auto operator=(const audio_stream&) -> audio_stream& = delete;
 
             audio_stream(audio_stream&& other) noexcept;
+            auto operator=(audio_stream&& other) noexcept -> audio_stream&;
             /*!
              * \brief Open the stream and prepare it for playback.
              *
@@ -288,6 +289,7 @@ namespace musac {
         private:
             friend class audio_device;
             friend class audio_mixer;
+            friend struct InUseGuard;
             audio_stream(audio_source&& audio_src);
 
             static void audio_callback(uint8_t out[], unsigned int out_len);

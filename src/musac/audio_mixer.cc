@@ -5,52 +5,48 @@
 #include "musac/audio_mixer.hh"
 #include <musac/stream.hh>
 #include <failsafe/failsafe.hh>
+#include <algorithm>
 namespace musac {
     audio_device_data audio_mixer::m_audio_device_data {};
 
     audio_mixer::audio_mixer(): m_final_mix_buf(0),
                                 m_stream_buf(0),
                                 m_processor_buf(0) {
-        m_streams = std::make_shared <std::vector <audio_stream*>>();
+        // Phase 3: No need to allocate shared_ptr, using direct vector with mutex
     }
 
     std::shared_ptr<std::vector<audio_stream*>> audio_mixer::get_streams() const {
-        return std::atomic_load(&m_streams);
+        // Phase 3: Return a copy under read lock for safe iteration
+        std::shared_lock lock(m_streams_mutex);
+        return std::make_shared<std::vector<audio_stream*>>(m_streams);
     }
 
     void audio_mixer::add_stream(audio_stream* s) {
-        auto old = std::atomic_load(&m_streams);
-        auto copy = std::make_shared <std::vector <audio_stream*>>(*old);
+        // Phase 3: Use write lock for modifications
+        std::unique_lock lock(m_streams_mutex);
         
         // Check if stream is already in the list
-        bool already_exists = false;
-        for (auto* existing : *copy) {
-            if (existing == s) {
-                already_exists = true;
-                break;
-            }
-        }
-        
-        if (already_exists) {
+        auto it = std::find(m_streams.begin(), m_streams.end(), s);
+        if (it != m_streams.end()) {
             // LOG_WARN("AudioMixer", "Stream already in mixer, not adding again");
             return;
         }
         
-        copy->push_back(s);
-        std::atomic_store(&m_streams, copy);
-        // LOG_INFO("AudioMixer", "Added stream, now have", copy->size(), "streams");
+        m_streams.push_back(s);
+        // LOG_INFO("AudioMixer", "Added stream, now have", m_streams.size(), "streams");
     }
 
     void audio_mixer::remove_stream(int token) {
-        auto old = std::atomic_load(&m_streams);
-        auto copy = std::make_shared <std::vector <audio_stream*>>();
-        copy->reserve(old->size());
-        for (auto* st : *old) {
-            if (st->get_token() != token)
-                copy->push_back(st);
+        // Phase 3: Use write lock for modifications
+        std::unique_lock lock(m_streams_mutex);
+        
+        auto it = std::remove_if(m_streams.begin(), m_streams.end(),
+            [token](audio_stream* s) { return s->get_token() == token; });
+        
+        if (it != m_streams.end()) {
+            m_streams.erase(it, m_streams.end());
+            // LOG_INFO("AudioMixer", "Removed stream with token", token, ", now have", m_streams.size(), "streams");
         }
-        std::atomic_store(&m_streams, copy);
-        // LOG_INFO("AudioMixer", "Removed stream with token", token, ", now have", copy->size(), "streams");
     }
 
     void audio_mixer::resize(unsigned int out_len_samples) {

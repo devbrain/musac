@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <vector>
+#include <shared_mutex>
 #include <musac/sdk/buffer.hh>
 #include <musac/audio_device_data.hh>
 namespace musac {
@@ -41,8 +42,9 @@ namespace musac {
 
 
         private:
-            // shared_ptr to the current vector of streams
-            std::shared_ptr <std::vector <audio_stream*>> m_streams;
+            // Phase 3: Proper thread-safe implementation using reader-writer lock
+            mutable std::shared_mutex m_streams_mutex;
+            std::vector<audio_stream*> m_streams;
 
         public:
             // Sample buffers we use during decoding and mixing.

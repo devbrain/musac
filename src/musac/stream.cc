@@ -1,8 +1,10 @@
 // This is copyrighted software. More information is at the end of this file.
 #include <stdexcept>
 #include <mutex>
+#include <shared_mutex>
 #include <thread>
 #include <chrono>
+#include <condition_variable>
 
 #include <musac/stream.hh>
 #include <musac/sdk/processor.hh>
@@ -14,8 +16,9 @@
 #include "musac/in_use_guard.hh"
 #include "musac/audio_mixer.hh"
 namespace musac {
-    // A single mutex that protects all audio_stream public methods
-    static std::mutex s_audioMutex;
+    // Phase 2: Removed global mutex - using per-stream locks instead
+    // static std::mutex s_audioMutex;  // REMOVED in Phase 2
+    // Phase 3: Mixer is now thread-safe, no need for mixer mutex
     static std::atomic <bool> s_isShuttingDown{false};
     
     // Time tracking
@@ -74,11 +77,45 @@ namespace musac {
 
         std::atomic <bool> m_alive{true};
         std::atomic <uint32_t> m_inUse{0};
+        
+        // New synchronization members for Phase 1
+        mutable std::mutex m_usage_mutex;
+        std::condition_variable m_usage_cv;
+        std::atomic<bool> m_destruction_pending{false};
+        
+        // Phase 2: Per-stream mutexes for fine-grained locking
+        mutable std::mutex m_state_mutex;      // For state changes (play/pause/stop)
+        mutable std::shared_mutex m_data_mutex; // For data access (volume, position, etc.)
 
         static audio_mixer s_mixer;
 
         void stop();
         void stop_no_mixer();
+        
+        // Phase 2: Lock helper classes
+        class state_lock final {
+            std::lock_guard<std::mutex> m_lock;
+        public:
+            explicit state_lock(const impl* p) : m_lock(p->m_state_mutex) {}
+        };
+        
+        class read_lock final {
+            std::shared_lock<std::shared_mutex> m_lock;
+        public:
+            explicit read_lock(const impl* p) : m_lock(p->m_data_mutex) {}
+        };
+        
+        class write_lock final {
+            std::unique_lock<std::shared_mutex> m_lock;
+        public:
+            explicit write_lock(const impl* p) : m_lock(p->m_data_mutex) {}
+        };
+        
+        // Helper to create usage guard
+        InUseGuard create_usage_guard() {
+            bool is_valid = !m_destruction_pending.load();
+            return InUseGuard(m_inUse, &m_usage_mutex, &m_usage_cv, is_valid);
+        }
 
         void decode_audio(unsigned int& cur_pos, unsigned int len) {
             const auto device_channels = (unsigned int)audio_mixer::m_audio_device_data.m_audio_spec.channels;
@@ -216,7 +253,10 @@ namespace musac {
         // }
 
         for (auto* stream : *streamList) {
-            InUseGuard guard(stream->m_pimpl->m_inUse);
+            InUseGuard guard = stream->m_pimpl->create_usage_guard();
+            if (!guard) {
+                continue; // Stream is being destroyed, skip it
+            }
 
             if (!stream->m_pimpl->m_alive) {
                 static int skip_log = 0;
@@ -328,14 +368,7 @@ namespace musac {
         dev.m_sample_converter(out, out_len, impl::s_mixer.m_final_mix_buf);
     }
 
-    // ==============================================================================================================
-    class sdl_audio_locker final {
-        public:
-            sdl_audio_locker() { s_audioMutex.lock(); }
-            ~sdl_audio_locker() { s_audioMutex.unlock(); }
-            sdl_audio_locker(const sdl_audio_locker&) = delete;
-            auto operator=(const sdl_audio_locker&) -> sdl_audio_locker& = delete;
-    };
+    // =============================================================================================================="
 
     // ==============================================================================================================
     audio_stream::audio_stream(audio_source&& audio_src)
@@ -345,22 +378,32 @@ namespace musac {
     audio_stream::~audio_stream() {
         if (!m_pimpl) return;
         
-        // 1) Mark as not alive to prevent new operations
+        // 1) Signal destruction pending to prevent new usage
+        m_pimpl->m_destruction_pending.store(true);
         m_pimpl->m_alive = false;
         
-        // 2) Lock audio mutex and remove from mixer
+        // 2) Remove from mixer under state lock
         {
-            sdl_audio_locker lock;
+            impl::state_lock lock(m_pimpl.get());
             impl::s_mixer.remove_stream(m_pimpl->m_token);
-            // stop_no_mixer(): just rewinds and flips m_is_playing = false
             m_pimpl->stop_no_mixer();
         }
         
-        // 3) Wait for any in-flight callbacks to finish
-        while (m_pimpl->m_inUse.load(std::memory_order_acquire) != 0) {
-            std::this_thread::yield();
+        // 3) Wait for callbacks with timeout
+        {
+            std::unique_lock<std::mutex> lock(m_pimpl->m_usage_mutex);
+            auto wait_result = m_pimpl->m_usage_cv.wait_for(
+                lock, 
+                std::chrono::seconds(5),
+                [this] { return m_pimpl->m_inUse.load() == 0; }
+            );
+            
+            if (!wait_result) {
+                // Log error but continue - we've done our best
+                // LOG_ERROR("audio_stream", "Timeout waiting for callbacks to complete");
+            }
         }
-
+        
         // 4) Clear callbacks to prevent any further calls
         m_pimpl->m_finish_callback = nullptr;
         m_pimpl->m_loop_callback = nullptr;
@@ -370,8 +413,41 @@ namespace musac {
         : m_pimpl(std::move(other.m_pimpl)) {
     }
 
+    auto audio_stream::operator=(audio_stream&& other) noexcept -> audio_stream& {
+        if (this != &other) {
+            // Clean up current stream if it exists
+            if (m_pimpl) {
+                // Same cleanup as destructor
+                m_pimpl->m_destruction_pending.store(true);
+                m_pimpl->m_alive = false;
+                
+                {
+                    impl::state_lock lock(m_pimpl.get());
+                    impl::s_mixer.remove_stream(m_pimpl->m_token);
+                    m_pimpl->stop_no_mixer();
+                }
+                
+                {
+                    std::unique_lock<std::mutex> lock(m_pimpl->m_usage_mutex);
+                    m_pimpl->m_usage_cv.wait_for(
+                        lock, 
+                        std::chrono::seconds(5),
+                        [this] { return m_pimpl->m_inUse.load() == 0; }
+                    );
+                }
+                
+                m_pimpl->m_finish_callback = nullptr;
+                m_pimpl->m_loop_callback = nullptr;
+            }
+            
+            // Take ownership of other's implementation
+            m_pimpl = std::move(other.m_pimpl);
+        }
+        return *this;
+    }
+
     auto audio_stream::open() -> bool {
-        sdl_audio_locker lock;
+        impl::state_lock lock(m_pimpl.get());
 
         if (m_pimpl->m_is_open) {
             return true;
@@ -399,12 +475,12 @@ namespace musac {
             return false;
         }
 
-        sdl_audio_locker locker;
+        impl::state_lock locker(m_pimpl.get());
         return m_pimpl->m_audio_source.rewind();
     }
 
     void audio_stream::set_volume(float volume) {
-        sdl_audio_locker locker;
+        impl::write_lock locker(m_pimpl.get());
 
         if (volume < 0.f) {
             volume = 0.f;
@@ -413,86 +489,86 @@ namespace musac {
     }
 
     auto audio_stream::volume() const -> float {
-        sdl_audio_locker locker;
+        impl::read_lock locker(m_pimpl.get());
 
         return m_pimpl->m_volume;
     }
 
     void audio_stream::set_stereo_position(const float position) {
-        sdl_audio_locker locker;
+        impl::write_lock locker(m_pimpl.get());
 
         m_pimpl->m_stereo_pos = std::clamp(position, -1.f, 1.f);
     }
 
     auto audio_stream::get_stereo_position() const -> float {
-        sdl_audio_locker locker;
+        impl::read_lock locker(m_pimpl.get());
 
         return m_pimpl->m_stereo_pos;
     }
 
     void audio_stream::mute() {
-        sdl_audio_locker locker;
+        impl::write_lock locker(m_pimpl.get());
 
         m_pimpl->m_is_muted = true;
     }
 
     void audio_stream::unmute() {
-        sdl_audio_locker locker;
+        impl::write_lock locker(m_pimpl.get());
 
         m_pimpl->m_is_muted = false;
     }
 
     auto audio_stream::is_muted() const -> bool {
-        sdl_audio_locker locker;
+        impl::read_lock locker(m_pimpl.get());
 
         return m_pimpl->m_is_muted;
     }
 
     auto audio_stream::is_playing() const -> bool {
-        sdl_audio_locker locker;
+        impl::read_lock locker(m_pimpl.get());
 
         return m_pimpl->m_is_playing;
     }
 
     auto audio_stream::is_paused() const -> bool {
-        sdl_audio_locker locker;
+        impl::read_lock locker(m_pimpl.get());
 
         return m_pimpl->m_is_paused;
     }
 
     auto audio_stream::duration() const -> std::chrono::microseconds {
-        sdl_audio_locker locker;
+        impl::read_lock locker(m_pimpl.get());
 
         return m_pimpl->m_audio_source.duration();
     }
 
     auto audio_stream::seek_to_time(std::chrono::microseconds pos) -> bool {
-        sdl_audio_locker locker;
+        impl::state_lock locker(m_pimpl.get());
         return m_pimpl->m_audio_source.seek_to_time(pos);
     }
 
     void audio_stream::set_finish_callback(callback_t func) const {
-        sdl_audio_locker locker;
+        impl::write_lock locker(m_pimpl.get());
         m_pimpl->m_finish_callback = std::move(func);
     }
 
     void audio_stream::remove_finish_callback() const {
-        sdl_audio_locker locker;
+        impl::write_lock locker(m_pimpl.get());
         m_pimpl->m_finish_callback = nullptr;
     }
 
     void audio_stream::set_loop_callback(callback_t func) const {
-        sdl_audio_locker locker;
+        impl::write_lock locker(m_pimpl.get());
         m_pimpl->m_loop_callback = std::move(func);
     }
 
     void audio_stream::remove_loop_callback() const {
-        sdl_audio_locker locker;
+        impl::write_lock locker(m_pimpl.get());
         m_pimpl->m_loop_callback = nullptr;
     }
 
     void audio_stream::add_processor(std::shared_ptr <processor> processor_obj) const {
-        sdl_audio_locker locker;
+        impl::write_lock locker(m_pimpl.get());
 
         if (!processor_obj
             || std::find_if(
@@ -505,7 +581,7 @@ namespace musac {
     }
 
     void audio_stream::remove_processor(processor* processor_obj) {
-        sdl_audio_locker locker;
+        impl::write_lock locker(m_pimpl.get());
 
         auto it =
             std::find_if(m_pimpl->processors.begin(), m_pimpl->processors.end(),
@@ -517,7 +593,7 @@ namespace musac {
     }
 
     void audio_stream::clear_processors() {
-        sdl_audio_locker locker;
+        impl::write_lock locker(m_pimpl.get());
 
         m_pimpl->processors.clear();
     }
@@ -552,7 +628,7 @@ namespace musac {
             return false;
         }
 
-        sdl_audio_locker locker;
+        impl::state_lock locker(m_pimpl.get());
         if (m_pimpl->m_is_playing) {
             return true;
         }
@@ -576,7 +652,7 @@ namespace musac {
     }
 
     void audio_stream::stop(std::chrono::microseconds fadeTime) {
-        sdl_audio_locker locker;
+        impl::state_lock locker(m_pimpl.get());
         if (fadeTime.count() > 0) {
             m_pimpl->m_pendingAction = impl::PendingAction::Stop;
             // Fade-out and defer stop until envelope completes
@@ -592,7 +668,7 @@ namespace musac {
 
     void audio_stream::pause(std::chrono::microseconds fadeTime) {
         if (!open()) return;
-        sdl_audio_locker locker;
+        impl::state_lock locker(m_pimpl.get());
         if (m_pimpl->m_is_paused) return;
 
         if (fadeTime.count() > 0) {
@@ -609,7 +685,7 @@ namespace musac {
     }
 
     void audio_stream::resume(std::chrono::microseconds fadeTime) {
-        sdl_audio_locker locker;
+        impl::state_lock locker(m_pimpl.get());
 
         // 1) If we're already playing (and no fade is active), do nothing
         if (m_pimpl->m_is_playing &&
