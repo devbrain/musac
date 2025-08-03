@@ -24,7 +24,7 @@ public:
         auto io_stream = std::make_unique<memory_io_stream>();
         
         return std::unique_ptr<lifecycle_mock_source>(
-            new lifecycle_mock_source(std::move(decoder), io_stream.release(), state, destroyed_flag)
+            new lifecycle_mock_source(std::move(decoder), std::move(io_stream), state, destroyed_flag)
         );
     }
     
@@ -35,9 +35,9 @@ public:
     }
     
 private:
-    lifecycle_mock_source(std::unique_ptr<decoder> dec, musac::io_stream* io, 
+    lifecycle_mock_source(std::unique_ptr<decoder> dec, std::unique_ptr<musac::io_stream> io, 
                           std::shared_ptr<mock_audio_state> /*state*/, bool* destroyed_flag)
-        : audio_source(std::move(dec), io, true), m_destroyed_flag(destroyed_flag) {}
+        : audio_source(std::move(dec), std::move(io)), m_destroyed_flag(destroyed_flag) {}
 };
 
 // Helper function

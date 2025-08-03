@@ -6,9 +6,8 @@
 #include <failsafe/failsafe.hh>
 musac::audio_source::audio_source(std::unique_ptr <decoder> decoder_obj,
                                   std::unique_ptr <resampler> resampler_obj,
-                                  musac::io_stream* rwops, bool do_close)
-    : m_rwops(rwops),
-      m_close_rw(do_close),
+                                  std::unique_ptr<musac::io_stream> rwops)
+    : m_rwops(std::move(rwops)),
       m_decoder(std::move(decoder_obj)),
       m_resampler(std::move(resampler_obj)) {
     if (m_resampler) {
@@ -16,24 +15,19 @@ musac::audio_source::audio_source(std::unique_ptr <decoder> decoder_obj,
     }
 }
 
-musac::audio_source::audio_source(std::unique_ptr <decoder> decoder_obj, musac::io_stream* rwops, bool do_close)
-    : m_rwops(rwops),
-      m_close_rw(do_close),
+musac::audio_source::audio_source(std::unique_ptr <decoder> decoder_obj, std::unique_ptr<musac::io_stream> rwops)
+    : m_rwops(std::move(rwops)),
       m_decoder(std::move(decoder_obj)) {
 }
 
 musac::audio_source::audio_source(audio_source&& other) noexcept
-    : m_rwops(other.m_rwops),
-      m_close_rw(other.m_close_rw),
-      m_decoder(std::move(other.m_decoder)) {
-    other.m_rwops = nullptr;
-    other.m_close_rw = false;
+    : m_rwops(std::move(other.m_rwops)),
+      m_decoder(std::move(other.m_decoder)),
+      m_resampler(std::move(other.m_resampler)) {
 }
 
 musac::audio_source::~audio_source() {
-    if (m_close_rw && m_rwops) {
-        m_rwops->close();
-    }
+    // Destructor will automatically clean up unique_ptr members
 }
 
 bool musac::audio_source::rewind() {
@@ -46,7 +40,7 @@ bool musac::audio_source::open(unsigned int rate, unsigned int channels, unsigne
     }
     
     try {
-        if (!m_decoder->open(m_rwops)) {
+        if (!m_decoder->open(m_rwops.get())) {
             return false;
         }
     } catch (const std::exception& e) {

@@ -15,12 +15,10 @@ namespace musac {
         public:
             audio_source(std::unique_ptr <decoder> decoder_obj,
                          std::unique_ptr <resampler> resampler_obj,
-                         musac::io_stream* rwops,
-                         bool do_close);
+                         std::unique_ptr<musac::io_stream> rwops);
 
             audio_source(std::unique_ptr <decoder> decoder_obj,
-                         musac::io_stream* rwops,
-                         bool do_close);
+                         std::unique_ptr<musac::io_stream> rwops);
 
             audio_source(audio_source&&) noexcept;
 
@@ -38,8 +36,7 @@ namespace musac {
             virtual std::chrono::microseconds duration() const;
             virtual bool seek_to_time(std::chrono::microseconds pos) const;
         private:
-            musac::io_stream* m_rwops;
-            bool m_close_rw;
+            std::unique_ptr<musac::io_stream> m_rwops;
             // Resamplers hold a reference to decoders, so we store it as a shared_ptr.
             std::shared_ptr <decoder> m_decoder;
             std::unique_ptr <resampler> m_resampler;

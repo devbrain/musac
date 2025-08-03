@@ -20,7 +20,7 @@
 
 #include <musac/audio_loader.hh>
 
-using loader_func_t = musac::audio_source (*)(musac::io_stream*, bool);
+using loader_func_t = musac::audio_source (*)(std::unique_ptr<musac::io_stream>);
 using data_t = std::tuple<music_type, const unsigned char*, std::size_t, loader_func_t>;
 
 #define S(TYPE) data_t{music_type::TYPE, TYPE ## _example_ ## TYPE, TYPE ## _example_ ## TYPE ## _size, musac::load_ ## TYPE}
@@ -40,28 +40,19 @@ static std::array<data_t, mus_count> s_data = {
 
 #include <musac/sdk/io_stream.h>
 
-static std::vector<std::unique_ptr<musac::io_stream>> s_streams;
-
 void loader::init() {
-    s_streams.clear();
-    s_streams.reserve(mus_count);
-    for (size_t i = 0; i < mus_count; ++i) {
-        s_streams.push_back(nullptr);
-    }
-    for (const auto& [t, buf, sz, fn] : s_data) {
-        s_streams[static_cast <int>(t)] = musac::io_from_memory(buf, sz);
-    }
+    // No longer need to pre-create streams
 }
 
 void loader::done() {
-    s_streams.clear();
+    // No longer need to clean up streams
 }
 
 musac::audio_source loader::load(music_type type) {
-    if (s_streams.empty()) {
-        init();
-    }
     auto idx = static_cast <int>(type);
     auto ldr = std::get<3>(s_data[idx]);
-    return ldr(s_streams[idx].get(), false);
+    
+    // We need to create a new io_stream for each load since ownership is transferred
+    const auto& [t, buf, sz, fn] = s_data[idx];
+    return ldr(musac::io_from_memory(buf, sz));
 }

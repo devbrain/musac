@@ -460,7 +460,7 @@ namespace musac {
         return *this;
     }
 
-    auto audio_stream::open() -> bool {
+    bool audio_stream::open() {
         impl::state_lock lock(m_pimpl.get());
 
         if (m_pimpl->m_is_open) {
@@ -484,7 +484,7 @@ namespace musac {
         }
     }
 
-    auto audio_stream::rewind() -> bool {
+    bool audio_stream::rewind() {
         if (!open()) {
             return false;
         }

@@ -14,9 +14,9 @@
 #if !defined(d_MUSAC_LOAD_DECLARE)
 
 #define d_MUSAC_LOAD_DECLARE(TYPE)                                                                                                  \
-    MUSAC_EXPORT audio_source load_ ## TYPE (musac::io_stream* stream, bool do_close=false);                                            \
+    MUSAC_EXPORT audio_source load_ ## TYPE (std::unique_ptr<musac::io_stream> stream);                                            \
     MUSAC_EXPORT audio_source load_ ## TYPE (const std::filesystem::path& path);                                                    \
-    MUSAC_EXPORT audio_source load_ ## TYPE (musac::io_stream* stream, std::unique_ptr<resampler>&& resampler_obj, bool do_close=false);\
+    MUSAC_EXPORT audio_source load_ ## TYPE (std::unique_ptr<musac::io_stream> stream, std::unique_ptr<resampler>&& resampler_obj);\
     MUSAC_EXPORT audio_source load_ ## TYPE (const std::filesystem::path& path, std::unique_ptr<resampler>&& resampler_obj)
 
 #endif
@@ -24,23 +24,23 @@
 namespace musac {
 
     template<typename Decoder>
-    audio_source load_audio_source(musac::io_stream* stream, bool do_close=false) {
-        return {std::make_unique<Decoder>(), stream, do_close};
+    audio_source load_audio_source(std::unique_ptr<musac::io_stream> stream) {
+        return {std::make_unique<Decoder>(), std::move(stream)};
     }
 
     template<typename Decoder>
     audio_source load_audio_source(const std::filesystem::path& path) {
-        return load_audio_source<Decoder>(musac::io_from_file(path.u8string().c_str(), "rb").release(), true);
+        return load_audio_source<Decoder>(musac::io_from_file(path.u8string().c_str(), "rb"));
     }
 
     template<typename Decoder>
-    audio_source load_audio_source(musac::io_stream* stream, std::unique_ptr<resampler>&& resampler_obj, bool do_close=false) {
-        return {std::make_unique<Decoder>(), std::move(resampler_obj), stream, do_close};
+    audio_source load_audio_source(std::unique_ptr<musac::io_stream> stream, std::unique_ptr<resampler>&& resampler_obj) {
+        return {std::make_unique<Decoder>(), std::move(resampler_obj), std::move(stream)};
     }
 
     template<typename Decoder>
     audio_source load_audio_source(const std::filesystem::path& path, std::unique_ptr<resampler>&& resampler_obj) {
-        return load_audio_source<Decoder>(musac::io_from_file(path.u8string().c_str(), "rb").release(), std::move(resampler_obj), true);
+        return load_audio_source<Decoder>(musac::io_from_file(path.u8string().c_str(), "rb"), std::move(resampler_obj));
     }
 
     d_MUSAC_LOAD_DECLARE(wav);

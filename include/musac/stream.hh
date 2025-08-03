@@ -54,7 +54,7 @@ namespace musac {
              *  \retval true Stream was opened successfully.
              *  \retval false The stream could not be opened.
              */
-            virtual auto open() -> bool;
+            virtual bool open();
 
             /*!
              * \brief Start playback.
@@ -104,7 +104,7 @@ namespace musac {
              *  \retval true Stream was rewound successfully.
              *  \retval false Stream could not be rewound.
              */
-            virtual auto rewind() -> bool;
+            virtual bool rewind();
 
             /*!
              * \brief Change playback volume.
