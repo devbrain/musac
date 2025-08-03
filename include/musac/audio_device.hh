@@ -10,25 +10,31 @@
 #include <memory>
 #include <musac/export_musac.h>
 #include <musac/sdk/audio_format.h>
+#include <musac/audio_device_interface.hh>
 
 namespace musac {
     // Forward declarations
     class audio_stream;
     class audio_source;
-    class audio_hardware;
 
     class MUSAC_EXPORT audio_device {
-        friend class audio_hardware;
-
         public:
+            // Factory methods
+            static std::vector<device_info> enumerate_devices(bool playback_devices = true);
+            static audio_device open_default_device(const audio_spec* spec = nullptr);
+            static audio_device open_device(const std::string& device_id, const audio_spec* spec = nullptr);
+
             ~audio_device();
             audio_device(audio_device&&) noexcept;
 
-            uint32_t get_device_id() const;
+            // Device properties
+            std::string get_device_name() const;
+            std::string get_device_id() const;
             audio_format get_format() const;
             int get_channels() const;
             int get_freq() const;
 
+            // Playback control
             bool pause();
             bool is_paused() const;
             bool resume();
@@ -36,6 +42,7 @@ namespace musac {
             float get_gain() const;
             void set_gain(float v);
 
+            // Stream creation
             audio_stream create_stream(audio_source&& audio_src);
             
             void create_stream_with_callback(
@@ -43,36 +50,9 @@ namespace musac {
                 void* userdata);
 
         private:
-            audio_device(const audio_hardware& hw, const audio_spec* spec);
+            explicit audio_device(const device_info& info, const audio_spec* spec);
             
         private:
-            struct impl;
-            std::unique_ptr<impl> m_pimpl;
-    };
-
-    class MUSAC_EXPORT audio_hardware {
-        public:
-            static std::vector <audio_hardware> enumerate(bool playback_devices = true);
-            static audio_hardware get_default_device(bool playback_device = true);
-
-            std::string get_device_name() const;
-            audio_format get_format() const;
-            int get_channels() const;
-            int get_freq() const;
-
-            audio_device open_device(const audio_spec* spec = nullptr) const {
-                return audio_device(*this, spec);
-            }
-            
-            audio_hardware();
-            ~audio_hardware();
-            audio_hardware(audio_hardware&&) noexcept;
-            audio_hardware& operator=(audio_hardware&&) noexcept;
-
-        private:
-            
-            friend class audio_device;
-            
             struct impl;
             std::unique_ptr<impl> m_pimpl;
     };

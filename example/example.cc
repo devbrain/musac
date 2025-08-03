@@ -31,15 +31,14 @@ int main(int argc, char* argv[]) {
     using namespace musac;
 
     audio_system::init();
-    auto drivers = audio_hardware::enumerate(true);
-    for (const auto& d : drivers) {
-        std::cout << "[" << d.get_device_name() << "]" << " Format 0x" << std::hex << static_cast<int>(d.get_format()) <<
-            std::dec
-            << " Channels " << d.get_channels() << " Freq " << d.get_freq();
+    auto devices = audio_device::enumerate_devices(true);
+    for (const auto& d : devices) {
+        std::cout << "[" << d.name << "]" << " ID: " << d.id
+            << " Channels " << d.channels << " Freq " << d.sample_rate
+            << (d.is_default ? " (Default)" : "");
         std::cout << std::endl;
     } {
-        auto d = audio_hardware::get_default_device(true);
-        auto device = d.open_device();
+        auto device = audio_device::open_default_device();
         //auto strm = device.create_stream(loader::load(music_type::mp3));
         // 1 - on sunk
         // 2 - applause
@@ -54,13 +53,14 @@ int main(int argc, char* argv[]) {
         // 12 - tick
 
 
-        auto strm = device.create_stream(loader::load(music_type::mid));
+        auto strm = device.create_stream(loader::load(music_type::opb));
         audio_stream stream(std::move(strm));
 
         device.resume();
 
         bool done = false;
         stream.set_finish_callback([&done](auto& s) {
+            std::cout << "Stream finished!" << std::endl;
             done = true;
         });
         stream.open();

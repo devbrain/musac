@@ -5,6 +5,7 @@
 #include <musac/audio_system.hh>
 #include <musac/audio_backend.hh>
 #include <memory>
+
 namespace musac {
 
     extern void close_audio_devices();

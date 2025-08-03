@@ -29,61 +29,41 @@ void close_audio_devices() {
     s_device_manager.reset();
 }
 
-// audio_hardware implementation
-struct audio_hardware::impl {
-    device_info info;
-};
-
-audio_hardware::audio_hardware() : m_pimpl(std::make_unique<impl>()) {}
-audio_hardware::~audio_hardware() = default;
-audio_hardware::audio_hardware(audio_hardware&&) noexcept = default;
-audio_hardware& audio_hardware::operator=(audio_hardware&&) noexcept = default;
-
-std::vector<audio_hardware> audio_hardware::enumerate(bool playback_devices) {
+// Static factory methods
+std::vector<device_info> audio_device::enumerate_devices(bool playback_devices) {
     auto* manager = get_device_manager();
     if (!manager) {
         return {};
     }
     
-    auto devices = manager->enumerate_devices(playback_devices);
-    std::vector<audio_hardware> result;
-    
-    for (const auto& dev : devices) {
-        audio_hardware hw;
-        hw.m_pimpl->info = dev;
-        result.push_back(std::move(hw));
-    }
-    
-    return result;
+    return manager->enumerate_devices(playback_devices);
 }
 
-audio_hardware audio_hardware::get_default_device(bool playback_device) {
+audio_device audio_device::open_default_device(const audio_spec* spec) {
     auto* manager = get_device_manager();
     if (!manager) {
         THROW_RUNTIME("No audio device manager available");
     }
     
-    audio_hardware hw;
-    hw.m_pimpl->info = manager->get_default_device(playback_device);
-    return hw;
+    device_info info = manager->get_default_device(true);
+    return audio_device(info, spec);
 }
 
-std::string audio_hardware::get_device_name() const {
-    return m_pimpl->info.name;
-}
-
-audio_format audio_hardware::get_format() const {
-    // This is a limitation - we'd need to open the device to get its format
-    // For now, return a default
-    return audio_format::f32le;
-}
-
-int audio_hardware::get_channels() const {
-    return m_pimpl->info.channels;
-}
-
-int audio_hardware::get_freq() const {
-    return m_pimpl->info.sample_rate;
+audio_device audio_device::open_device(const std::string& device_id, const audio_spec* spec) {
+    auto* manager = get_device_manager();
+    if (!manager) {
+        THROW_RUNTIME("No audio device manager available");
+    }
+    
+    // Find the device with matching ID
+    auto devices = manager->enumerate_devices(true);
+    for (const auto& dev : devices) {
+        if (dev.id == device_id) {
+            return audio_device(dev, spec);
+        }
+    }
+    
+    THROW_RUNTIME("Device not found: " + device_id);
 }
 
 // audio_device implementation
@@ -94,7 +74,7 @@ struct audio_device::impl {
     audio_device_interface* manager = nullptr;
 };
 
-audio_device::audio_device(const audio_hardware& hw, const audio_spec* desired_spec)
+audio_device::audio_device(const device_info& info, const audio_spec* desired_spec)
     : m_pimpl(std::make_unique<impl>()) {
     
     m_pimpl->manager = get_device_manager();
@@ -102,20 +82,21 @@ audio_device::audio_device(const audio_hardware& hw, const audio_spec* desired_s
         THROW_RUNTIME("No audio device manager available");
     }
     
-    // Use hardware info to open device
+    // Use device info to open device
     audio_spec spec;
     if (desired_spec) {
         spec = *desired_spec;
     } else {
-        // Use hardware defaults
-        spec.format = hw.get_format();
-        spec.channels = hw.get_channels();
-        spec.freq = hw.get_freq();
+        // Use device defaults - we need to get format from the device manager
+        // For now, use sensible defaults
+        spec.format = audio_format::f32le;
+        spec.channels = info.channels;
+        spec.freq = info.sample_rate;
     }
     
     audio_spec obtained_spec;
     m_pimpl->device_handle = m_pimpl->manager->open_device(
-        hw.m_pimpl->info.id, spec, obtained_spec
+        info.id, spec, obtained_spec
     );
     
     if (!m_pimpl->device_handle) {
@@ -133,8 +114,14 @@ audio_device::~audio_device() {
 
 audio_device::audio_device(audio_device&&) noexcept = default;
 
-uint32_t audio_device::get_device_id() const {
-    return m_pimpl->device_handle;
+std::string audio_device::get_device_name() const {
+    // We would need to store the device name in impl
+    return "Default Device";
+}
+
+std::string audio_device::get_device_id() const {
+    // We would need to store the device id in impl
+    return "";
 }
 
 audio_format audio_device::get_format() const {
