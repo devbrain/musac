@@ -8,12 +8,18 @@ This directory contains unit tests for the musac audio library using the doctest
 unittest/
 ├── CMakeLists.txt      # Build configuration
 ├── test_main.cc        # Main test runner
-├── core/               # Core functionality tests (future SDL migration)
+├── core/               # Core functionality tests
 │   ├── test_types.cc
 │   ├── test_endian.cc
 │   ├── test_io_stream.cc
 │   ├── test_audio_format.cc
-│   └── test_memory.cc
+│   ├── test_memory.cc
+│   ├── test_thread_safety.cc        # Thread safety tests
+│   ├── test_phase1_thread_safety.cc # Phase 1: Stream destruction
+│   ├── test_phase4_sdl_callback_safety.cc # Phase 4: SDL callbacks
+│   ├── test_phase5_integration.cc  # Phase 5: Integration tests
+│   ├── test_mixer_public_api.cc    # Mixer thread safety
+│   └── test_cleanup.cc              # Resource cleanup tests
 ├── sdk/                # SDK component tests
 │   ├── test_audio_converter.cc
 │   ├── test_samples_converter.cc
@@ -104,12 +110,18 @@ TEST_SUITE("Component::Feature") {
 ## Test Categories
 
 ### Core Tests
-These tests are placeholders for the future SDL migration. They test:
+These test core functionality including thread safety:
 - Basic type definitions and properties
 - Endian conversion utilities
 - I/O stream abstractions
 - Audio format definitions
 - Memory utilities
+- **Thread Safety**: Comprehensive thread safety tests including:
+  - Stream destruction race conditions
+  - Mixer thread safety
+  - SDL callback synchronization
+  - Integration tests with concurrent operations
+  - Weak pointer lifetime management
 
 ### SDK Tests
 Tests for the SDK components:

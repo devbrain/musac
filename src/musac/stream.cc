@@ -78,6 +78,9 @@ namespace musac {
         std::atomic <bool> m_alive{true};
         std::atomic <uint32_t> m_inUse{0};
         
+        // Lifetime token for safe mixer tracking
+        std::shared_ptr<void> m_lifetime_token;
+        
         // New synchronization members for Phase 1
         mutable std::mutex m_usage_mutex;
         std::condition_variable m_usage_cv;
@@ -112,9 +115,9 @@ namespace musac {
         };
         
         // Helper to create usage guard
-        InUseGuard create_usage_guard() {
+        in_use_guard create_usage_guard() {
             bool is_valid = !m_destruction_pending.load();
-            return InUseGuard(m_inUse, &m_usage_mutex, &m_usage_cv, is_valid);
+            return in_use_guard(m_inUse, &m_usage_mutex, &m_usage_cv, is_valid);
         }
 
         void decode_audio(unsigned int& cur_pos, unsigned int len) {
@@ -167,7 +170,8 @@ namespace musac {
 
     audio_stream::impl::impl(audio_source&& audio_src)
         : m_token(token_generator++),
-          m_audio_source(std::move(audio_src)) {
+          m_audio_source(std::move(audio_src)),
+          m_lifetime_token(std::make_shared<int>(1)) {
     }
 
     audio_stream::impl::~impl() = default;
@@ -252,8 +256,18 @@ namespace musac {
         //     LOG_INFO("AudioCallback", "Processing", streamList->size(), "streams");
         // }
 
-        for (auto* stream : *streamList) {
-            InUseGuard guard = stream->m_pimpl->create_usage_guard();
+        for (const auto& entry : *streamList) {
+            auto* stream = entry.stream;
+            if (!stream || !stream->m_pimpl) {
+                continue; // Stream or its implementation is null, skip it
+            }
+            
+            // Double-check the entry is still valid (checks lifetime token)
+            if (!entry.is_valid()) {
+                continue; // Stream has been destroyed
+            }
+            
+            in_use_guard guard = stream->m_pimpl->create_usage_guard();
             if (!guard) {
                 continue; // Stream is being destroyed, skip it
             }
@@ -357,13 +371,13 @@ namespace musac {
                 impl::s_mixer.mix_channels(channels, out_offset, cur_pos, volume_left, volume_right);
             }
 
-            // Invoke callbacks while still under InUseGuard protection
+            // Invoke callbacks while still under in_use_guard protection
             if (has_finished) {
                 stream->invoke_finish_callback();
             } else if (has_looped) {
                 stream->invoke_loop_callback();
             }
-        }  // InUseGuard released here
+        }  // in_use_guard released here
         // Finally convert the float mix into the device buffer
         dev.m_sample_converter(out, out_len, impl::s_mixer.m_final_mix_buf);
     }
@@ -647,7 +661,7 @@ namespace musac {
         }
 
         m_pimpl->m_is_playing = true;
-        impl::s_mixer.add_stream(this);
+        impl::s_mixer.add_stream(this, m_pimpl->m_lifetime_token);
         return true;
     }
 
@@ -705,7 +719,7 @@ namespace musac {
         
         // 4) Only add to mixer if we were actually paused (not already in mixer)
         if (was_paused) {
-            impl::s_mixer.add_stream(this);
+            impl::s_mixer.add_stream(this, m_pimpl->m_lifetime_token);
         }
 
         // 4) Always restart fade-in if requested (this must reset any fade-out)
