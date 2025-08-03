@@ -12,7 +12,6 @@
 #include <musac/audio_source.hh>
 #include "musac/fade_envelop.hh"
 #include "musac/in_use_guard.hh"
-#include "musac/callback_dispatcher.hh"
 #include "musac/audio_mixer.hh"
 namespace musac {
     // A single mutex that protects all audio_stream public methods
@@ -283,12 +282,13 @@ namespace musac {
                 impl::s_mixer.mix_channels(channels, out_offset, cur_pos, volume_left, volume_right);
             }
 
+            // Invoke callbacks while still under InUseGuard protection
             if (has_finished) {
                 stream->invoke_finish_callback();
             } else if (has_looped) {
                 stream->invoke_loop_callback();
             }
-        }
+        }  // InUseGuard released here
         // Finally convert the float mix into the device buffer
         dev.m_sample_converter(out, out_len, impl::s_mixer.m_final_mix_buf);
     }
@@ -323,12 +323,9 @@ namespace musac {
             m_pimpl->stop_no_mixer();
         }
 
-        // 3) Prevent any further callbacks from being enqueued
+        // 3) Prevent any further callbacks from being called
         m_pimpl->m_finish_callback = nullptr;
         m_pimpl->m_loop_callback = nullptr;
-
-        // 4) Purge any pending in-process callbacks for *this*
-        CallbackDispatcher::instance().cleanup(m_pimpl->m_token);
     }
 
     audio_stream::audio_stream(audio_stream&& other) noexcept
@@ -490,19 +487,15 @@ namespace musac {
 
     void audio_stream::invoke_finish_callback() {
         if (m_pimpl->m_finish_callback) {
-            CallbackDispatcher::instance().enqueue({m_pimpl->m_token, [this]() {
-                if (m_pimpl->m_finish_callback)
-                    m_pimpl->m_finish_callback(*this);
-            }});
+            // Call directly from audio thread - callbacks should be quick!
+            m_pimpl->m_finish_callback(*this);
         }
     }
 
     void audio_stream::invoke_loop_callback() {
         if (m_pimpl->m_loop_callback) {
-            CallbackDispatcher::instance().enqueue({m_pimpl->m_token, [this]() {
-                if (m_pimpl->m_loop_callback)
-                    m_pimpl->m_loop_callback(*this);
-            }});
+            // Call directly from audio thread - callbacks should be quick!
+            m_pimpl->m_loop_callback(*this);
         }
     }
 
