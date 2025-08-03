@@ -289,7 +289,7 @@ namespace musac {
         private:
             friend class audio_device;
             friend class audio_mixer;
-            friend struct InUseGuard;
+            friend struct in_use_guard;
             audio_stream(audio_source&& audio_src);
 
             static void audio_callback(uint8_t out[], unsigned int out_len);

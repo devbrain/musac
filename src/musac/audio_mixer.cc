@@ -12,41 +12,19 @@ namespace musac {
     audio_mixer::audio_mixer(): m_final_mix_buf(0),
                                 m_stream_buf(0),
                                 m_processor_buf(0) {
-        // Phase 3: No need to allocate shared_ptr, using direct vector with mutex
     }
 
-    std::shared_ptr<std::vector<audio_stream*>> audio_mixer::get_streams() const {
-        // Phase 3: Return a copy under read lock for safe iteration
-        std::shared_lock lock(m_streams_mutex);
-        return std::make_shared<std::vector<audio_stream*>>(m_streams);
+    std::shared_ptr<std::vector<stream_container::stream_entry>> audio_mixer::get_streams() const {
+        return m_stream_container.get_valid_streams();
     }
 
-    void audio_mixer::add_stream(audio_stream* s) {
-        // Phase 3: Use write lock for modifications
-        std::unique_lock lock(m_streams_mutex);
-        
-        // Check if stream is already in the list
-        auto it = std::find(m_streams.begin(), m_streams.end(), s);
-        if (it != m_streams.end()) {
-            // LOG_WARN("AudioMixer", "Stream already in mixer, not adding again");
-            return;
-        }
-        
-        m_streams.push_back(s);
-        // LOG_INFO("AudioMixer", "Added stream, now have", m_streams.size(), "streams");
+    void audio_mixer::add_stream(audio_stream* s, std::weak_ptr<void> lifetime_token) {
+        if (!s) return;
+        m_stream_container.add(s, lifetime_token, s->get_token());
     }
 
     void audio_mixer::remove_stream(int token) {
-        // Phase 3: Use write lock for modifications
-        std::unique_lock lock(m_streams_mutex);
-        
-        auto it = std::remove_if(m_streams.begin(), m_streams.end(),
-            [token](audio_stream* s) { return s->get_token() == token; });
-        
-        if (it != m_streams.end()) {
-            m_streams.erase(it, m_streams.end());
-            // LOG_INFO("AudioMixer", "Removed stream with token", token, ", now have", m_streams.size(), "streams");
-        }
+        m_stream_container.remove(token);
     }
 
     void audio_mixer::resize(unsigned int out_len_samples) {
