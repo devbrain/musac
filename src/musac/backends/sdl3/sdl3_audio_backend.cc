@@ -25,19 +25,24 @@ bool sdl3_audio_backend::init() {
     
     // Increment SDL init count
     if (s_sdl_init_count++ == 0) {
-        // First initialization - just call SDL_Init unconditionally
-        SDL_Init(SDL_INIT_AUDIO);
-        
-        // Check if audio is now initialized
-        if (!SDL_WasInit(SDL_INIT_AUDIO)) {
+        // First initialization - SDL_Init returns true on success
+        if (!SDL_Init(SDL_INIT_AUDIO)) {
             s_sdl_init_count--;
-            // LOG_ERROR("SDL3Backend", "Failed to initialize SDL audio subsystem");
+            const char* error = SDL_GetError();
+            LOG_ERROR("SDL3Backend", "Failed to initialize SDL audio subsystem: %s", error ? error : "unknown error");
             return false;
         }
         
-        // LOG_INFO("SDL3Backend", "SDL audio subsystem initialized");
+        // Double-check if audio is now initialized
+        if (!SDL_WasInit(SDL_INIT_AUDIO)) {
+            s_sdl_init_count--;
+            LOG_ERROR("SDL3Backend", "SDL_Init succeeded but audio subsystem not initialized");
+            return false;
+        }
+        
+        LOG_INFO("SDL3Backend", "SDL audio subsystem initialized");
     } else {
-        // LOG_INFO("SDL3Backend", "SDL already initialized, count:", s_sdl_init_count.load());
+        LOG_INFO("SDL3Backend", "SDL already initialized, count:", s_sdl_init_count.load());
     }
     
     m_initialized = true;

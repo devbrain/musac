@@ -25,14 +25,14 @@ namespace musac {
 
 // Note: This macro defines the implementations inside the namespace where it's expanded
 #define d_MUSAC_LOAD_IMPLEMENT(TYPE)                                                                                   \
-audio_source load_ ## TYPE (io_stream* stream, bool do_close) {                                                        \
-    return load_audio_source<decoder_ ## TYPE>(stream, do_close);                                                      \
+audio_source load_ ## TYPE (std::unique_ptr<io_stream> stream) {                                                        \
+    return load_audio_source<decoder_ ## TYPE>(std::move(stream));                                                      \
 }                                                                                                                      \
 audio_source load_ ## TYPE (const std::filesystem::path& path) {                                                       \
     return load_audio_source<decoder_ ## TYPE>(path);                                                                  \
 }                                                                                                                      \
-audio_source load_ ## TYPE (io_stream* stream, std::unique_ptr<resampler>&& resampler_obj, bool do_close)  {           \
-    return load_audio_source<decoder_ ## TYPE>(stream, std::move(resampler_obj), do_close);                            \
+audio_source load_ ## TYPE (std::unique_ptr<io_stream> stream, std::unique_ptr<resampler>&& resampler_obj)  {           \
+    return load_audio_source<decoder_ ## TYPE>(std::move(stream), std::move(resampler_obj));                            \
 }                                                                                                                      \
 audio_source load_ ## TYPE (const std::filesystem::path& path, std::unique_ptr<resampler>&& resampler_obj) {           \
     return load_audio_source<decoder_ ## TYPE>(path, std::move(resampler_obj));                                        \

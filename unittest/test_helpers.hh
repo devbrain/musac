@@ -221,9 +221,9 @@ struct mock_audio_state {
 class mock_audio_source : public audio_source {
 private:
     // Private constructor for factory
-    mock_audio_source(std::unique_ptr<decoder> dec, musac::io_stream* io, 
+    mock_audio_source(std::unique_ptr<decoder> dec, std::unique_ptr<musac::io_stream> io, 
                       std::shared_ptr<mock_audio_state> state)
-        : audio_source(std::move(dec), io, true), m_state(state) {}
+        : audio_source(std::move(dec), std::move(io)), m_state(state) {}
         
 public:
     // Factory method
@@ -335,7 +335,7 @@ inline std::unique_ptr<mock_audio_source> mock_audio_source::create(musac::size 
     auto io_stream = std::make_unique<memory_io_stream>();
     
     return std::unique_ptr<mock_audio_source>(
-        new mock_audio_source(std::move(decoder), io_stream.release(), state)
+        new mock_audio_source(std::move(decoder), std::move(io_stream), state)
     );
 }
 
@@ -346,9 +346,8 @@ inline std::unique_ptr<audio_source> create_test_source(
     
     auto decoder = std::make_unique<test_decoder>(frames, pattern);
     auto io = std::make_unique<memory_io_stream>();
-    auto io_ptr = io.release(); // audio_source will manage it if do_close is true
     
-    return std::make_unique<audio_source>(std::move(decoder), io_ptr, true);
+    return std::make_unique<audio_source>(std::move(decoder), std::move(io));
 }
 
 inline std::unique_ptr<mock_audio_source> create_mock_source(musac::size frames = 44100) {

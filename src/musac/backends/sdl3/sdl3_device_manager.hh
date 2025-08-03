@@ -3,7 +3,6 @@
 
 #include <musac/audio_device_interface.hh>
 #include <SDL3/SDL.h>
-#include <unordered_map>
 
 namespace musac {
 
@@ -36,9 +35,7 @@ private:
     static SDL_AudioFormat to_sdl_format(audio_format fmt);
     static audio_format from_sdl_format(SDL_AudioFormat fmt);
     
-    // Map from our handle to SDL device ID
-    std::unordered_map<uint32_t, SDL_AudioDeviceID> m_devices;
-    uint32_t m_next_handle = 1;
+    // No mapping needed - SDL_AudioDeviceID is already uint32_t
 };
 
 } // namespace musac
