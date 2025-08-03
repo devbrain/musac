@@ -4,6 +4,15 @@
 
 namespace musac {
 
+// Custom deleter that checks if SDL is still initialized
+static void safe_destroy_audio_stream(SDL_AudioStream* stream) {
+    if (stream && SDL_WasInit(SDL_INIT_AUDIO)) {
+        SDL_DestroyAudioStream(stream);
+    }
+    // If SDL is not initialized, we can't safely destroy the stream
+    // SDL_Quit() should have cleaned it up already
+}
+
 SDL_AudioFormat sdl3_audio_stream::to_sdl_format(audio_format fmt) {
     switch (fmt) {
         case audio_format::u8:     return SDL_AUDIO_U8;
@@ -38,7 +47,7 @@ sdl3_audio_stream::sdl3_audio_stream(SDL_AudioDeviceID device_id, const audio_sp
     if (m_callback) {
         m_stream = std::shared_ptr<SDL_AudioStream>(
             SDL_OpenAudioDeviceStream(m_device_id, &sdl_spec, sdl_callback, this),
-            SDL_DestroyAudioStream
+            safe_destroy_audio_stream
         );
         // SDL_OpenAudioDeviceStream automatically binds the stream
         m_bound = true;
@@ -60,7 +69,7 @@ sdl3_audio_stream::sdl3_audio_stream(SDL_AudioDeviceID device_id, const audio_sp
         
         m_stream = std::shared_ptr<SDL_AudioStream>(
             SDL_CreateAudioStream(&sdl_spec, &device_spec),
-            SDL_DestroyAudioStream
+            safe_destroy_audio_stream
         );
     }
 }

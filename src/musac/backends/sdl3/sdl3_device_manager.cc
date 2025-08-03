@@ -7,10 +7,13 @@ namespace musac {
 sdl3_device_manager::sdl3_device_manager() {}
 
 sdl3_device_manager::~sdl3_device_manager() {
-    // Close all open devices
-    for (const auto& [handle, device_id] : m_devices) {
-        SDL_CloseAudioDevice(device_id);
+    // Close all open devices only if SDL is still initialized
+    if (SDL_WasInit(SDL_INIT_AUDIO)) {
+        for (const auto& [handle, device_id] : m_devices) {
+            SDL_CloseAudioDevice(device_id);
+        }
     }
+    // If SDL is not initialized, SDL_Quit() already cleaned up
 }
 
 SDL_AudioFormat sdl3_device_manager::to_sdl_format(audio_format fmt) {
@@ -140,7 +143,10 @@ uint32_t sdl3_device_manager::open_device(const std::string& device_id, const au
 void sdl3_device_manager::close_device(uint32_t device_handle) {
     auto it = m_devices.find(device_handle);
     if (it != m_devices.end()) {
-        SDL_CloseAudioDevice(it->second);
+        // Only close if SDL is still initialized
+        if (SDL_WasInit(SDL_INIT_AUDIO)) {
+            SDL_CloseAudioDevice(it->second);
+        }
         m_devices.erase(it);
     }
 }
