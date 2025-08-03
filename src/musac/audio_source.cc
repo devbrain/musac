@@ -6,7 +6,7 @@
 #include <failsafe/failsafe.hh>
 musac::audio_source::audio_source(std::unique_ptr <decoder> decoder_obj,
                                   std::unique_ptr <resampler> resampler_obj,
-                                  SDL_IOStream* rwops, bool do_close)
+                                  musac::io_stream* rwops, bool do_close)
     : m_rwops(rwops),
       m_close_rw(do_close),
       m_decoder(std::move(decoder_obj)),
@@ -16,7 +16,7 @@ musac::audio_source::audio_source(std::unique_ptr <decoder> decoder_obj,
     }
 }
 
-musac::audio_source::audio_source(std::unique_ptr <decoder> decoder_obj, SDL_IOStream* rwops, bool do_close)
+musac::audio_source::audio_source(std::unique_ptr <decoder> decoder_obj, musac::io_stream* rwops, bool do_close)
     : m_rwops(rwops),
       m_close_rw(do_close),
       m_decoder(std::move(decoder_obj)) {
@@ -32,7 +32,7 @@ musac::audio_source::audio_source(audio_source&& other) noexcept
 
 musac::audio_source::~audio_source() {
     if (m_close_rw && m_rwops) {
-        SDL_CloseIO(m_rwops);
+        m_rwops->close();
     }
 }
 

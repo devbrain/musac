@@ -7,22 +7,25 @@
 
 #include <vector>
 #include <string>
-#include <SDL3/SDL.h>
-#include <musac/stream.hh>
-#include <musac/audio_source.hh>
+#include <memory>
+#include <musac/export_musac.h>
+#include <musac/sdk/audio_format.h>
 
 namespace musac {
+    // Forward declarations
+    class audio_stream;
+    class audio_source;
     class audio_hardware;
 
-    class audio_device {
+    class MUSAC_EXPORT audio_device {
         friend class audio_hardware;
 
         public:
             ~audio_device();
             audio_device(audio_device&&) noexcept;
 
-            SDL_AudioDeviceID get_device_id() const;
-            SDL_AudioFormat get_format() const;
+            uint32_t get_device_id() const;
+            audio_format get_format() const;
             int get_channels() const;
             int get_freq() const;
 
@@ -34,46 +37,44 @@ namespace musac {
             void set_gain(float v);
 
             audio_stream create_stream(audio_source&& audio_src);
+            
+            void create_stream_with_callback(
+                void (*callback)(void* userdata, uint8_t* stream, int len),
+                void* userdata);
 
         private:
-            audio_device(SDL_AudioDeviceID device_id, const SDL_AudioSpec* spec);
-            static void SDLCALL sdl_audio_callback(void* userdata, SDL_AudioStream* stream, int additional_amount,
-                                                   int total_amount);
+            audio_device(const audio_hardware& hw, const audio_spec* spec);
+            
         private:
-            SDL_AudioDeviceID m_device_id;
-            SDL_AudioFormat m_format;
-            int m_channels;
-            int m_freq;
-            std::shared_ptr<SDL_AudioStream> m_stream;
+            struct impl;
+            std::unique_ptr<impl> m_pimpl;
     };
 
-    class audio_hardware {
+    class MUSAC_EXPORT audio_hardware {
         public:
             static std::vector <audio_hardware> enumerate(bool playback_devices = true);
             static audio_hardware get_default_device(bool playback_device = true);
 
-            SDL_AudioDeviceID get_device_id() const;
-            bool is_playback() const;
-            bool is_default() const;
-            SDL_AudioFormat get_format() const;
+            std::string get_device_name() const;
+            audio_format get_format() const;
             int get_channels() const;
             int get_freq() const;
-            std::string get_name() const;
 
-            audio_device open() const;
-            audio_device open(const SDL_AudioSpec& spec) const;
+            audio_device open_device(const audio_spec* spec = nullptr) const {
+                return audio_device(*this, spec);
+            }
+            
+            audio_hardware();
+            ~audio_hardware();
+            audio_hardware(audio_hardware&&) noexcept;
+            audio_hardware& operator=(audio_hardware&&) noexcept;
 
         private:
-            audio_hardware(SDL_AudioDeviceID device_id, bool is_playback, bool is_default);
-
-        private:
-            SDL_AudioDeviceID m_device_id;
-            bool m_is_playback;
-            bool m_is_default;
-            SDL_AudioFormat m_format;
-            int m_channels;
-            int m_freq;
-            std::string m_device_name;
+            
+            friend class audio_device;
+            
+            struct impl;
+            std::unique_ptr<impl> m_pimpl;
     };
 }
 

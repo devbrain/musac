@@ -6,40 +6,41 @@
 #define  AUDIO_LOADER_HH
 
 #include <filesystem>
-#include <SDL3/SDL.h>
 #include <musac/audio_source.hh>
+#include <musac/sdk/io_stream.h>
 #include <musac/sdk/resampler.hh>
+#include <musac/export_musac.h>
 
 #if !defined(d_MUSAC_LOAD_DECLARE)
 
 #define d_MUSAC_LOAD_DECLARE(TYPE)                                                                                                  \
-    audio_source load_ ## TYPE (SDL_IOStream* stream, bool do_close=false);                                                         \
-    audio_source load_ ## TYPE (const std::filesystem::path& path);                                                                 \
-    audio_source load_ ## TYPE (SDL_IOStream* stream, std::unique_ptr<resampler>&& resampler_obj, bool do_close=false);             \
-    audio_source load_ ## TYPE (const std::filesystem::path& path, std::unique_ptr<resampler>&& resampler_obj)
+    MUSAC_EXPORT audio_source load_ ## TYPE (musac::io_stream* stream, bool do_close=false);                                            \
+    MUSAC_EXPORT audio_source load_ ## TYPE (const std::filesystem::path& path);                                                    \
+    MUSAC_EXPORT audio_source load_ ## TYPE (musac::io_stream* stream, std::unique_ptr<resampler>&& resampler_obj, bool do_close=false);\
+    MUSAC_EXPORT audio_source load_ ## TYPE (const std::filesystem::path& path, std::unique_ptr<resampler>&& resampler_obj)
 
 #endif
 
 namespace musac {
 
     template<typename Decoder>
-    audio_source load_audio_source(SDL_IOStream* stream, bool do_close=false) {
+    audio_source load_audio_source(musac::io_stream* stream, bool do_close=false) {
         return {std::make_unique<Decoder>(), stream, do_close};
     }
 
     template<typename Decoder>
     audio_source load_audio_source(const std::filesystem::path& path) {
-        return load_audio_source<Decoder>(SDL_IOFromFile(path.u8string().c_str(), "rb"), true);
+        return load_audio_source<Decoder>(musac::io_from_file(path.u8string().c_str(), "rb").release(), true);
     }
 
     template<typename Decoder>
-    audio_source load_audio_source(SDL_IOStream* stream, std::unique_ptr<resampler>&& resampler_obj, bool do_close=false) {
+    audio_source load_audio_source(musac::io_stream* stream, std::unique_ptr<resampler>&& resampler_obj, bool do_close=false) {
         return {std::make_unique<Decoder>(), std::move(resampler_obj), stream, do_close};
     }
 
     template<typename Decoder>
     audio_source load_audio_source(const std::filesystem::path& path, std::unique_ptr<resampler>&& resampler_obj) {
-        return load_audio_source<Decoder>(SDL_IOFromFile(path.u8string().c_str(), "rb"), std::move(resampler_obj), true);
+        return load_audio_source<Decoder>(musac::io_from_file(path.u8string().c_str(), "rb").release(), std::move(resampler_obj), true);
     }
 
     d_MUSAC_LOAD_DECLARE(wav);

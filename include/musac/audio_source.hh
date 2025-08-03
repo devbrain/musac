@@ -6,20 +6,20 @@
 #define  AUDIO_SOURCE_HH
 
 #include <chrono>
-#include <SDL3/SDL.h>
 #include <musac/sdk/decoder.hh>
 #include <musac/sdk/resampler.hh>
+#include <musac/export_musac.h>
 
 namespace musac {
-    class audio_source {
+    class MUSAC_EXPORT audio_source {
         public:
             audio_source(std::unique_ptr <decoder> decoder_obj,
                          std::unique_ptr <resampler> resampler_obj,
-                         SDL_IOStream* rwops,
+                         musac::io_stream* rwops,
                          bool do_close);
 
             audio_source(std::unique_ptr <decoder> decoder_obj,
-                         SDL_IOStream* rwops,
+                         musac::io_stream* rwops,
                          bool do_close);
 
             audio_source(audio_source&&) noexcept;
@@ -38,7 +38,7 @@ namespace musac {
             std::chrono::microseconds duration() const;
             bool seek_to_time(std::chrono::microseconds pos) const;
         private:
-            SDL_IOStream* m_rwops;
+            musac::io_stream* m_rwops;
             bool m_close_rw;
             // Resamplers hold a reference to decoders, so we store it as a shared_ptr.
             std::shared_ptr <decoder> m_decoder;

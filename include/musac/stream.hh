@@ -1,7 +1,6 @@
 // This is copyrighted software. More information is at the end of this file.
 #pragma once
 
-#include <SDL3/SDL.h>
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -9,7 +8,7 @@
 #include <musac/sdk/buffer.hh>
 #include <musac/audio_source.hh>
 #include <musac/audio_device_data.hh>
-
+#include <musac/export_musac.h>
 #include <musac/sdk/from_float_converter.hh>
 
 namespace musac {
@@ -34,7 +33,7 @@ namespace musac {
      * destruction, meaning you should not create a Stream in one thread and destroy it in another
      * without synchronization.
      */
-    class audio_stream  {
+    class MUSAC_EXPORT audio_stream  {
         public:
             using callback_t = std::function <void(audio_stream&)>;
 
@@ -271,7 +270,6 @@ namespace musac {
              */
             void clear_processors();
 
-            static void HandleEvent(const SDL_Event& ev);
         protected:
             /*!
              * \brief Invokes the finish-playback callback, if there is one.
@@ -292,7 +290,7 @@ namespace musac {
             friend class audio_mixer;
             audio_stream(audio_source&& audio_src);
 
-            static void sdl_audio_callback(Uint8 out[], unsigned int out_len);
+            static void audio_callback(uint8_t out[], unsigned int out_len);
             static void set_audio_device_data(const audio_device_data& aud);
             [[nodiscard]] int get_token() const;
         private:

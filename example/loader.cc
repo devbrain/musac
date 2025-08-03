@@ -20,7 +20,7 @@
 
 #include <musac/audio_loader.hh>
 
-using loader_func_t = musac::audio_source (*)(SDL_IOStream*, bool);
+using loader_func_t = musac::audio_source (*)(musac::io_stream*, bool);
 using data_t = std::tuple<music_type, const unsigned char*, std::size_t, loader_func_t>;
 
 #define S(TYPE) data_t{music_type::TYPE, TYPE ## _example_ ## TYPE, TYPE ## _example_ ## TYPE ## _size, musac::load_ ## TYPE}
@@ -38,19 +38,23 @@ static std::array<data_t, mus_count> s_data = {
     S2(xmi, musac::load_midi)
 };
 
-static std::vector<SDL_IOStream*> s_streams;
+#include <musac/sdk/io_stream.h>
+
+static std::vector<std::unique_ptr<musac::io_stream>> s_streams;
 
 void loader::init() {
-    s_streams.resize(mus_count, nullptr);
+    s_streams.clear();
+    s_streams.reserve(mus_count);
+    for (size_t i = 0; i < mus_count; ++i) {
+        s_streams.push_back(nullptr);
+    }
     for (const auto& [t, buf, sz, fn] : s_data) {
-        s_streams[static_cast <int>(t)] = SDL_IOFromConstMem(buf, sz);
+        s_streams[static_cast <int>(t)] = musac::io_from_memory(buf, sz);
     }
 }
 
 void loader::done() {
-    for (const auto& s : s_streams) {
-        SDL_CloseIO(s);
-    }
+    s_streams.clear();
 }
 
 musac::audio_source loader::load(music_type type) {
@@ -59,5 +63,5 @@ musac::audio_source loader::load(music_type type) {
     }
     auto idx = static_cast <int>(type);
     auto ldr = std::get<3>(s_data[idx]);
-    return ldr(s_streams[idx], false);
+    return ldr(s_streams[idx].get(), false);
 }

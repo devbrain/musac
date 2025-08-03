@@ -2,12 +2,12 @@
 #include <stdexcept>
 #include <mutex>
 #include <thread>
+#include <chrono>
 
 #include <musac/stream.hh>
 #include <musac/sdk/processor.hh>
 #include <musac/sdk/resampler.hh>
 #include <musac/sdk/buffer.hh>
-#include "musac/mutex.hh"
 #include <failsafe/failsafe.hh>
 #include <musac/audio_source.hh>
 #include "musac/fade_envelop.hh"
@@ -18,6 +18,15 @@ namespace musac {
     // A single mutex that protects all audio_stream public methods
     static std::mutex s_audioMutex;
     static std::atomic <bool> s_isShuttingDown{false};
+    
+    // Time tracking
+    static auto s_start_time = std::chrono::steady_clock::now();
+    
+    static unsigned int get_ticks() {
+        auto now = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - s_start_time);
+        return static_cast<unsigned int>(duration.count());
+    }
 
 
 
@@ -131,7 +140,7 @@ namespace musac {
         m_is_playing = false;
     }
 
-    void audio_stream::sdl_audio_callback(Uint8 out[], unsigned int out_len) {
+    void audio_stream::audio_callback(uint8_t out[], unsigned int out_len) {
         // If we’re tearing down, just emit silence and bail.
         if (s_isShuttingDown.load(std::memory_order_relaxed)) {
             std::memset(out, 0, out_len);
@@ -143,13 +152,12 @@ namespace musac {
         // Always clear the output buffer first (silence)
         std::memset(out, 0, out_len);
 
-        // If we don’t have a stream or converter yet, we just leave the silence
-        if (!dev.m_stream || !dev.m_sample_converter) {
-            // Log once, but don’t bail out entirely—silence is safer
+        // If we don't have a converter yet, we just leave the silence
+        if (!dev.m_sample_converter) {
+            // Log once, but don't bail out entirely—silence is safer
             static bool warned = false;
             if (!warned) {
-                SDL_LogWarn(SDL_LOG_CATEGORY_AUDIO,
-                            "audio callback: missing stream or converter, outputting silence");
+                LOG_WARN("audio", "missing sample converter, outputting silence");
                 warned = true;
             }
             return;
@@ -159,7 +167,28 @@ namespace musac {
         const auto channels = (unsigned int)audio_mixer::m_audio_device_data.m_audio_spec.channels;
         const auto freq = (unsigned int)audio_mixer::m_audio_device_data.m_audio_spec.freq;
 
-        const auto out_len_samples = out_len / (SDL_AUDIO_BITSIZE((unsigned)format) / 8);
+        // Calculate bytes per sample based on format
+        int bytes_per_sample = 0;
+        switch (format) {
+            case audio_format::u8:
+            case audio_format::s8:
+                bytes_per_sample = 1;
+                break;
+            case audio_format::s16le:
+            case audio_format::s16be:
+                bytes_per_sample = 2;
+                break;
+            case audio_format::s32le:
+            case audio_format::s32be:
+            case audio_format::f32le:
+            case audio_format::f32be:
+                bytes_per_sample = 4;
+                break;
+            default:
+                LOG_ERROR("audio", "Unknown audio format");
+                return;
+        }
+        const auto out_len_samples = out_len / bytes_per_sample;
         const auto out_len_frames = out_len_samples / channels;
 
         impl::s_mixer.resize(out_len_samples);
@@ -169,7 +198,7 @@ namespace musac {
         // modify the original as we go, removing streams that have stopped.
         auto streamList = impl::s_mixer.get_streams();
 
-        const auto now_tick = SDL_GetTicks();
+        const auto now_tick = get_ticks();
         const auto wanted_ticks = out_len_frames * 1000 / freq;
 
         for (auto* stream : *streamList) {
@@ -325,7 +354,7 @@ namespace musac {
             return false;
         } catch (const std::exception& e) {
             // Log the error but return false to maintain API compatibility
-            SDL_SetError("Failed to open audio stream: %s", e.what());
+            LOG_ERROR("audio", "Failed to open audio stream: %s", e.what());
             return false;
         }
     }
@@ -458,9 +487,6 @@ namespace musac {
         m_pimpl->processors.clear();
     }
 
-    void audio_stream::HandleEvent([[maybe_unused]] const SDL_Event& ev) {
-        CallbackDispatcher::instance().dispatch();
-    }
 
     void audio_stream::invoke_finish_callback() {
         if (m_pimpl->m_finish_callback) {
@@ -503,7 +529,7 @@ namespace musac {
         // Initialize playback
         m_pimpl->m_current_iteration = 0;
         m_pimpl->m_wanted_iterations = iterations;
-        m_pimpl->m_playback_start_tick = static_cast <unsigned int>(SDL_GetTicks());
+        m_pimpl->m_playback_start_tick = get_ticks();
         m_pimpl->m_starting = true;
 
         // Fade-in if requested

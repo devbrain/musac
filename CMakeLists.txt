@@ -15,6 +15,11 @@ option(MUSAC_INSTALL "Generate install targets" ON)
 option(MUSAC_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(MUSAC_ENABLE_LTO "Enable link-time optimization" OFF)
 
+# Audio backend options
+option(MUSAC_USE_SDL3 "Use SDL3 as audio backend" ON)
+set(MUSAC_AUDIO_BACKEND "SDL3" CACHE STRING "Audio backend to use")
+set_property(CACHE MUSAC_AUDIO_BACKEND PROPERTY STRINGS "SDL3" "Null" "Custom")
+
 # Include standard install directories
 include(GNUInstallDirs)
 
