@@ -16,19 +16,14 @@ TEST_SUITE("sdl_shutdown_order") {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         
         // Verify system is initialized by opening a device
-        {
-            auto device = audio_device::open_default_device();
-            CHECK(device.get_channels() > 0);
-            CHECK(device.get_freq() > 0);
-            
-            // Device must be destroyed before audio_system::done()
-        }
+        auto device = audio_device::open_default_device();
+        CHECK(device.get_channels() > 0);
+        CHECK(device.get_freq() > 0);
         
         audio_system::done();
         
-        // After done(), we can init again
-        CHECK(audio_system::init());
-        audio_system::done();
+        // Now the device destructor will run after done() - this should be safe
+        // because the device holds a shared_ptr to the manager
     }
     
     // Test with device but no streams
@@ -107,23 +102,19 @@ TEST_SUITE("sdl_shutdown_order") {
             CHECK(init_success);
             
             if (init_success) {
-                {
-                    auto device = audio_device::open_default_device();
-                    CHECK(device.get_channels() > 0);
-                    device.resume();
-                    
-                    auto source = create_mock_source(44100);
-                    auto stream = device.create_stream(std::move(*source));
-                    CHECK(stream.open());
-                    CHECK(stream.play());
-                    
-                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                    
-                    // Verify stream is playing before cleanup
-                    CHECK(stream.is_playing());
-                    
-                    // Device and stream must be destroyed before done()
-                }
+                auto device = audio_device::open_default_device();
+                CHECK(device.get_channels() > 0);
+                device.resume();
+                
+                auto source = create_mock_source(44100);
+                auto stream = device.create_stream(std::move(*source));
+                CHECK(stream.open());
+                CHECK(stream.play());
+                
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                
+                // Verify stream is playing before cleanup
+                CHECK(stream.is_playing());
                 
                 successful_cycles++;
             } else {
@@ -131,11 +122,36 @@ TEST_SUITE("sdl_shutdown_order") {
             }
             
             audio_system::done();
+            
+            // Device and stream destructors run after done() - this is now safe
         }
         
         // All cycles should have succeeded
         CHECK(successful_cycles == 5);
         CHECK(failed_cycles == 0);
+    }
+    
+    // Test that device survives audio_system::done() - fool-proof behavior
+    TEST_CASE("device survives system shutdown") {
+        CHECK(audio_system::init());
+        
+        auto device = audio_device::open_default_device();
+        CHECK(device.get_channels() > 0);
+        CHECK(device.get_freq() > 0);
+        
+        auto source = create_mock_source(44100);
+        auto stream = device.create_stream(std::move(*source));
+        CHECK(stream.open());
+        CHECK(stream.play());
+        CHECK(stream.is_playing());
+        
+        // Shutdown the audio system while device and stream are still alive
+        audio_system::done();
+        
+        // Device and stream objects still exist - their destructors should
+        // handle this gracefully because they hold shared_ptr to the manager
+        
+        // This used to crash, but now it's safe
     }
 }
 

@@ -18,33 +18,40 @@ namespace musac {
 extern void close_audio_stream();
 extern void reset_audio_stream();
 
-// Global device manager instance
-static std::unique_ptr<audio_device_interface> s_device_manager;
+// Global device manager instance - use shared_ptr for safe lifetime management
+static std::shared_ptr<audio_device_interface> s_device_manager;
+static std::mutex s_manager_mutex;
 
 // Track the active device to enforce single device constraint
 static audio_device* s_active_device = nullptr;
 static std::mutex s_device_mutex;
 
 // Initialize device manager if needed
-static audio_device_interface* get_device_manager() {
+static std::shared_ptr<audio_device_interface> get_device_manager() {
+    std::lock_guard<std::mutex> lock(s_manager_mutex);
     if (!s_device_manager) {
         // Need to include the factory header to get create_default_audio_device_manager
         extern std::unique_ptr<audio_device_interface> create_default_audio_device_manager();
         s_device_manager = create_default_audio_device_manager();
     }
-    return s_device_manager.get();
+    return s_device_manager;
 }
 
 // Close all audio devices (called from audio_system::done)
 void close_audio_devices() {
-    std::lock_guard<std::mutex> lock(s_device_mutex);
-    s_active_device = nullptr;
-    s_device_manager.reset();
+    {
+        std::lock_guard<std::mutex> lock(s_device_mutex);
+        s_active_device = nullptr;
+    }
+    {
+        std::lock_guard<std::mutex> lock(s_manager_mutex);
+        s_device_manager.reset();
+    }
 }
 
 // Static factory methods
 std::vector<device_info> audio_device::enumerate_devices(bool playback_devices) {
-    auto* manager = get_device_manager();
+    auto manager = get_device_manager();
     if (!manager) {
         return {};
     }
@@ -53,7 +60,7 @@ std::vector<device_info> audio_device::enumerate_devices(bool playback_devices) 
 }
 
 audio_device audio_device::open_default_device(const audio_spec* spec) {
-    auto* manager = get_device_manager();
+    auto manager = get_device_manager();
     if (!manager) {
         THROW_RUNTIME("No audio device manager available");
     }
@@ -63,7 +70,7 @@ audio_device audio_device::open_default_device(const audio_spec* spec) {
 }
 
 audio_device audio_device::open_device(const std::string& device_id, const audio_spec* spec) {
-    auto* manager = get_device_manager();
+    auto manager = get_device_manager();
     if (!manager) {
         THROW_RUNTIME("No audio device manager available");
     }
@@ -86,7 +93,7 @@ struct audio_device::impl {
     uint32_t device_handle = 0;
     std::unique_ptr<audio_stream_interface> stream;
     audio_spec spec;
-    audio_device_interface* manager = nullptr;
+    std::shared_ptr<audio_device_interface> manager; // Keep manager alive
     std::atomic<int> stream_count{0}; // Track active streams
 };
 
@@ -147,16 +154,20 @@ audio_device::~audio_device() {
         }
     }
     
-    if (m_pimpl && m_pimpl->manager && m_pimpl->device_handle) {
-        // LOG_INFO("AudioDevice", "Closing device handle:", m_pimpl->device_handle);
-        
-        // Close the device first - this will stop all audio processing
-        m_pimpl->manager->close_device(m_pimpl->device_handle);
-        
-        // Then destroy the stream - device is already closed so no callbacks
+    if (m_pimpl) {
+        // Destroy the stream first (if any)
         if (m_pimpl->stream) {
-            // LOG_INFO("AudioDevice", "Destroying stream after closing device");
+            // LOG_INFO("AudioDevice", "Destroying stream");
             m_pimpl->stream.reset();
+        }
+        
+        // Close the device handle if we have a manager and handle
+        if (m_pimpl->manager && m_pimpl->device_handle) {
+            // LOG_INFO("AudioDevice", "Closing device handle:", m_pimpl->device_handle);
+            
+            // The manager is kept alive by shared_ptr, so this is safe
+            // even if audio_system::done() was already called
+            m_pimpl->manager->close_device(m_pimpl->device_handle);
         }
     }
 }
