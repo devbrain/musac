@@ -17,9 +17,9 @@ public:
     
     /**
      * Initialize the audio subsystem.
-     * @return true on success, false on failure
+     * @throws std::runtime_error if initialization fails
      */
-    virtual bool init() = 0;
+    virtual void init() = 0;
     
     /**
      * Shutdown the audio subsystem.

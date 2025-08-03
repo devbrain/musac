@@ -1,5 +1,6 @@
 #include "sdl3_device_manager.hh"
 #include "sdl3_audio_stream.hh"
+#include <musac/error.hh>
 #include <failsafe/failsafe.hh>
 
 namespace musac {
@@ -114,16 +115,20 @@ uint32_t sdl3_device_manager::open_device(const std::string& device_id, const au
     
     SDL_AudioDeviceID opened_id = SDL_OpenAudioDevice(sdl_device_id, &wanted);
     if (!opened_id) {
-        return 0;
+        const char* error = SDL_GetError();
+        THROW_RUNTIME("Failed to open audio device: ", error ? error : "unknown error");
     }
     
     // Get the actual spec
     SDL_AudioSpec obtained_sdl_spec;
-    if (SDL_GetAudioDeviceFormat(opened_id, &obtained_sdl_spec, nullptr)) {
-        obtained_spec.format = from_sdl_format(obtained_sdl_spec.format);
-        obtained_spec.channels = obtained_sdl_spec.channels;
-        obtained_spec.freq = obtained_sdl_spec.freq;
+    if (!SDL_GetAudioDeviceFormat(opened_id, &obtained_sdl_spec, nullptr)) {
+        SDL_CloseAudioDevice(opened_id);
+        THROW_RUNTIME("Failed to get audio device format");
     }
+    
+    obtained_spec.format = from_sdl_format(obtained_sdl_spec.format);
+    obtained_spec.channels = obtained_sdl_spec.channels;
+    obtained_spec.freq = obtained_sdl_spec.freq;
     
     // Check if device is paused after opening
     bool is_paused = SDL_AudioDevicePaused(opened_id);
@@ -230,7 +235,7 @@ std::unique_ptr<audio_stream_interface> sdl3_device_manager::create_stream(
     void* userdata
 ) {
     if (device_handle == 0) {
-        return nullptr;
+        THROW_RUNTIME("Invalid device handle for stream creation");
     }
     
     return std::make_unique<sdl3_audio_stream>(static_cast<SDL_AudioDeviceID>(device_handle), spec, callback, userdata);

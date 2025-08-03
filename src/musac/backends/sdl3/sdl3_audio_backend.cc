@@ -1,5 +1,6 @@
 #include "sdl3_audio_backend.hh"
 #include <SDL3/SDL.h>
+#include <musac/error.hh>
 #include <failsafe/failsafe.hh>
 #include <atomic>
 
@@ -18,9 +19,9 @@ sdl3_audio_backend::~sdl3_audio_backend() {
     }
 }
 
-bool sdl3_audio_backend::init() {
+void sdl3_audio_backend::init() {
     if (m_initialized) {
-        return true;
+        return;
     }
     
     // Increment SDL init count
@@ -29,15 +30,13 @@ bool sdl3_audio_backend::init() {
         if (!SDL_Init(SDL_INIT_AUDIO)) {
             s_sdl_init_count--;
             const char* error = SDL_GetError();
-            LOG_ERROR("SDL3Backend", "Failed to initialize SDL audio subsystem: %s", error ? error : "unknown error");
-            return false;
+            THROW_RUNTIME("Failed to initialize SDL audio subsystem: ", error ? error : "unknown error");
         }
         
         // Double-check if audio is now initialized
         if (!SDL_WasInit(SDL_INIT_AUDIO)) {
             s_sdl_init_count--;
-            LOG_ERROR("SDL3Backend", "SDL_Init succeeded but audio subsystem not initialized");
-            return false;
+            THROW_RUNTIME("SDL_Init succeeded but audio subsystem not initialized");
         }
         
         LOG_INFO("SDL3Backend", "SDL audio subsystem initialized");
@@ -46,7 +45,6 @@ bool sdl3_audio_backend::init() {
     }
     
     m_initialized = true;
-    return true;
 }
 
 void sdl3_audio_backend::shutdown() {

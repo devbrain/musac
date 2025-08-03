@@ -51,7 +51,8 @@ public:
      * @param device_id Device identifier (empty string for default)
      * @param spec Desired audio specification
      * @param obtained_spec Actual specification obtained (output parameter)
-     * @return Device handle on success, 0 on failure
+     * @return Device handle
+     * @throws device_error if device cannot be opened
      */
     virtual uint32_t open_device(const std::string& device_id, const audio_spec& spec, audio_spec& obtained_spec) = 0;
     

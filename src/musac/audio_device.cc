@@ -131,10 +131,6 @@ audio_device::audio_device(const device_info& info, const audio_spec* desired_sp
         info.id, spec, obtained_spec
     );
     
-    if (!m_pimpl->device_handle) {
-        THROW_RUNTIME("Failed to open audio device");
-    }
-    
     m_pimpl->spec = obtained_spec;
     
     // Register as the active device
@@ -243,10 +239,6 @@ void audio_device::create_stream_with_callback(
     m_pimpl->stream = m_pimpl->manager->create_stream(
         m_pimpl->device_handle, m_pimpl->spec, callback, userdata
     );
-    
-    if (!m_pimpl->stream) {
-        THROW_RUNTIME("Failed to create audio stream");
-    }
     
     // Stream is already bound if using callback-based creation
 }
