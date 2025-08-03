@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstring>
 #include <cmath>
+#include "voc_test_data_full.h"
 
 // Helper to create a minimal VOC file in memory
 std::vector<uint8_t> createTestVOC(uint8_t sampleRate = 256 - 45, // ~22050 Hz
@@ -103,12 +104,8 @@ TEST_SUITE("Codecs::DecoderVOC") {
     }
     
     TEST_CASE("Real VOC file") {
-        // Use real VOC file from data directory
-        auto io = musac::io_from_file("../data/1.voc", "rb");
-        if (io == nullptr) {
-            // Try alternative path
-            io = musac::io_from_file("../../data/1.voc", "rb");
-        }
+        // Use embedded VOC data instead of file
+        auto io = musac::io_from_memory(voc_test_data, voc_test_data_len);
         REQUIRE(io != nullptr);
         
         musac::decoder_voc decoder;

@@ -31,6 +31,7 @@ namespace musac {
         
         if (s_backend) {
             s_backend->shutdown();
+            // Important: reset the backend so a new one is created on next init
             s_backend.reset();
         }
     }

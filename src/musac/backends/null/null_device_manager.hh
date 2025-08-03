@@ -56,12 +56,29 @@ public:
     
     void set_device_gain(uint32_t device_handle, float gain) override {}
     
+    bool pause_device(uint32_t device_handle) override {
+        m_device_paused = true;
+        return true;
+    }
+    
+    bool resume_device(uint32_t device_handle) override {
+        m_device_paused = false;
+        return true;
+    }
+    
+    bool is_device_paused(uint32_t device_handle) override {
+        return m_device_paused;
+    }
+    
     std::unique_ptr<audio_stream_interface> create_stream(
         uint32_t device_handle,
         const audio_spec& spec,
         void (*callback)(void* userdata, uint8_t* stream, int len),
         void* userdata
     ) override;
+
+private:
+    bool m_device_paused = false;
 };
 
 /**

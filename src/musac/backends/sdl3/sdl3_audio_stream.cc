@@ -1,5 +1,6 @@
 #include "sdl3_audio_stream.hh"
 #include <algorithm>
+#include <failsafe/failsafe.hh>
 
 namespace musac {
 
@@ -30,6 +31,10 @@ sdl3_audio_stream::sdl3_audio_stream(SDL_AudioDeviceID device_id, const audio_sp
     sdl_spec.channels = spec.channels;
     sdl_spec.freq = spec.freq;
     
+    // LOG_INFO("SDL3Stream", "Creating stream for device", device_id, 
+    //          "with callback:", (m_callback != nullptr), 
+    //          "format:", static_cast<int>(spec.format), "channels:", spec.channels, "freq:", spec.freq);
+    
     if (m_callback) {
         m_stream = std::shared_ptr<SDL_AudioStream>(
             SDL_OpenAudioDeviceStream(m_device_id, &sdl_spec, sdl_callback, this),
@@ -37,6 +42,17 @@ sdl3_audio_stream::sdl3_audio_stream(SDL_AudioDeviceID device_id, const audio_sp
         );
         // SDL_OpenAudioDeviceStream automatically binds the stream
         m_bound = true;
+        // LOG_INFO("SDL3Stream", "Stream created with SDL_OpenAudioDeviceStream, bound:", m_bound);
+        
+        // Check if stream is paused
+        bool stream_paused = SDL_AudioStreamDevicePaused(m_stream.get());
+        // LOG_INFO("SDL3Stream", "Stream paused state:", stream_paused);
+        
+        // Try resuming the stream 
+        if (stream_paused) {
+            bool resume_result = SDL_ResumeAudioStreamDevice(m_stream.get());
+            // LOG_INFO("SDL3Stream", "Stream resume result:", resume_result);
+        }
     } else {
         // Get device spec for creating compatible stream
         SDL_AudioSpec device_spec;
@@ -50,13 +66,23 @@ sdl3_audio_stream::sdl3_audio_stream(SDL_AudioDeviceID device_id, const audio_sp
 }
 
 sdl3_audio_stream::~sdl3_audio_stream() {
-    if (m_bound) {
-        unbind_from_device();
-    }
+    // LOG_INFO("SDL3Stream", "Destroying audio stream, bound:", m_bound);
+    // The stream will be automatically destroyed by the shared_ptr
+    // Don't try to unbind - the device might already be closed
 }
 
 void sdl3_audio_stream::sdl_callback(void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount) {
+    static int sdl_callback_count = 0;
+    // if (++sdl_callback_count % 100 == 0) {
+    //     LOG_INFO("SDL3Stream", "SDL callback called", sdl_callback_count, "times, additional:", additional_amount);
+    // }
+    
     auto* self = static_cast<sdl3_audio_stream*>(userdata);
+    if (!self) {
+        // LOG_ERROR("SDL3Stream", "Callback called with null userdata!");
+        return;
+    }
+    
     if (self->m_callback && additional_amount > 0) {
         auto* data = SDL_stack_alloc(uint8_t, additional_amount);
         if (data) {
@@ -109,8 +135,10 @@ bool sdl3_audio_stream::bind_to_device() {
 
 void sdl3_audio_stream::unbind_from_device() {
     if (m_bound && m_stream) {
+        // LOG_INFO("SDL3Stream", "Unbinding stream from device");
         SDL_UnbindAudioStream(m_stream.get());
         m_bound = false;
+        // LOG_INFO("SDL3Stream", "Stream unbound successfully");
     }
 }
 

@@ -47,7 +47,7 @@ namespace {
         }
         if (failures > 0) {
             std::cerr << "Total failures: " << failures << "/" << count 
-                     << " (" << (100.0 * failures / count) << "%)" 
+                     << " (" << (100.0 * static_cast<double>(failures) / static_cast<double>(count)) << "%)" 
                      << ", max diff: " << max_diff << std::endl;
             return false;
         }
@@ -68,7 +68,7 @@ namespace {
                 if (to_decode == 0) break;
             }
             
-            unsigned int decoded = dec.decode(chunk.data(), to_decode, call_again, device_channels);
+            unsigned int decoded = dec.decode(chunk.data(), static_cast<unsigned int>(to_decode), call_again, device_channels);
             if (decoded > 0) {
                 result.insert(result.end(), chunk.begin(), chunk.begin() + decoded);
             }

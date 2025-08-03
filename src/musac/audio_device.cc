@@ -8,11 +8,22 @@
 #include <failsafe/failsafe.hh>
 #include <vector>
 #include <memory>
+#include <mutex>
+#include <thread>
+#include <chrono>
 
 namespace musac {
 
+// Forward declarations
+extern void close_audio_stream();
+extern void reset_audio_stream();
+
 // Global device manager instance
 static std::unique_ptr<audio_device_interface> s_device_manager;
+
+// Track the active device to enforce single device constraint
+static audio_device* s_active_device = nullptr;
+static std::mutex s_device_mutex;
 
 // Initialize device manager if needed
 static audio_device_interface* get_device_manager() {
@@ -26,6 +37,8 @@ static audio_device_interface* get_device_manager() {
 
 // Close all audio devices (called from audio_system::done)
 void close_audio_devices() {
+    std::lock_guard<std::mutex> lock(s_device_mutex);
+    s_active_device = nullptr;
     s_device_manager.reset();
 }
 
@@ -64,6 +77,8 @@ audio_device audio_device::open_device(const std::string& device_id, const audio
     }
     
     THROW_RUNTIME("Device not found: " + device_id);
+    // This is unreachable due to THROW_RUNTIME, but needed to satisfy compiler
+    return audio_device(devices[0], spec);
 }
 
 // audio_device implementation
@@ -72,10 +87,19 @@ struct audio_device::impl {
     std::unique_ptr<audio_stream_interface> stream;
     audio_spec spec;
     audio_device_interface* manager = nullptr;
+    std::atomic<int> stream_count{0}; // Track active streams
 };
 
 audio_device::audio_device(const device_info& info, const audio_spec* desired_spec)
     : m_pimpl(std::make_unique<impl>()) {
+    
+    // Check if there's already an active device
+    {
+        std::lock_guard<std::mutex> lock(s_device_mutex);
+        if (s_active_device != nullptr) {
+            THROW_RUNTIME("Another audio device is already active. Close it before opening a new one.");
+        }
+    }
     
     m_pimpl->manager = get_device_manager();
     if (!m_pimpl->manager) {
@@ -104,11 +128,36 @@ audio_device::audio_device(const device_info& info, const audio_spec* desired_sp
     }
     
     m_pimpl->spec = obtained_spec;
+    
+    // Register as the active device
+    {
+        std::lock_guard<std::mutex> lock(s_device_mutex);
+        s_active_device = this;
+        // Reset the audio stream state for the new device
+        reset_audio_stream();
+    }
 }
 
 audio_device::~audio_device() {
+    {
+        std::lock_guard<std::mutex> lock(s_device_mutex);
+        if (s_active_device == this) {
+            // LOG_INFO("AudioDevice", "Destroying active device");
+            s_active_device = nullptr;
+        }
+    }
+    
     if (m_pimpl && m_pimpl->manager && m_pimpl->device_handle) {
+        // LOG_INFO("AudioDevice", "Closing device handle:", m_pimpl->device_handle);
+        
+        // Close the device first - this will stop all audio processing
         m_pimpl->manager->close_device(m_pimpl->device_handle);
+        
+        // Then destroy the stream - device is already closed so no callbacks
+        if (m_pimpl->stream) {
+            // LOG_INFO("AudioDevice", "Destroying stream after closing device");
+            m_pimpl->stream.reset();
+        }
     }
 }
 
@@ -137,22 +186,22 @@ int audio_device::get_freq() const {
 }
 
 bool audio_device::pause() {
-    if (m_pimpl->stream) {
-        return m_pimpl->stream->pause();
+    if (m_pimpl->manager) {
+        return m_pimpl->manager->pause_device(m_pimpl->device_handle);
     }
     return false;
 }
 
 bool audio_device::is_paused() const {
-    if (m_pimpl->stream) {
-        return m_pimpl->stream->is_paused();
+    if (m_pimpl->manager) {
+        return m_pimpl->manager->is_device_paused(m_pimpl->device_handle);
     }
     return false;
 }
 
 bool audio_device::resume() {
-    if (m_pimpl->stream) {
-        return m_pimpl->stream->resume();
+    if (m_pimpl->manager) {
+        return m_pimpl->manager->resume_device(m_pimpl->device_handle);
     }
     return false;
 }

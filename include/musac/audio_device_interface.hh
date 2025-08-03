@@ -97,6 +97,27 @@ public:
     virtual void set_device_gain(uint32_t device_handle, float gain) = 0;
     
     /**
+     * Pause audio playback for a device.
+     * @param device_handle Device handle
+     * @return true on success, false on failure
+     */
+    virtual bool pause_device(uint32_t device_handle) = 0;
+    
+    /**
+     * Resume audio playback for a device.
+     * @param device_handle Device handle
+     * @return true on success, false on failure
+     */
+    virtual bool resume_device(uint32_t device_handle) = 0;
+    
+    /**
+     * Check if device is paused.
+     * @param device_handle Device handle
+     * @return true if paused, false otherwise
+     */
+    virtual bool is_device_paused(uint32_t device_handle) = 0;
+    
+    /**
      * Create an audio stream for the device.
      * @param device_handle Device handle
      * @param spec Audio specification for the stream
