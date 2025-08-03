@@ -22,7 +22,15 @@ namespace musac {
             return false;
         }
         
-        return s_backend->init();
+        try {
+            s_backend->init();
+            return true;
+        } catch (const std::exception& e) {
+            // Log the error and return false
+            // The caller can decide whether to handle this as fatal
+            s_backend.reset();
+            return false;
+        }
     }
 
     void audio_system::done() {

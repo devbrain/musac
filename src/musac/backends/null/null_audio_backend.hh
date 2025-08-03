@@ -14,7 +14,7 @@ public:
     null_audio_backend() = default;
     ~null_audio_backend() override = default;
     
-    bool init() override { return true; }
+    void init() override { /* No-op for null backend */ }
     void shutdown() override {}
     std::string get_name() const override { return "Null"; }
     bool is_initialized() const override { return true; }

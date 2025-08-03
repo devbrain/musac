@@ -10,7 +10,7 @@ public:
     sdl3_audio_backend();
     ~sdl3_audio_backend() override;
     
-    bool init() override;
+    void init() override;
     void shutdown() override;
     std::string get_name() const override;
     bool is_initialized() const override;
