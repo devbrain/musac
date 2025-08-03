@@ -8,7 +8,6 @@
 #include <mutex>
 #include <functional>
 #include <utility>
-#include <SDL3/SDL.h>
 
 namespace musac {
 

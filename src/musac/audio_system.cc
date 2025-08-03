@@ -3,22 +3,34 @@
 //
 
 #include <musac/audio_system.hh>
-#include <SDL3/SDL.h>
+#include <musac/audio_backend.hh>
+#include <memory>
 namespace musac {
 
     extern void close_audio_devices();
     extern void close_audio_stream();
+    
+    static std::unique_ptr<audio_backend> s_backend;
 
     bool audio_system::init() {
-        if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
+        if (!s_backend) {
+            s_backend = create_default_audio_backend();
+        }
+        
+        if (!s_backend) {
             return false;
         }
-        return true;
+        
+        return s_backend->init();
     }
 
     void audio_system::done() {
         close_audio_stream();
         close_audio_devices();
-        SDL_QuitSubSystem(SDL_INIT_AUDIO);
+        
+        if (s_backend) {
+            s_backend->shutdown();
+            s_backend.reset();
+        }
     }
 }

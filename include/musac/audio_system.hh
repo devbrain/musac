@@ -5,8 +5,10 @@
 #ifndef  MUSAC_AUDIO_SYSTEM_HH
 #define  MUSAC_AUDIO_SYSTEM_HH
 
+#include <musac/export_musac.h>
+
 namespace musac {
-    struct audio_system {
+    struct MUSAC_EXPORT audio_system {
         static bool init();
 
         static void done();

@@ -7,7 +7,7 @@
 #include <cstring>
 #include <algorithm>
 #include <cctype>
-#include <SDL3/SDL.h>
+#include <musac/sdk/io_stream.h>
 
 #include <musac/codecs/decoder_aiff.hh>
 #include <musac/codecs/decoder_voc.hh>
@@ -127,19 +127,17 @@ bool process_file(const std::string& filename, TestData& test_data) {
     }
     
     // Create SDL_IOStream from memory (non-const version)
-    SDL_IOStream* rwops = SDL_IOFromMem(test_data.input.data(), test_data.input.size());
-    if (!rwops) {
-        std::cerr << "Failed to create SDL_IOStream" << std::endl;
+    auto stream = io_from_memory(test_data.input.data(), test_data.input.size());
+    if (!stream) {
+        std::cerr << "Failed to create io_stream" << std::endl;
         return false;
     }
     
     // Debug output removed for cleaner operation
     
     // Open decoder
-    if (!dec->open(rwops)) {
+    if (!dec->open(stream.get())) {
         std::cerr << "Failed to open decoder for: " << filename << std::endl;
-        std::cerr << "SDL Error: " << SDL_GetError() << std::endl;
-        SDL_CloseIO(rwops);
         return false;
     }
     
@@ -171,7 +169,7 @@ bool process_file(const std::string& filename, TestData& test_data) {
         std::cout << "Note: Output limited to " << max_samples << " samples (2 seconds)" << std::endl;
     }
     
-    SDL_CloseIO(rwops);
+    stream->close();
     return true;
 }
 
@@ -181,11 +179,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     
-    // Initialize SDL with audio subsystem
-    if (SDL_Init(SDL_INIT_AUDIO) < 0) {
-        std::cerr << "Failed to initialize SDL: " << SDL_GetError() << std::endl;
-        return 1;
-    }
     
     std::string input_filename = argv[1];
     std::string output_filename = argc > 2 ? argv[2] : "test_data.h";
@@ -194,7 +187,6 @@ int main(int argc, char* argv[]) {
     test_data.name = sanitize_name(input_filename.substr(input_filename.find_last_of("/\\") + 1));
     
     if (!process_file(input_filename, test_data)) {
-        SDL_Quit();
         return 1;
     }
     
@@ -202,7 +194,6 @@ int main(int argc, char* argv[]) {
     std::ofstream out(output_filename);
     if (!out) {
         std::cerr << "Failed to create output file: " << output_filename << std::endl;
-        SDL_Quit();
         return 1;
     }
     
@@ -235,6 +226,5 @@ int main(int argc, char* argv[]) {
     std::cout << "Channels: " << test_data.channels << std::endl;
     std::cout << "Sample rate: " << test_data.rate << " Hz" << std::endl;
     
-    SDL_Quit();
     return 0;
 }

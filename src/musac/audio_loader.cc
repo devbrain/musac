@@ -2,6 +2,7 @@
 // Created by igor on 3/24/25.
 //
 
+#include <musac/audio_loader.hh>
 #include <musac/codecs/decoder_aiff.hh>
 #include <musac/codecs/decoder_cmf.hh>
 #include <musac/codecs/decoder_drflac.hh>
@@ -22,20 +23,31 @@ namespace musac {
     using decoder_midi = decoder_seq;
 
 
-}
-
-#define d_MUSAC_LOAD_DECLARE(TYPE)                                                                                     \
-audio_source load_ ## TYPE (SDL_IOStream* stream, bool do_close) {                                                     \
+// Note: This macro defines the implementations inside the namespace where it's expanded
+#define d_MUSAC_LOAD_IMPLEMENT(TYPE)                                                                                   \
+audio_source load_ ## TYPE (io_stream* stream, bool do_close) {                                                        \
     return load_audio_source<decoder_ ## TYPE>(stream, do_close);                                                      \
 }                                                                                                                      \
 audio_source load_ ## TYPE (const std::filesystem::path& path) {                                                       \
     return load_audio_source<decoder_ ## TYPE>(path);                                                                  \
 }                                                                                                                      \
-audio_source load_ ## TYPE (SDL_IOStream* stream, std::unique_ptr<resampler>&& resampler_obj, bool do_close)  {        \
+audio_source load_ ## TYPE (io_stream* stream, std::unique_ptr<resampler>&& resampler_obj, bool do_close)  {           \
     return load_audio_source<decoder_ ## TYPE>(stream, std::move(resampler_obj), do_close);                            \
 }                                                                                                                      \
 audio_source load_ ## TYPE (const std::filesystem::path& path, std::unique_ptr<resampler>&& resampler_obj) {           \
     return load_audio_source<decoder_ ## TYPE>(path, std::move(resampler_obj));                                        \
 }
 
-#include <musac/audio_loader.hh>
+// Expand all the loader implementations
+d_MUSAC_LOAD_IMPLEMENT(wav);
+d_MUSAC_LOAD_IMPLEMENT(mp3);
+d_MUSAC_LOAD_IMPLEMENT(flac);
+d_MUSAC_LOAD_IMPLEMENT(voc);
+d_MUSAC_LOAD_IMPLEMENT(aiff);
+d_MUSAC_LOAD_IMPLEMENT(cmf);
+d_MUSAC_LOAD_IMPLEMENT(mod);
+d_MUSAC_LOAD_IMPLEMENT(midi);
+d_MUSAC_LOAD_IMPLEMENT(opb);
+d_MUSAC_LOAD_IMPLEMENT(vgm);
+
+} // namespace musac
