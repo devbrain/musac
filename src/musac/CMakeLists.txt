@@ -12,7 +12,8 @@ else()
     set(LIB_BUILD_TYPE STATIC)
 endif()
 
-add_library(musac ${LIB_BUILD_TYPE}
+# Define source files
+set(MUSAC_SOURCES
         audio_device.cc
         ${MUSAC_PROJECT_ROOT}/musac/audio_device.hh
         audio_system.cc
@@ -57,6 +58,8 @@ add_library(musac ${LIB_BUILD_TYPE}
         audio_backend_factory.cc
 )
 
+add_library(musac ${LIB_BUILD_TYPE} ${MUSAC_SOURCES})
+
 # Add SDL3 backend sources conditionally
 if(MUSAC_USE_SDL3)
     target_sources(musac PRIVATE
@@ -98,5 +101,43 @@ if (MUSAC_BUILD_SHARED)
     generate_export_header(musac 
         EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/musac/${export_file_name}
     )
+endif()
+
+# For testing internal classes when building shared library
+if(MUSAC_BUILD_TESTS AND MUSAC_BUILD_SHARED)
+    # Create a static library with internal symbols for testing
+    add_library(musac_internal STATIC ${MUSAC_SOURCES})
+    
+    # Add SDL3 backend sources conditionally
+    if(MUSAC_USE_SDL3)
+        target_sources(musac_internal PRIVATE
+            backends/sdl3/sdl3_audio_backend.cc
+            backends/sdl3/sdl3_audio_backend.hh
+            backends/sdl3/sdl3_device_manager.cc
+            backends/sdl3/sdl3_device_manager.hh
+            backends/sdl3/sdl3_audio_stream.cc
+            backends/sdl3/sdl3_audio_stream.hh
+            resampler/resampler_sdl.cc
+            resampler/resampler_sdl.hh
+        )
+    endif()
+    
+    target_link_libraries(musac_internal PUBLIC musac_codecs musac_sdk thirdparty::failsafe)
+    
+    if(MUSAC_USE_SDL3)
+        target_link_libraries(musac_internal PRIVATE SDL3::SDL3)
+        target_compile_definitions(musac_internal PRIVATE MUSAC_HAS_SDL3_BACKEND)
+    endif()
+    
+    target_include_directories(musac_internal
+            PUBLIC 
+                $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+                $<BUILD_INTERFACE:${MUSAC_PROJECT_ROOT}>
+                $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+            PRIVATE 
+                ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    
+    target_compile_definitions(musac_internal PRIVATE MUSAC_INTERNAL_TESTING)
 endif()
 

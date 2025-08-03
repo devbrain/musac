@@ -50,6 +50,9 @@ add_executable(musac_unittest
     core/test_audio_device.cc
     core/test_thread_safety.cc
     core/test_cleanup.cc
+    core/test_phase1_thread_safety.cc
+    core/test_mixer_public_api.cc
+    core/test_mixer_simple.cc
     
     # SDK tests
     sdk/test_audio_converter.cc
@@ -74,14 +77,27 @@ target_include_directories(musac_unittest
 )
 
 # Link libraries
-target_link_libraries(musac_unittest
-    PRIVATE
-        doctest::doctest
-        musac
-        musac_sdk
-        musac_codecs
-        thirdparty::failsafe
-)
+if(MUSAC_BUILD_SHARED AND TARGET musac_internal)
+    # Use internal static library for testing internals
+    target_link_libraries(musac_unittest
+        PRIVATE
+            doctest::doctest
+            musac_internal  # Static library with internal symbols
+            musac_sdk
+            musac_codecs
+            thirdparty::failsafe
+    )
+else()
+    # Use regular library (static build or no internal testing)
+    target_link_libraries(musac_unittest
+        PRIVATE
+            doctest::doctest
+            musac
+            musac_sdk
+            musac_codecs
+            thirdparty::failsafe
+    )
+endif()
 
 # Compile options
 target_compile_options(musac_unittest PRIVATE ${MUSAC_WARNING_FLAGS})
