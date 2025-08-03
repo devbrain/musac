@@ -118,6 +118,9 @@ target_include_directories(musac_codecs
 )
 target_link_libraries(musac_codecs PUBLIC musac_sdk thirdparty::failsafe)
 
+# Set logger category for codecs
+target_compile_definitions(musac_codecs PRIVATE LOGGER_DEFAULT_CATEGORY=musac::codecs)
+
 if (MUSAC_BUILD_SHARED)
     set(CMAKE_CXX_VISIBILITY_PRESET hidden)
     set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)

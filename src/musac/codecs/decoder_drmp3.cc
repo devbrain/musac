@@ -1,5 +1,7 @@
 // This is copyrighted software. More information is at the end of this file.
 #include <musac/codecs/decoder_drmp3.hh>
+#include <musac/error.hh>
+#include <failsafe/failsafe.hh>
 
 #include <musac/sdk/io_stream.h>
 
@@ -68,14 +70,13 @@ namespace musac {
         drmp3_uninit(&m_pimpl->handle_);
     }
 
-    bool decoder_drmp3::open(io_stream* const rwops) {
+    void decoder_drmp3::open(io_stream* const rwops) {
         if (is_open()) {
-            return true;
+            return;
         }
 
         if (!drmp3_init(&m_pimpl->handle_, drmp3ReadCb, drmp3SeekCb, rwops, nullptr)) {
-            // drmp3_init failed
-            return false;
+            THROW_RUNTIME("drmp3_init failed");
         }
         // Calculating the duration on an MP3 stream involves iterating over every frame in it, which is
         // only possible when the total size of the stream is known.
@@ -84,7 +85,6 @@ namespace musac {
                 static_cast <double>(drmp3_get_pcm_frame_count(&m_pimpl->handle_)) / get_rate()));
         }
         set_is_open(true);
-        return true;
     }
 
     unsigned int decoder_drmp3::do_decode(float* const buf, unsigned int len, bool& /*callAgain*/) {

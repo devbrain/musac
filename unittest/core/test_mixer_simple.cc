@@ -31,7 +31,7 @@ TEST_SUITE("mixer_simple_test") {
         CHECK(source != nullptr);
         
         auto stream = device.create_stream(std::move(*source));
-        CHECK(stream.open());
+        REQUIRE_NOTHROW(stream.open());
         CHECK(stream.play());
         CHECK(stream.is_playing());
         
@@ -45,7 +45,7 @@ TEST_SUITE("mixer_simple_test") {
         for (int i = 0; i < 5; ++i) {
             auto source = create_mock_source(44100);
             auto stream = device.create_stream(std::move(*source));
-            CHECK(stream.open());
+            REQUIRE_NOTHROW(stream.open());
             CHECK(stream.play());
             CHECK(stream.is_playing());
         }

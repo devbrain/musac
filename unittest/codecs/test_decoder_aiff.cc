@@ -71,7 +71,7 @@ TEST_SUITE("Codecs::DecoderAIFF") {
         musac::decoder_aiff decoder;
         
         SUBCASE("Successfully opens") {
-            CHECK(decoder.open(io.get()));
+            CHECK_NOTHROW(decoder.open(io.get()));
             CHECK(decoder.is_open());
             CHECK(decoder.get_channels() == 1); // Converted to mono
             CHECK(decoder.get_rate() == 44100);
@@ -84,7 +84,7 @@ TEST_SUITE("Codecs::DecoderAIFF") {
         REQUIRE(io != nullptr);
         
         musac::decoder_aiff decoder;
-        REQUIRE(decoder.open(io.get()));
+        REQUIRE_NOTHROW(decoder.open(io.get()));
         
         SUBCASE("Decode samples") {
             float buffer[100];
@@ -127,7 +127,7 @@ TEST_SUITE("Codecs::DecoderAIFF") {
             auto io = musac::io_from_memory(badData, sizeof(badData));
             
             musac::decoder_aiff decoder;
-            CHECK_FALSE(decoder.open(io.get()));
+            CHECK_THROWS(decoder.open(io.get()));
         }
         
         SUBCASE("Truncated file") {
@@ -137,7 +137,7 @@ TEST_SUITE("Codecs::DecoderAIFF") {
             auto io = musac::io_from_memory(aiffData.data(), aiffData.size());
             
             musac::decoder_aiff decoder;
-            CHECK_FALSE(decoder.open(io.get()));
+            CHECK_THROWS(decoder.open(io.get()));
         }
         
         SUBCASE("Missing COMM chunk") {
@@ -151,7 +151,7 @@ TEST_SUITE("Codecs::DecoderAIFF") {
             auto io = musac::io_from_memory(data.data(), data.size());
             
             musac::decoder_aiff decoder;
-            CHECK_FALSE(decoder.open(io.get()));
+            CHECK_THROWS(decoder.open(io.get()));
         }
     }
     
@@ -194,7 +194,7 @@ TEST_SUITE("Codecs::DecoderAIFF") {
         auto io = musac::io_from_memory(data.data(), data.size());
         
         musac::decoder_aiff decoder;
-        CHECK(decoder.open(io.get()));
+        CHECK_NOTHROW(decoder.open(io.get()));
         CHECK(decoder.get_channels() == 1);
         CHECK(decoder.get_rate() == 44100); // Converted from 22050
     }
@@ -204,7 +204,7 @@ TEST_SUITE("Codecs::DecoderAIFF") {
         auto io = musac::io_from_memory(aiffData.data(), aiffData.size());
         
         musac::decoder_aiff decoder;
-        REQUIRE(decoder.open(io.get()));
+        REQUIRE_NOTHROW(decoder.open(io.get()));
         
         // Decode some data
         float buffer[100];

@@ -29,7 +29,7 @@ namespace musac {
 
             virtual bool rewind();
 
-            virtual bool open(unsigned int rate, unsigned int channels, unsigned int frame_size);
+            virtual void open(unsigned int rate, unsigned int channels, unsigned int frame_size);
 
             virtual void read_samples(float* buf, unsigned int& cur_pos, unsigned int len, unsigned int device_channels);
 

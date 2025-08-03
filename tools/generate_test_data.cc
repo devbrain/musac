@@ -136,8 +136,10 @@ bool process_file(const std::string& filename, TestData& test_data) {
     // Debug output removed for cleaner operation
     
     // Open decoder
-    if (!dec->open(stream.get())) {
-        std::cerr << "Failed to open decoder for: " << filename << std::endl;
+    try {
+        dec->open(stream.get());
+    } catch (const std::exception& e) {
+        std::cerr << "Failed to open decoder for: " << filename << " - " << e.what() << std::endl;
         return false;
     }
     

@@ -2,6 +2,8 @@
 #include <musac/codecs/decoder_modplug.hh>
 #include <musac/sdk/buffer.hh>
 #include <musac/sdk/memory.h>
+#include <musac/error.hh>
+#include <failsafe/failsafe.hh>
 #include "musac/codecs/libmodplug/modplug.h"
 #include <limits>
 #include <vector>
@@ -56,27 +58,25 @@ namespace musac {
 
     decoder_modplug::~decoder_modplug() = default;
 
-    bool decoder_modplug::open(io_stream* rwops) {
+    void decoder_modplug::open(io_stream* rwops) {
         if (is_open()) {
-            return true;
+            return;
         }
-        // FIXME: error reporting
         int64 dataSize = rwops->get_size();
         if (dataSize <= 0 || dataSize > std::numeric_limits <int>::max()) {
-            return false;
+            THROW_RUNTIME("Invalid ModPlug file size");
         }
         buffer <uint8> data(static_cast <unsigned >(dataSize));
         if (rwops->read( data.data(), data.size()) != static_cast<size_t>(dataSize)) {
-            return false;
+            THROW_RUNTIME("Failed to read ModPlug file data");
         }
         m_pimpl->handle.reset(ModPlug_Load(data.data(), (int)data.size(), &m_pimpl->settings));
         if (!m_pimpl->handle) {
-            return false;
+            THROW_RUNTIME("ModPlug_Load failed");
         }
         //ModPlug_SetMasterVolume(m_pimpl->mpHandle.get(), 192);
         m_pimpl->m_duration = chrono::milliseconds(ModPlug_GetLength(m_pimpl->handle.get()));
         set_is_open(true);
-        return true;
     }
 
     unsigned int decoder_modplug::get_channels() const {

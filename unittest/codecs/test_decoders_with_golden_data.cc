@@ -92,14 +92,14 @@ TEST_SUITE("Decoders::GoldenData") {
         musac::decoder_aiff decoder;
         
         SUBCASE("Opens correctly") {
-            CHECK(decoder.open(io.get()));
+            CHECK_NOTHROW(decoder.open(io.get()));
             CHECK(decoder.is_open());
             CHECK(decoder.get_channels() == test16_aiff_channels);
             CHECK(decoder.get_rate() == test16_aiff_rate);
         }
         
         SUBCASE("Decodes to expected output") {
-            REQUIRE(decoder.open(io.get()));
+            REQUIRE_NOTHROW(decoder.open(io.get()));
             
             auto decoded = decodeAll(decoder, test16_aiff_channels);
             
@@ -125,14 +125,14 @@ TEST_SUITE("Decoders::GoldenData") {
         musac::decoder_voc decoder;
         
         SUBCASE("Opens correctly") {
-            CHECK(decoder.open(io.get()));
+            CHECK_NOTHROW(decoder.open(io.get()));
             CHECK(decoder.is_open());
             CHECK(decoder.get_channels() == file_1_voc_channels);
             CHECK(decoder.get_rate() == file_1_voc_rate);
         }
         
         SUBCASE("Decodes to expected output") {
-            REQUIRE(decoder.open(io.get()));
+            REQUIRE_NOTHROW(decoder.open(io.get()));
             
             auto decoded = decodeAll(decoder, file_1_voc_channels);
             
@@ -155,14 +155,14 @@ TEST_SUITE("Decoders::GoldenData") {
         musac::decoder_drwav decoder;
         
         SUBCASE("Opens correctly") {
-            CHECK(decoder.open(io.get()));
+            CHECK_NOTHROW(decoder.open(io.get()));
             CHECK(decoder.is_open());
             CHECK(decoder.get_channels() == soundcard_wav_channels);
             CHECK(decoder.get_rate() == soundcard_wav_rate);
         }
         
         SUBCASE("Decodes to expected output") {
-            REQUIRE(decoder.open(io.get()));
+            REQUIRE_NOTHROW(decoder.open(io.get()));
             
             // For WAV files, we decode up to the size of our golden data
             const size_t decode_limit = soundcard_wav_output_size;
@@ -185,14 +185,14 @@ TEST_SUITE("Decoders::GoldenData") {
         musac::decoder_cmf decoder;
         
         SUBCASE("Opens correctly") {
-            CHECK(decoder.open(io.get()));
+            CHECK_NOTHROW(decoder.open(io.get()));
             CHECK(decoder.is_open());
             CHECK(decoder.get_channels() == brix_cmf_channels);
             CHECK(decoder.get_rate() == brix_cmf_rate);
         }
         
         SUBCASE("Decodes to expected output") {
-            REQUIRE(decoder.open(io.get()));
+            REQUIRE_NOTHROW(decoder.open(io.get()));
             
             // For synthesizer formats that were limited, only decode up to the output size
             size_t decode_limit = brix_cmf_output_limited ? brix_cmf_output_size : 0;
@@ -213,14 +213,14 @@ TEST_SUITE("Decoders::GoldenData") {
         musac::decoder_seq decoder;
         
         SUBCASE("Opens correctly") {
-            CHECK(decoder.open(io.get()));
+            CHECK_NOTHROW(decoder.open(io.get()));
             CHECK(decoder.is_open());
             CHECK(decoder.get_channels() == simon_mid_channels);
             CHECK(decoder.get_rate() == simon_mid_rate);
         }
         
         SUBCASE("Decodes to expected output") {
-            REQUIRE(decoder.open(io.get()));
+            REQUIRE_NOTHROW(decoder.open(io.get()));
             
             size_t decode_limit = simon_mid_output_limited ? simon_mid_output_size : 0;
             auto decoded = decodeAll(decoder, simon_mid_channels, decode_limit);
@@ -239,14 +239,14 @@ TEST_SUITE("Decoders::GoldenData") {
         musac::decoder_seq decoder;
         
         SUBCASE("Opens correctly") {
-            CHECK(decoder.open(io.get()));
+            CHECK_NOTHROW(decoder.open(io.get()));
             CHECK(decoder.is_open());
             CHECK(decoder.get_channels() == doom_mus_channels);
             CHECK(decoder.get_rate() == doom_mus_rate);
         }
         
         SUBCASE("Decodes to expected output") {
-            REQUIRE(decoder.open(io.get()));
+            REQUIRE_NOTHROW(decoder.open(io.get()));
             
             size_t decode_limit = doom_mus_output_limited ? doom_mus_output_size : 0;
             auto decoded = decodeAll(decoder, doom_mus_channels, decode_limit);
@@ -265,14 +265,14 @@ TEST_SUITE("Decoders::GoldenData") {
         musac::decoder_opb decoder;
         
         SUBCASE("Opens correctly") {
-            CHECK(decoder.open(io.get()));
+            CHECK_NOTHROW(decoder.open(io.get()));
             CHECK(decoder.is_open());
             CHECK(decoder.get_channels() == doom_opb_channels);
             CHECK(decoder.get_rate() == doom_opb_rate);
         }
         
         SUBCASE("Decodes to expected output") {
-            REQUIRE(decoder.open(io.get()));
+            REQUIRE_NOTHROW(decoder.open(io.get()));
             
             size_t decode_limit = doom_opb_output_limited ? doom_opb_output_size : 0;
             auto decoded = decodeAll(decoder, doom_opb_channels, decode_limit);
@@ -291,14 +291,14 @@ TEST_SUITE("Decoders::GoldenData") {
         musac::decoder_vgm decoder;
         
         SUBCASE("Opens correctly") {
-            CHECK(decoder.open(io.get()));
+            CHECK_NOTHROW(decoder.open(io.get()));
             CHECK(decoder.is_open());
             CHECK(decoder.get_channels() == vgm_vgz_channels);
             CHECK(decoder.get_rate() == vgm_vgz_rate);
         }
         
         SUBCASE("Decodes to expected output") {
-            REQUIRE(decoder.open(io.get()));
+            REQUIRE_NOTHROW(decoder.open(io.get()));
             
             size_t decode_limit = vgm_vgz_output_limited ? vgm_vgz_output_size : 0;
             auto decoded = decodeAll(decoder, vgm_vgz_channels, decode_limit);
@@ -317,14 +317,14 @@ TEST_SUITE("Decoders::GoldenData") {
         musac::decoder_seq decoder;
         
         SUBCASE("Opens correctly") {
-            CHECK(decoder.open(io.get()));
+            CHECK_NOTHROW(decoder.open(io.get()));
             CHECK(decoder.is_open());
             CHECK(decoder.get_channels() == GCOMP1_XMI_channels);
             CHECK(decoder.get_rate() == GCOMP1_XMI_rate);
         }
         
         SUBCASE("Decodes to expected output") {
-            REQUIRE(decoder.open(io.get()));
+            REQUIRE_NOTHROW(decoder.open(io.get()));
             
             size_t decode_limit = GCOMP1_XMI_output_limited ? GCOMP1_XMI_output_size : 0;
             auto decoded = decodeAll(decoder, GCOMP1_XMI_channels, decode_limit);
@@ -368,7 +368,7 @@ TEST_SUITE("Decoders::GoldenData") {
                     REQUIRE(io != nullptr);
                     
                     auto decoder = test.create_decoder();
-                    REQUIRE(decoder->open(io.get()));
+                    REQUIRE_NOTHROW(decoder->open(io.get()));
                     
                     auto& target = (i == 0) ? first_decode : second_decode;
                     target = decodeAll(*decoder, decoder->get_channels());

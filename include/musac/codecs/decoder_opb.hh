@@ -14,7 +14,7 @@ namespace musac {
         public:
             decoder_opb();
             ~decoder_opb() override;
-            auto open(io_stream* rwops) -> bool override;
+            void open(io_stream* rwops) override;
             [[nodiscard]] unsigned int get_channels() const override;
             [[nodiscard]] unsigned int get_rate() const override;
             bool rewind() override;

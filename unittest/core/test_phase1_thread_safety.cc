@@ -35,7 +35,7 @@ TEST_SUITE("phase1_thread_safety") {
         auto stream = std::make_unique<audio_stream>(
             device.create_stream(std::move(*source))
         );
-        stream->open();
+        REQUIRE_NOTHROW(stream->open());
         stream->play();
         
         // Give playback time to start
@@ -65,7 +65,7 @@ TEST_SUITE("phase1_thread_safety") {
             auto stream = std::make_unique<audio_stream>(
                 device.create_stream(std::move(*source))
             );
-            stream->open();
+            REQUIRE_NOTHROW(stream->open());
             stream->play();
             streams.push_back(std::move(stream));
         }
@@ -102,7 +102,7 @@ TEST_SUITE("phase1_thread_safety") {
         for (int i = 0; i < CYCLES; ++i) {
             auto source = create_mock_source(44100); // 1 second
             auto stream = device.create_stream(std::move(*source));
-            CHECK(stream.open());
+            REQUIRE_NOTHROW(stream.open());
             CHECK(stream.play());
             streams_created++;
             
@@ -142,7 +142,7 @@ TEST_SUITE("phase1_thread_safety") {
             auto stream = std::make_unique<audio_stream>(
                 device.create_stream(std::move(*source))
             );
-            CHECK(stream->open());
+            REQUIRE_NOTHROW(stream->open());
             
             stream->set_finish_callback([&callback_count, &callback_mutex](audio_stream& /*s*/) {
                 std::lock_guard<std::mutex> lock(callback_mutex);
@@ -184,7 +184,7 @@ TEST_SUITE("phase1_thread_safety") {
         auto stream = std::make_shared<audio_stream>(
             device.create_stream(std::move(*source))
         );
-        CHECK(stream->open());
+        REQUIRE_NOTHROW(stream->open());
         CHECK(stream->play());
         
         std::atomic<bool> stop_operations{false};

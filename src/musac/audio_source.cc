@@ -3,6 +3,7 @@
 //
 
 #include <musac/audio_source.hh>
+#include <musac/error.hh>
 #include <failsafe/failsafe.hh>
 musac::audio_source::audio_source(std::unique_ptr <decoder> decoder_obj,
                                   std::unique_ptr <resampler> resampler_obj,
@@ -34,15 +35,13 @@ bool musac::audio_source::rewind() {
     return m_decoder->rewind();
 }
 
-bool musac::audio_source::open(unsigned int rate, unsigned int channels, unsigned int frame_size) {
+void musac::audio_source::open(unsigned int rate, unsigned int channels, unsigned int frame_size) {
     if (!m_rwops) {
         THROW_RUNTIME("No IO stream available for audio source");
     }
     
     try {
-        if (!m_decoder->open(m_rwops.get())) {
-            return false;
-        }
+        m_decoder->open(m_rwops.get());
     } catch (const std::exception& e) {
         // Re-throw with more context
         THROW_RUNTIME("Failed to open audio decoder: ", e.what());
@@ -51,7 +50,6 @@ bool musac::audio_source::open(unsigned int rate, unsigned int channels, unsigne
     if (m_resampler) {
         m_resampler->set_spec(rate, channels, frame_size);
     }
-    return true;
 }
 
 void musac::audio_source::read_samples(float buf[], unsigned int& cur_pos, unsigned int len, unsigned int device_channels) {

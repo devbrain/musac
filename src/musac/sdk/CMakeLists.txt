@@ -95,6 +95,9 @@ target_include_directories(musac_sdk
 )
 target_link_libraries(musac_sdk PUBLIC thirdparty::failsafe)
 
+# Set logger category for sdk
+target_compile_definitions(musac_sdk PRIVATE LOGGER_DEFAULT_CATEGORY=musac::sdk)
+
 if (MUSAC_BUILD_SHARED)
     set(CMAKE_CXX_VISIBILITY_PRESET hidden)
     set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)

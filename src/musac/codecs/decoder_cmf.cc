@@ -4,6 +4,8 @@
 
 #include <musac/codecs/decoder_cmf.hh>
 #include <musac/sdk/samples_converter.hh>
+#include <musac/error.hh>
+#include <failsafe/failsafe.hh>
 #include "musac/codecs/cmf/fmdrv.h"
 #include <vector>
 
@@ -31,10 +33,10 @@ namespace musac {
 
     decoder_cmf::~decoder_cmf() = default;
 
-    bool decoder_cmf::open(io_stream* rwops) {
+    void decoder_cmf::open(io_stream* rwops) {
         auto sz = rwops->get_size();
         if (sz <= 0) {
-            return false;
+            THROW_RUNTIME("Invalid CMF file size");
         }
         m_pimpl->m_song.resize((size_t)sz);
         rwops->read( m_pimpl->m_song.data(), (size_t)sz);
@@ -42,18 +44,18 @@ namespace musac {
         
         // Validate minimum size for CMF header
         if (sz < 0x26) {
-            return false;
+            THROW_RUNTIME("CMF file too small for header");
         }
         
         // Check for "CTMF" header
         if (data[0] != 'C' || data[1] != 'T' || data[2] != 'M' || data[3] != 'F') {
-            return false;
+            THROW_RUNTIME("Invalid CMF file header");
         }
         
         // Check that speed value is not zero to avoid division by zero
         uint16_t speed_value = READ_16LE(&data[0x0c]);
         if (speed_value == 0) {
-            return false;
+            THROW_RUNTIME("CMF speed value is zero");
         }
         
         // Validate offsets before using them
@@ -62,14 +64,13 @@ namespace musac {
         uint16_t instr_count = READ_16LE(&data[0x24]);
         
         if (instr_offset >= sz || music_offset >= sz) {
-            return false;
+            THROW_RUNTIME("CMF file has invalid offsets");
         }
         
         sbfm_instrument(m_pimpl->m_decoder, &data[instr_offset], instr_count);
         sbfm_song_speed(m_pimpl->m_decoder, (uint16_t)(0x1234dc / speed_value));
         sbfm_play_music(m_pimpl->m_decoder, &data[music_offset]);
         set_is_open(true);
-        return true;
     }
 
     unsigned int decoder_cmf::get_channels() const {

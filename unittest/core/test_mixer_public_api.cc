@@ -51,8 +51,13 @@ TEST_SUITE("mixer_thread_safety_public_api") {
                     auto stream = std::make_unique<audio_stream>(device.create_stream(std::move(*source)));
                     created++;
                     
-                    if (stream->open() && stream->play()) {
-                        playing++;
+                    try {
+                        stream->open();
+                        if (stream->play()) {
+                            playing++;
+                        }
+                    } catch (...) {
+                        // open() failed, don't count as playing
                     }
                     
                     local_streams.push_back(std::move(stream));
@@ -99,10 +104,13 @@ TEST_SUITE("mixer_thread_safety_public_api") {
                         auto source = create_mock_source(44100);
                         auto stream = device.create_stream(std::move(*source));
                         
-                        if (stream.open()) {
+                        try {
+                            stream.open();
                             stream.play();
                             // Let it play briefly
                             std::this_thread::sleep_for(std::chrono::milliseconds(5));
+                        } catch (...) {
+                            // open() failed, continue with next iteration
                         }
                         
                         cycles++;
@@ -135,7 +143,7 @@ TEST_SUITE("mixer_thread_safety_public_api") {
         for (int i = 0; i < 20; ++i) {
             auto source = create_mock_source(44100 * 10); // 10 seconds
             auto stream = std::make_unique<audio_stream>(device.create_stream(std::move(*source)));
-            stream->open();
+            REQUIRE_NOTHROW(stream->open());
             stream->play();
             streams.push_back(std::move(stream));
         }
@@ -204,7 +212,7 @@ TEST_SUITE("mixer_thread_safety_public_api") {
         for (int i = 0; i < 10; ++i) {
             auto source = create_mock_source(44100 * 10); // 10 seconds
             auto stream = std::make_unique<audio_stream>(device.create_stream(std::move(*source)));
-            stream->open();
+            REQUIRE_NOTHROW(stream->open());
             stream->play();
             streams.push_back(std::move(stream));
         }

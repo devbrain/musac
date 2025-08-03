@@ -36,7 +36,7 @@ TEST_SUITE("phase4_sdl_callback_safety") {
             device.create_stream(std::move(*source))
         );
         
-        CHECK(stream->open());
+        REQUIRE_NOTHROW(stream->open());
         CHECK(stream->play());
         
         // Let the stream play for a bit to ensure callbacks are active
@@ -67,7 +67,7 @@ TEST_SUITE("phase4_sdl_callback_safety") {
             auto source = create_mock_source(44100 * 2); // 2 seconds
             auto stream = device.create_stream(std::move(*source));
             
-            CHECK(stream.open());
+            REQUIRE_NOTHROW(stream.open());
             CHECK(stream.play());
             
             // Very short playback time
@@ -94,7 +94,7 @@ TEST_SUITE("phase4_sdl_callback_safety") {
             auto stream = std::make_unique<audio_stream>(
                 device.create_stream(std::move(*source))
             );
-            stream->open();
+            REQUIRE_NOTHROW(stream->open());
             stream->play();
             streams.push_back(std::move(stream));
         }
@@ -132,7 +132,7 @@ TEST_SUITE("phase4_sdl_callback_safety") {
             auto stream = std::make_unique<audio_stream>(
                 device.create_stream(std::move(*source))
             );
-            stream->open();
+            REQUIRE_NOTHROW(stream->open());
             stream->play(0); // Loop forever
             streams.push_back(std::move(stream));
         }
@@ -160,7 +160,7 @@ TEST_SUITE("phase4_sdl_callback_safety") {
         auto stream = std::make_shared<audio_stream>(
             device.create_stream(std::move(*source))
         );
-        stream->open();
+        REQUIRE_NOTHROW(stream->open());
         stream->play();
         
         std::atomic<bool> stop_operations{false};

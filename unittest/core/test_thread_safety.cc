@@ -38,7 +38,7 @@ TEST_SUITE("thread_safety") {
             threads.emplace_back([&device, &streams, &streams_mutex]() {
                 auto source = create_mock_source(44100);
                 auto stream = device.create_stream(std::move(*source));
-                stream.open();
+                REQUIRE_NOTHROW(stream.open());
                 
                 std::lock_guard<std::mutex> lock(streams_mutex);
                 streams.push_back(std::make_unique<audio_stream>(std::move(stream)));
@@ -58,7 +58,7 @@ TEST_SUITE("thread_safety") {
         
         auto source = create_mock_source(44100 * 10); // 10 seconds
         auto stream = device.create_stream(std::move(*source));
-        stream.open();
+        REQUIRE_NOTHROW(stream.open());
         
         std::atomic<bool> stop_flag{false};
         std::vector<std::thread> threads;
@@ -133,7 +133,7 @@ TEST_SUITE("thread_safety") {
         for (int i = 0; i < 5; ++i) {
             auto source = create_mock_source(44100);
             auto stream = std::make_unique<audio_stream>(device.create_stream(std::move(*source)));
-            stream->open();
+            REQUIRE_NOTHROW(stream->open());
             
             int stream_id = i;
             stream->set_finish_callback([&callback_count, &callback_mutex, &callback_order, stream_id](audio_stream& /*s*/) {
@@ -176,7 +176,7 @@ TEST_SUITE("thread_safety") {
         // Start playing a stream
         auto source = create_mock_source(44100);
         auto stream = device.create_stream(std::move(*source));
-        stream.open();
+        REQUIRE_NOTHROW(stream.open());
         stream.play();
         
         std::atomic<bool> stop_flag{false};
@@ -221,7 +221,7 @@ TEST_SUITE("thread_safety") {
         
         auto source = create_mock_source(44100);
         auto stream = device.create_stream(std::move(*source));
-        stream.open();
+        REQUIRE_NOTHROW(stream.open());
         stream.play();
         
         std::atomic<int> callback_counter{0};
@@ -257,7 +257,7 @@ TEST_SUITE("thread_safety") {
                 while (!stop_flag) {
                     auto source = create_mock_source(44100);
                     auto stream = device.create_stream(std::move(*source));
-                    stream.open();
+                    REQUIRE_NOTHROW(stream.open());
                     stream.play();
                     
                     // Random short lifetime

@@ -71,7 +71,8 @@ TEST_SUITE("sdl_shutdown_order") {
             
             auto source = create_mock_source(44100);
             auto stream = device.create_stream(std::move(*source));
-            stream_opened = stream.open();
+            REQUIRE_NOTHROW(stream.open());
+            stream_opened = true;
             CHECK(stream_opened);
             
             stream_played = stream.play();
@@ -108,7 +109,7 @@ TEST_SUITE("sdl_shutdown_order") {
                 
                 auto source = create_mock_source(44100);
                 auto stream = device.create_stream(std::move(*source));
-                CHECK(stream.open());
+                REQUIRE_NOTHROW(stream.open());
                 CHECK(stream.play());
                 
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -141,7 +142,7 @@ TEST_SUITE("sdl_shutdown_order") {
         
         auto source = create_mock_source(44100);
         auto stream = device.create_stream(std::move(*source));
-        CHECK(stream.open());
+        REQUIRE_NOTHROW(stream.open());
         CHECK(stream.play());
         CHECK(stream.is_playing());
         
