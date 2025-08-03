@@ -27,16 +27,16 @@ namespace musac {
             audio_source(const audio_source&) = delete;
             audio_source& operator = (const audio_source&) = delete;
 
-            ~audio_source();
+            virtual ~audio_source();
 
-            bool rewind();
+            virtual bool rewind();
 
-            bool open(unsigned int rate, unsigned int channels, unsigned int frame_size);
+            virtual bool open(unsigned int rate, unsigned int channels, unsigned int frame_size);
 
-            void read_samples(float* buf, unsigned int& cur_pos, unsigned int len, unsigned int device_channels);
+            virtual void read_samples(float* buf, unsigned int& cur_pos, unsigned int len, unsigned int device_channels);
 
-            std::chrono::microseconds duration() const;
-            bool seek_to_time(std::chrono::microseconds pos) const;
+            virtual std::chrono::microseconds duration() const;
+            virtual bool seek_to_time(std::chrono::microseconds pos) const;
         private:
             musac::io_stream* m_rwops;
             bool m_close_rw;

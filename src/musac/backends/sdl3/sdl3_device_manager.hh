@@ -21,6 +21,9 @@ public:
     int get_device_channels(uint32_t device_handle) override;
     float get_device_gain(uint32_t device_handle) override;
     void set_device_gain(uint32_t device_handle, float gain) override;
+    bool pause_device(uint32_t device_handle) override;
+    bool resume_device(uint32_t device_handle) override;
+    bool is_device_paused(uint32_t device_handle) override;
     std::unique_ptr<audio_stream_interface> create_stream(
         uint32_t device_handle,
         const audio_spec& spec,

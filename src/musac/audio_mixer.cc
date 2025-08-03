@@ -4,6 +4,7 @@
 
 #include "musac/audio_mixer.hh"
 #include <musac/stream.hh>
+#include <failsafe/failsafe.hh>
 namespace musac {
     audio_device_data audio_mixer::m_audio_device_data {};
 
@@ -20,8 +21,24 @@ namespace musac {
     void audio_mixer::add_stream(audio_stream* s) {
         auto old = std::atomic_load(&m_streams);
         auto copy = std::make_shared <std::vector <audio_stream*>>(*old);
+        
+        // Check if stream is already in the list
+        bool already_exists = false;
+        for (auto* existing : *copy) {
+            if (existing == s) {
+                already_exists = true;
+                break;
+            }
+        }
+        
+        if (already_exists) {
+            // LOG_WARN("AudioMixer", "Stream already in mixer, not adding again");
+            return;
+        }
+        
         copy->push_back(s);
         std::atomic_store(&m_streams, copy);
+        // LOG_INFO("AudioMixer", "Added stream, now have", copy->size(), "streams");
     }
 
     void audio_mixer::remove_stream(int token) {
@@ -33,6 +50,7 @@ namespace musac {
                 copy->push_back(st);
         }
         std::atomic_store(&m_streams, copy);
+        // LOG_INFO("AudioMixer", "Removed stream with token", token, ", now have", copy->size(), "streams");
     }
 
     void audio_mixer::resize(unsigned int out_len_samples) {

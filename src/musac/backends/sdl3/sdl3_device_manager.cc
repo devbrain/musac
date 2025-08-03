@@ -129,6 +129,11 @@ uint32_t sdl3_device_manager::open_device(const std::string& device_id, const au
     
     uint32_t handle = m_next_handle++;
     m_devices[handle] = opened_id;
+    
+    // Check if device is paused after opening
+    bool is_paused = SDL_AudioDevicePaused(opened_id);
+    // LOG_INFO("SDL3DeviceManager", "Device opened with handle:", handle, "SDL ID:", opened_id, "Is paused:", is_paused);
+    
     return handle;
 }
 
@@ -196,6 +201,39 @@ void sdl3_device_manager::set_device_gain(uint32_t device_handle, float gain) {
     if (it != m_devices.end()) {
         SDL_SetAudioDeviceGain(it->second, gain);
     }
+}
+
+bool sdl3_device_manager::pause_device(uint32_t device_handle) {
+    auto it = m_devices.find(device_handle);
+    if (it == m_devices.end()) {
+        return false;
+    }
+    
+    // SDL_PauseAudioDevice returns true on success
+    return SDL_PauseAudioDevice(it->second);
+}
+
+bool sdl3_device_manager::resume_device(uint32_t device_handle) {
+    auto it = m_devices.find(device_handle);
+    if (it == m_devices.end()) {
+        // LOG_ERROR("SDL3DeviceManager", "resume_device: invalid handle", device_handle);
+        return false;
+    }
+    
+    // LOG_INFO("SDL3DeviceManager", "Resuming device", device_handle, "SDL ID:", it->second);
+    // SDL_ResumeAudioDevice returns true on success
+    bool result = SDL_ResumeAudioDevice(it->second);
+    // LOG_INFO("SDL3DeviceManager", "Resume result:", result);
+    return result;
+}
+
+bool sdl3_device_manager::is_device_paused(uint32_t device_handle) {
+    auto it = m_devices.find(device_handle);
+    if (it == m_devices.end()) {
+        return false;
+    }
+    
+    return SDL_AudioDevicePaused(it->second);
 }
 
 std::unique_ptr<audio_stream_interface> sdl3_device_manager::create_stream(

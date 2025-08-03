@@ -44,7 +44,7 @@ namespace {
         const double two_pi = 2.0 * M_PI;
         
         for (size_t i = 0; i < samples; ++i) {
-            double value = amplitude * std::sin(two_pi * frequency * i / sample_rate);
+            double value = amplitude * std::sin(two_pi * frequency * static_cast<double>(i) / sample_rate);
             
             if constexpr (std::is_floating_point_v<T>) {
                 wave[i] = static_cast<T>(value);
@@ -357,7 +357,7 @@ TEST_SUITE("SDK::AudioConverter::Comprehensive") {
             
             // Should have approximately 44100/48000 samples
             int expected_samples = static_cast<int>((src_values.size() * 44100) / 48000);
-            int expected_len = static_cast<int>(expected_samples * sizeof(float));
+            int expected_len = static_cast<int>(static_cast<size_t>(expected_samples) * sizeof(float));
             CHECK(dst_len >= expected_len - 16);
             CHECK(dst_len <= expected_len + 16);
             
@@ -455,7 +455,7 @@ TEST_SUITE("SDK::AudioConverter::Comprehensive") {
             CHECK(dst_len == static_cast<int>(src_data.size()));
             
             // Should be a direct copy
-            CHECK(std::memcmp(src_data.data(), dst_data, dst_len) == 0);
+            CHECK(std::memcmp(src_data.data(), dst_data, static_cast<size_t>(dst_len)) == 0);
             
             delete[] dst_data;
         }
@@ -539,7 +539,7 @@ TEST_SUITE("SDK::AudioConverter::Comprehensive") {
             CHECK(converter != nullptr);
             
             std::vector<float> direct_result(src_values.size());
-            converter(direct_result.data(), src_data.data(), src_values.size());
+            converter(direct_result.data(), src_data.data(), static_cast<unsigned int>(src_values.size()));
             
             auto converted_values = extract_values<float>(dst_data, src_values.size());
             
@@ -580,7 +580,7 @@ TEST_SUITE("SDK::AudioConverter::Comprehensive") {
             const size_t samples = 1000;
             std::vector<int16_t> src_values(samples);
             for (size_t i = 0; i < samples; ++i) {
-                double t = i / 44100.0;
+                double t = static_cast<double>(i) / 44100.0;
                 double value = 0.3 * std::sin(2 * M_PI * 440 * t) +    // A4
                               0.2 * std::sin(2 * M_PI * 554.37 * t) + // C#5
                               0.1 * std::sin(2 * M_PI * 659.25 * t);  // E5
@@ -605,7 +605,7 @@ TEST_SUITE("SDK::AudioConverter::Comprehensive") {
             // Simulate voice-like data
             std::vector<uint8_t> src_values(80); // 10ms at 8kHz
             for (size_t i = 0; i < src_values.size(); ++i) {
-                src_values[i] = 128 + static_cast<uint8_t>(30 * std::sin(2 * M_PI * 200 * i / 8000.0));
+                src_values[i] = 128 + static_cast<uint8_t>(30 * std::sin(2 * M_PI * 200 * static_cast<double>(i) / 8000.0));
             }
             auto src_data = create_test_data(src_values);
             

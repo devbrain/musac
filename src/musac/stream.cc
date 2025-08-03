@@ -35,6 +35,11 @@ namespace musac {
         // Then clear out the conversion stream
         audio_mixer::m_audio_device_data.m_stream = nullptr;
     }
+    
+    void reset_audio_stream() {
+        // Reset the shutdown flag to allow new devices
+        s_isShuttingDown = false;
+    }
 
     static int token_generator = 0;
 
@@ -140,11 +145,16 @@ namespace musac {
     }
 
     void audio_stream::audio_callback(uint8_t out[], unsigned int out_len) {
-        // If we’re tearing down, just emit silence and bail.
+        // If we're tearing down, just emit silence and bail.
         if (s_isShuttingDown.load(std::memory_order_relaxed)) {
             std::memset(out, 0, out_len);
             return;
         }
+
+        static int callback_count = 0;
+        // if (++callback_count % 100 == 0) {
+        //     LOG_INFO("AudioCallback", "Called", callback_count, "times, out_len:", out_len);
+        // }
 
         auto& dev = audio_mixer::m_audio_device_data;
 
@@ -156,7 +166,7 @@ namespace musac {
             // Log once, but don't bail out entirely—silence is safer
             static bool warned = false;
             if (!warned) {
-                LOG_WARN("audio", "missing sample converter, outputting silence");
+                // LOG_WARN("audio", "missing sample converter, outputting silence");
                 warned = true;
             }
             return;
@@ -199,23 +209,44 @@ namespace musac {
 
         const auto now_tick = get_ticks();
         const auto wanted_ticks = out_len_frames * 1000 / freq;
+        
+        static int log_count = 0;
+        // if (++log_count % 100 == 0) {
+        //     LOG_INFO("AudioCallback", "Processing", streamList->size(), "streams");
+        // }
 
         for (auto* stream : *streamList) {
             InUseGuard guard(stream->m_pimpl->m_inUse);
 
             if (!stream->m_pimpl->m_alive) {
+                static int skip_log = 0;
+                // if (++skip_log % 100 == 0) {
+                //     LOG_INFO("AudioCallback", "Skipping dead stream");
+                // }
                 continue;
             }
             if (stream->m_pimpl->m_wanted_iterations != 0
                 && stream->m_pimpl->m_current_iteration >= stream->m_pimpl->m_wanted_iterations) {
+                static int skip_log = 0;
+                // if (++skip_log % 100 == 0) {
+                //     LOG_INFO("AudioCallback", "Skipping completed stream");
+                // }
                 continue;
             }
             if (stream->m_pimpl->m_is_paused) {
+                static int skip_log = 0;
+                // if (++skip_log % 100 == 0) {
+                //     LOG_INFO("AudioCallback", "Skipping paused stream");
+                // }
                 continue;
             }
 
             const auto ticks_since_play_start = static_cast <int>(now_tick - stream->m_pimpl->m_playback_start_tick);
             if (ticks_since_play_start <= 0) {
+                static int skip_log = 0;
+                // if (++skip_log % 100 == 0) {
+                //     LOG_INFO("AudioCallback", "Skipping stream - not started yet");
+                // }
                 continue;
             }
 
@@ -227,20 +258,29 @@ namespace musac {
             stream->m_pimpl->m_starting = false;
 
             while (cur_pos < out_len_samples) {
+                unsigned int before_decode = cur_pos;
                 stream->m_pimpl->decode_audio(cur_pos, out_len_samples);
                 stream->m_pimpl->run_processors(cur_pos, out_offset);
 
                 if (cur_pos < out_len_samples) {
+                    // Source didn't fill the buffer - it must have reached the end
+                    // LOG_INFO("AudioCallback", "Stream reached end, decoded", cur_pos - before_decode, 
+                    //          "samples, wanted", out_len_samples - before_decode);
+                    
                     // Attempt to rewind; if unsupported, leave remainder silent
                     bool can_rewind = stream->m_pimpl->m_audio_source.rewind();
                     if (!can_rewind) {
+                        // LOG_INFO("AudioCallback", "Source cannot rewind");
                         // source is non-seekable: break to leave silence
                         break;
                     }
                     // Only count loops if we actually rewound
                     if (stream->m_pimpl->m_wanted_iterations != 0) {
                         ++stream->m_pimpl->m_current_iteration;
+                        // LOG_INFO("AudioCallback", "Iteration", stream->m_pimpl->m_current_iteration, 
+                        //          "of", stream->m_pimpl->m_wanted_iterations);
                         if (stream->m_pimpl->m_current_iteration >= stream->m_pimpl->m_wanted_iterations) {
+                            // LOG_INFO("AudioCallback", "Stream finished all iterations");
                             stream->m_pimpl->m_is_playing = false;
                             impl::s_mixer.remove_stream(stream->m_pimpl->m_token);
                             has_finished = true;
@@ -261,21 +301,16 @@ namespace musac {
             if (envGain == 0.f && stream->m_pimpl->m_fade.getState() == FadeEnvelope::State::None) {
                 if (stream->m_pimpl->m_pendingAction == impl::PendingAction::Stop) {
                     stream->m_pimpl->m_is_playing = false;
+                    stream->m_pimpl->stop_no_mixer();
                 } else if (stream->m_pimpl->m_pendingAction == impl::PendingAction::Pause) {
                     stream->m_pimpl->m_is_paused = true;
+                    stream->m_pimpl->m_is_playing = false;
                 }
                 impl::s_mixer.remove_stream(stream->m_pimpl->m_token);
                 stream->m_pimpl->m_pendingAction = impl::PendingAction::None;
                 has_finished = true; // only for Stop do you fire finish-callback
             }
 
-            if (stream->m_pimpl->m_fade.getState() == FadeEnvelope::State::None
-                && envGain == 0.f) {
-                // Completed fade‐out
-                stream->m_pimpl->m_is_playing = false;
-                impl::s_mixer.remove_stream(stream->m_pimpl->m_token);
-                has_finished = true;
-            }
 
             // Avoid mixing on zero volume.
             if (!stream->m_pimpl->m_is_muted && (volume_left > 0.f || volume_right > 0.f)) {
@@ -309,21 +344,24 @@ namespace musac {
 
     audio_stream::~audio_stream() {
         if (!m_pimpl) return;
+        
+        // 1) Mark as not alive to prevent new operations
         m_pimpl->m_alive = false;
-        // 1) Tell the mixer to stop including us (acquires m_streams_mtx)
-        impl::s_mixer.remove_stream(m_pimpl->m_token);
-        // wait for any in-flight callbacks to finish
-        while (m_pimpl->m_inUse.load(std::memory_order_acquire) != 0) {
-            std::this_thread::yield();
-        }
-        // 2) Lock the audio stream and rewind/stop it
+        
+        // 2) Lock audio mutex and remove from mixer
         {
             sdl_audio_locker lock;
+            impl::s_mixer.remove_stream(m_pimpl->m_token);
             // stop_no_mixer(): just rewinds and flips m_is_playing = false
             m_pimpl->stop_no_mixer();
         }
+        
+        // 3) Wait for any in-flight callbacks to finish
+        while (m_pimpl->m_inUse.load(std::memory_order_acquire) != 0) {
+            std::this_thread::yield();
+        }
 
-        // 3) Prevent any further callbacks from being called
+        // 4) Clear callbacks to prevent any further calls
         m_pimpl->m_finish_callback = nullptr;
         m_pimpl->m_loop_callback = nullptr;
     }
@@ -566,6 +604,7 @@ namespace musac {
             // Actual pause occurs when envelope finishes
         } else {
             m_pimpl->m_is_paused = true;
+            m_pimpl->m_is_playing = false;
         }
     }
 
@@ -583,10 +622,15 @@ namespace musac {
         // 2) Cancel any pending pause/stop
         m_pimpl->m_pendingAction = impl::PendingAction::None;
 
-        // 3) Mark as not paused, and re-add to mixer
+        // 3) Mark as not paused
+        bool was_paused = m_pimpl->m_is_paused;
         m_pimpl->m_is_paused  = false;
         m_pimpl->m_is_playing = true;
-        impl::s_mixer.add_stream(this);
+        
+        // 4) Only add to mixer if we were actually paused (not already in mixer)
+        if (was_paused) {
+            impl::s_mixer.add_stream(this);
+        }
 
         // 4) Always restart fade-in if requested (this must reset any fade-out)
         if (fadeTime.count() > 0) {

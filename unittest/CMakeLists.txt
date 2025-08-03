@@ -46,6 +46,10 @@ add_executable(musac_unittest
     core/test_io_stream.cc
     core/test_audio_format.cc
     core/test_memory.cc
+    core/test_audio_stream.cc
+    core/test_audio_device.cc
+    core/test_thread_safety.cc
+    core/test_cleanup.cc
     
     # SDK tests
     sdk/test_audio_converter.cc
@@ -73,6 +77,7 @@ target_include_directories(musac_unittest
 target_link_libraries(musac_unittest
     PRIVATE
         doctest::doctest
+        musac
         musac_sdk
         musac_codecs
         thirdparty::failsafe
