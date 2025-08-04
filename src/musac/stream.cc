@@ -630,6 +630,38 @@ namespace musac {
     int audio_stream::get_token() const {
         return m_pimpl->m_token;
     }
+    
+    audio_stream::stream_snapshot audio_stream::capture_state() const {
+        stream_snapshot snapshot;
+        snapshot.playback_tick = m_pimpl->m_playback_start_tick;
+        snapshot.volume = m_pimpl->m_volume;
+        snapshot.internal_volume = m_pimpl->m_internal_volume;
+        snapshot.stereo_pos = m_pimpl->m_stereo_pos;
+        snapshot.is_playing = m_pimpl->m_is_playing;
+        snapshot.is_paused = m_pimpl->m_is_paused;
+        snapshot.is_muted = m_pimpl->m_is_muted;
+        snapshot.starting = m_pimpl->m_starting;
+        snapshot.current_iteration = m_pimpl->m_current_iteration;
+        snapshot.wanted_iterations = m_pimpl->m_wanted_iterations;
+        snapshot.fade_gain = m_pimpl->m_fade.getGain();
+        snapshot.fade_state = static_cast<int>(m_pimpl->m_fade.getState());
+        snapshot.playback_start_tick = m_pimpl->m_playback_start_tick;
+        return snapshot;
+    }
+    
+    void audio_stream::restore_state(const stream_snapshot& state) {
+        m_pimpl->m_playback_start_tick = state.playback_start_tick;
+        m_pimpl->m_volume = state.volume;
+        m_pimpl->m_internal_volume = state.internal_volume;
+        m_pimpl->m_stereo_pos = state.stereo_pos;
+        m_pimpl->m_is_playing = state.is_playing;
+        m_pimpl->m_is_paused = state.is_paused;
+        m_pimpl->m_is_muted = state.is_muted;
+        m_pimpl->m_starting = state.starting;
+        m_pimpl->m_current_iteration = state.current_iteration;
+        m_pimpl->m_wanted_iterations = state.wanted_iterations;
+        // TODO: Restore fade state properly
+    }
 
 
 

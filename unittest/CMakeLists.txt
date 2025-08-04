@@ -55,6 +55,8 @@ add_executable(musac_unittest
         core/test_mixer_simple.cc
         core/test_phase4_sdl_callback_safety.cc
         core/test_sdl_shutdown_order.cc
+        core/test_device_switching.cc
+        core/test_audio_system_api.cc
         core/test_phase5_integration.cc
 
         # SDK tests

@@ -6,6 +6,7 @@
 #include <musac/stream.hh>
 #include <failsafe/failsafe.hh>
 #include <algorithm>
+#include <SDL3/SDL.h>
 namespace musac {
     audio_device_data audio_mixer::m_audio_device_data {};
 
@@ -111,5 +112,79 @@ namespace musac {
 
     unsigned int audio_mixer::allocatedSamples() const {
         return m_allocated_samples;
+    }
+    
+    mixer_snapshot audio_mixer::capture_state() const {
+        mixer_snapshot snapshot;
+        
+        // Capture timing
+        snapshot.snapshot_time = std::chrono::steady_clock::now();
+        snapshot.global_tick_count = SDL_GetTicks(); // TODO: Remove SDL dependency
+        
+        // Capture audio format
+        snapshot.audio_spec.channels = m_audio_device_data.m_audio_spec.channels;
+        snapshot.audio_spec.freq = m_audio_device_data.m_audio_spec.freq;
+        snapshot.audio_spec.format = static_cast<int>(m_audio_device_data.m_audio_spec.format);
+        
+        // Capture any pending samples from the final mix buffer
+        // These are samples that have been mixed but not yet consumed
+        if (m_allocated_samples > 0) {
+            snapshot.pending_samples.assign(
+                m_final_mix_buf.begin(), 
+                m_final_mix_buf.begin() + m_allocated_samples
+            );
+        }
+        
+        // Capture state of all active streams
+        auto streams = get_streams();
+        if (streams) {
+            for (const auto& entry : *streams) {
+                if (entry.stream && !entry.lifetime_token.expired()) {
+                    mixer_snapshot::stream_state state;
+                    auto* stream = entry.stream;
+                    
+                    // Capture stream identification
+                    state.token = stream->get_token();
+                    
+                    // Capture stream state using the new API
+                    auto stream_snap = stream->capture_state();
+                    state.playback_tick = stream_snap.playback_tick;
+                    state.current_frame = 0; // TODO: track current frame in audio_source
+                    state.volume = stream_snap.volume;
+                    state.internal_volume = stream_snap.internal_volume;
+                    state.stereo_pos = stream_snap.stereo_pos;
+                    state.is_playing = stream_snap.is_playing;
+                    state.is_paused = stream_snap.is_paused;
+                    state.is_muted = stream_snap.is_muted;
+                    state.starting = stream_snap.starting;
+                    state.current_iteration = stream_snap.current_iteration;
+                    state.wanted_iterations = stream_snap.wanted_iterations;
+                    state.fade_gain = stream_snap.fade_gain;
+                    state.fade_state = stream_snap.fade_state;
+                    state.playback_start_tick = stream_snap.playback_start_tick;
+                    
+                    snapshot.active_streams.push_back(state);
+                }
+            }
+        }
+        
+        return snapshot;
+    }
+    
+    void audio_mixer::restore_state(const mixer_snapshot& snapshot) {
+        // Restore audio format
+        m_audio_device_data.m_audio_spec.channels = snapshot.audio_spec.channels;
+        m_audio_device_data.m_audio_spec.freq = snapshot.audio_spec.freq;
+        m_audio_device_data.m_audio_spec.format = static_cast<audio_format>(snapshot.audio_spec.format);
+        
+        // Restore pending samples to the mix buffer
+        if (!snapshot.pending_samples.empty()) {
+            resize(static_cast<unsigned int>(snapshot.pending_samples.size()));
+            std::copy(snapshot.pending_samples.begin(), 
+                     snapshot.pending_samples.end(),
+                     m_final_mix_buf.begin());
+        }
+        
+        // TODO: Restore stream states once we have friend access
     }
 }
