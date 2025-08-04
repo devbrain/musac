@@ -8,6 +8,7 @@
 #include <vector>
 #include <musac/sdk/buffer.hh>
 #include <musac/audio_device_data.hh>
+#include "mixer_snapshot.hh"
 #include "stream_container.hh"
 
 namespace musac {
@@ -40,6 +41,10 @@ namespace musac {
             float* finalMixData();
 
             [[nodiscard]] unsigned int allocatedSamples() const;
+            
+            // Device switching support
+            [[nodiscard]] mixer_snapshot capture_state() const;
+            void restore_state(const mixer_snapshot& snapshot);
 
 
         private:

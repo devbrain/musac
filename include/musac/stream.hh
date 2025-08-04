@@ -283,16 +283,39 @@ namespace musac {
              * In your subclass, you must call this function whenever your stream loops.
              */
             void invoke_loop_callback();
-
+            
+            // State capture for device switching
+            struct stream_snapshot {
+                uint64_t playback_tick;
+                float volume;
+                float internal_volume;
+                float stereo_pos;
+                bool is_playing;
+                bool is_paused;
+                bool is_muted;
+                bool starting;
+                size_t current_iteration;
+                size_t wanted_iterations;
+                float fade_gain;
+                int fade_state;
+                uint64_t playback_start_tick;
+            };
+            
+        protected:
+            // Protected methods for device switching (accessible to tests and audio_mixer)
+            [[nodiscard]] stream_snapshot capture_state() const;
+            void restore_state(const stream_snapshot& state);
+            
         private:
             friend class audio_device;
-            friend class audio_mixer;
+            friend class audio_mixer;  // For state capture during device switching
             friend struct in_use_guard;
             audio_stream(audio_source&& audio_src);
 
             static void audio_callback(uint8_t out[], unsigned int out_len);
             static void set_audio_device_data(const audio_device_data& aud);
             [[nodiscard]] int get_token() const;
+            
         private:
             struct impl;
             friend struct impl;

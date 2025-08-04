@@ -135,7 +135,7 @@ add_subdirectory(example)
 add_subdirectory(unittest)
 
 # Add benchmarks directory
-option(MUSAC_BUILD_BENCHMARKS "Build benchmarks" OFF)
+option(MUSAC_BUILD_BENCHMARKS "Build benchmarks" ON)
 if(MUSAC_BUILD_BENCHMARKS)
     add_subdirectory(benchmarks)
 endif()
