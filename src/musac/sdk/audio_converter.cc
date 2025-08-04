@@ -3,7 +3,9 @@
 #include <musac/sdk/endian.h>
 #include <musac/sdk/memory.h>
 #include <musac/sdk/samples_converter.hh>
+#include <musac/sdk/audio_format.h>
 #include <cmath>
+#include <ostream>
 
 namespace musac {
 
@@ -920,6 +922,42 @@ int convert_audio_samples(const audio_spec* src_spec, const uint8* src_data, int
     *dst_data = nullptr;
     *dst_len = 0;
     return 0; // Conversion not implemented
+}
+
+std::ostream& operator<<(std::ostream& os, audio_format fmt) {
+    switch (fmt) {
+        case audio_format::unknown:
+            os << "unknown";
+            break;
+        case audio_format::u8:
+            os << "u8";
+            break;
+        case audio_format::s8:
+            os << "s8";
+            break;
+        case audio_format::s16le:
+            os << "s16le";
+            break;
+        case audio_format::s16be:
+            os << "s16be";
+            break;
+        case audio_format::s32le:
+            os << "s32le";
+            break;
+        case audio_format::s32be:
+            os << "s32be";
+            break;
+        case audio_format::f32le:
+            os << "f32le";
+            break;
+        case audio_format::f32be:
+            os << "f32be";
+            break;
+        default:
+            os << "audio_format(" << static_cast<int>(fmt) << ")";
+            break;
+    }
+    return os;
 }
 
 } // namespace musac

@@ -52,6 +52,9 @@ namespace musac {
         private:
             explicit audio_device(const device_info& info, const audio_spec* spec);
             
+            // For device switching
+            friend class audio_system;
+            
         private:
             struct impl;
             std::unique_ptr<impl> m_pimpl;

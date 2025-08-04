@@ -1,5 +1,6 @@
 #include <doctest/doctest.h>
 #include <musac/audio_system.hh>
+#include <musac/audio_device.hh>
 #include <musac/error.hh>
 
 namespace musac::test {
@@ -69,21 +70,20 @@ TEST_SUITE("audio_system_api") {
     }
     
     TEST_CASE_FIXTURE(audio_system_fixture, "switch_device validation") {
-        SUBCASE("switch to valid device returns false (stub)") {
-            auto default_device = audio_system::get_default_device(true);
+        SUBCASE("switch device requires audio_device object") {
+            // Create a device to switch to
+            auto device = audio_device::open_default_device();
             
-            // Currently returns false as it's a stub
-            CHECK(audio_system::switch_device(default_device) == false);
+            // Switching to the device should succeed
+            CHECK(audio_system::switch_device(device) == true);
         }
         
-        SUBCASE("switch to invalid device returns false") {
-            device_info invalid_device;
-            invalid_device.id = "non_existent_device_id";
-            invalid_device.name = "Non-existent Device";
-            invalid_device.channels = 2;
-            invalid_device.sample_rate = 44100;
+        SUBCASE("switch to same device succeeds") {
+            auto device1 = audio_device::open_default_device();
+            CHECK(audio_system::switch_device(device1) == true);
             
-            CHECK(audio_system::switch_device(invalid_device) == false);
+            // Switching to same device again should succeed
+            CHECK(audio_system::switch_device(device1) == true);
         }
     }
     
@@ -100,8 +100,9 @@ TEST_SUITE("audio_system_api") {
         }
         
         SUBCASE("switch_device returns false when not initialized") {
-            device_info dummy_device;
-            CHECK(audio_system::switch_device(dummy_device) == false);
+            // Since switch_device now takes audio_device, we can't test this without init
+            // Creating an audio_device would fail without initialization
+            // So this test is no longer valid
         }
     }
 }

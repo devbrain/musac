@@ -631,6 +631,10 @@ namespace musac {
         return m_pimpl->m_token;
     }
     
+    audio_mixer& audio_stream::get_global_mixer() {
+        return impl::s_mixer;
+    }
+    
     audio_stream::stream_snapshot audio_stream::capture_state() const {
         stream_snapshot snapshot;
         snapshot.playback_tick = m_pimpl->m_playback_start_tick;

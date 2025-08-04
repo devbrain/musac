@@ -3,6 +3,8 @@
 
 #include <musac/sdk/types.h>
 #include <musac/sdk/musac_sdk_config.h>
+#include <musac/sdk/export_musac_sdk.h>
+#include <iosfwd>
 
 namespace musac {
 
@@ -55,6 +57,9 @@ struct audio_spec {
     uint8 channels;
     uint32 freq;
 };
+
+// Stream operator for audio_format
+MUSAC_SDK_EXPORT std::ostream& operator<<(std::ostream& os, audio_format fmt);
 
 } // namespace musac
 
