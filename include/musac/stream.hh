@@ -310,11 +310,13 @@ namespace musac {
             friend class audio_device;
             friend class audio_mixer;  // For state capture during device switching
             friend struct in_use_guard;
+            friend class audio_system;  // For device switching
             audio_stream(audio_source&& audio_src);
 
             static void audio_callback(uint8_t out[], unsigned int out_len);
             static void set_audio_device_data(const audio_device_data& aud);
             [[nodiscard]] int get_token() const;
+            static audio_mixer& get_global_mixer();
             
         private:
             struct impl;

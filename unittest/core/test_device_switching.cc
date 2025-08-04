@@ -133,17 +133,156 @@ TEST_SUITE("device_switching") {
     }
     
     TEST_CASE_FIXTURE(device_switching_fixture, "device switching API validation") {
-        // Test the switch_device stub
+        // Test the switch_device implementation with user-created devices
         auto devices = audio_system::enumerate_devices();
         REQUIRE(devices.size() >= 1);
         
-        // Currently returns false (stub)
-        CHECK(audio_system::switch_device(devices[0]) == false);
+        // Create first device
+        auto device1 = audio_device::open_default_device();
         
-        // Test with invalid device
-        device_info invalid_device;
-        invalid_device.id = "non_existent_device";
-        CHECK(audio_system::switch_device(invalid_device) == false);
+        // Create second device (same device for testing)
+        auto device2 = audio_device::open_device(devices[0].id);
+        
+        // Test switching without an active device fails
+        // (device2 is already active from constructor)
+        CHECK(audio_system::switch_device(device1) == true);
+        
+        // Switching to same device should succeed
+        CHECK(audio_system::switch_device(device1) == true);
+        
+        // Switching back to device2
+        CHECK(audio_system::switch_device(device2) == true);
+    }
+    
+    TEST_CASE_FIXTURE(device_switching_fixture, "stream pause/resume behavior") {
+        auto device = audio_device::open_default_device();
+        
+        // Create streams with different states
+        auto source1 = create_mock_source(44100);
+        auto stream1 = device.create_stream(std::move(*source1));
+        stream1.play();
+        
+        auto source2 = create_mock_source(44100);
+        auto stream2 = device.create_stream(std::move(*source2));
+        stream2.play();
+        stream2.pause(); // Already paused
+        
+        auto source3 = create_mock_source(44100);
+        auto stream3 = device.create_stream(std::move(*source3));
+        // Not playing
+        
+        // Verify initial states
+        CHECK(stream1.is_playing() == true);
+        CHECK(stream1.is_paused() == false);
+        
+        CHECK(stream2.is_playing() == false);
+        CHECK(stream2.is_paused() == true);
+        
+        CHECK(stream3.is_playing() == false);
+        CHECK(stream3.is_paused() == false);
+        
+        // In a real device switch, all playing streams would be paused
+        // We can't test the internal pause_all_streams directly,
+        // but we can verify the behavior when it's implemented
+    }
+    
+    TEST_CASE_FIXTURE(device_switching_fixture, "device switching with active streams") {
+        // Test device switching preserves stream state
+        
+        // Open initial device
+        auto device1 = audio_device::open_default_device();
+        
+        // Create and configure streams
+        auto source1 = create_mock_source(44100);
+        auto stream1 = device1.create_stream(std::move(*source1));
+        stream1.set_volume(0.5f);
+        stream1.set_stereo_position(-0.3f);
+        stream1.play();
+        
+        auto source2 = create_mock_source(44100);
+        auto stream2 = device1.create_stream(std::move(*source2));
+        stream2.set_volume(0.8f);
+        stream2.play();
+        stream2.pause();
+        
+        // Verify initial states
+        CHECK(stream1.is_playing() == true);
+        CHECK(stream1.volume() == 0.5f);
+        CHECK(stream1.get_stereo_position() == -0.3f);
+        
+        CHECK(stream2.is_playing() == false);
+        CHECK(stream2.is_paused() == true);
+        CHECK(stream2.volume() == 0.8f);
+        
+        // Create a new device with same specs
+        auto device2 = audio_device::open_default_device();
+        
+        // Switch to the new device
+        bool switch_result = audio_system::switch_device(device2);
+        CHECK(switch_result == true);
+        
+        // Verify stream states are preserved
+        CHECK(stream1.is_playing() == true);
+        CHECK(stream1.volume() == 0.5f);
+        CHECK(stream1.get_stereo_position() == -0.3f);
+        
+        CHECK(stream2.is_playing() == false);
+        CHECK(stream2.is_paused() == true);
+        CHECK(stream2.volume() == 0.8f);
+        
+        // Streams should still be functional
+        stream1.pause();
+        CHECK(stream1.is_paused() == true);
+        
+        stream2.resume();
+        CHECK(stream2.is_playing() == true);
+        CHECK(stream2.is_paused() == false);
+    }
+    
+    TEST_CASE_FIXTURE(device_switching_fixture, "device switching with format conversion") {
+        // Test device switching between devices with different audio formats
+        
+        // Open initial device with default format
+        auto device1 = audio_device::open_default_device();
+        
+        // Create stream
+        auto source1 = create_mock_source(44100);
+        auto stream1 = device1.create_stream(std::move(*source1));
+        stream1.set_volume(0.6f);
+        stream1.play();
+        
+        // Verify initial state
+        CHECK(stream1.is_playing() == true);
+        CHECK(stream1.volume() == 0.6f);
+        
+        // Get device info
+        auto dev1_format = device1.get_format();
+        auto dev1_channels = device1.get_channels();
+        auto dev1_freq = device1.get_freq();
+        
+        // Create a device with different specs if possible
+        // For testing purposes, we'll create another default device
+        // In real usage, this might be a device with different capabilities
+        auto device2 = audio_device::open_default_device();
+        
+        // Log the formats for debugging
+        INFO("Device 1: ", dev1_freq, " Hz, ", dev1_channels, " ch, format ", dev1_format);
+        INFO("Device 2: ", device2.get_freq(), " Hz, ", device2.get_channels(), " ch, format ", device2.get_format());
+        
+        // Switch to the new device
+        bool switch_result = audio_system::switch_device(device2);
+        CHECK(switch_result == true);
+        
+        // Verify stream state is preserved even with format conversion
+        CHECK(stream1.is_playing() == true);
+        CHECK(stream1.volume() == 0.6f);
+        
+        // Stream should still be functional
+        stream1.pause();
+        CHECK(stream1.is_paused() == true);
+        
+        stream1.resume();
+        CHECK(stream1.is_playing() == true);
     }
 }
 

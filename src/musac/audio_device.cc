@@ -27,6 +27,12 @@ static std::mutex s_manager_mutex;
 static audio_device* s_active_device = nullptr;
 static std::mutex s_device_mutex;
 
+// Helper function for device switching
+audio_device* get_active_audio_device() {
+    std::lock_guard<std::mutex> lock(s_device_mutex);
+    return s_active_device;
+}
+
 // Initialize device manager if needed
 static std::shared_ptr<audio_device_interface> get_device_manager() {
     std::lock_guard<std::mutex> lock(s_manager_mutex);
@@ -101,13 +107,7 @@ struct audio_device::impl {
 audio_device::audio_device(const device_info& info, const audio_spec* desired_spec)
     : m_pimpl(std::make_unique<impl>()) {
     
-    // Check if there's already an active device
-    {
-        std::lock_guard<std::mutex> lock(s_device_mutex);
-        if (s_active_device != nullptr) {
-            THROW_RUNTIME("Another audio device is already active. Close it before opening a new one.");
-        }
-    }
+    // No longer enforce single device constraint since we support device switching
     
     m_pimpl->manager = get_device_manager();
     if (!m_pimpl->manager) {
@@ -133,12 +133,15 @@ audio_device::audio_device(const device_info& info, const audio_spec* desired_sp
     
     m_pimpl->spec = obtained_spec;
     
-    // Register as the active device
+    // Only register as active device if there isn't one already
+    // Otherwise, user must explicitly switch using audio_system::switch_device
     {
         std::lock_guard<std::mutex> lock(s_device_mutex);
-        s_active_device = this;
-        // Reset the audio stream state for the new device
-        reset_audio_stream();
+        if (s_active_device == nullptr) {
+            s_active_device = this;
+            // Reset the audio stream state for the new device
+            reset_audio_stream();
+        }
     }
 }
 

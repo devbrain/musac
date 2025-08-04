@@ -10,6 +10,9 @@
 #include <vector>
 
 namespace musac {
+    // Forward declaration
+    class audio_device;
+    
     struct MUSAC_EXPORT audio_system {
         static bool init();
 
@@ -19,8 +22,8 @@ namespace musac {
         static std::vector<device_info> enumerate_devices(bool playback_devices = true);
         static device_info get_default_device(bool playback_device = true);
         
-        // Device switching
-        static bool switch_device(const device_info& device);
+        // Device switching - takes a user-created device
+        static bool switch_device(audio_device& new_device);
     };
 }
 

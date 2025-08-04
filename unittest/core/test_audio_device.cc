@@ -97,21 +97,25 @@ TEST_SUITE("audio_device") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "multiple device instances") {
-        // Only one device can be active at a time
+        // Multiple devices can now be created (for device switching support)
         auto device1 = audio_device::open_default_device();
         CHECK(device1.get_channels() > 0);
         
-        // Trying to create a second device should throw
-        CHECK_THROWS_AS(
-            audio_device::open_default_device(),
-            std::runtime_error
-        );
+        // Creating a second device should now succeed
+        auto device2 = audio_device::open_default_device();
+        CHECK(device2.get_channels() > 0);
         
-        // Operations on the device should work
+        // Operations on both devices should work
         device1.pause();
         CHECK(device1.is_paused());
         device1.resume();
         CHECK_FALSE(device1.is_paused());
+        
+        // device2 operations also work
+        device2.pause();
+        CHECK(device2.is_paused());
+        device2.resume();
+        CHECK_FALSE(device2.is_paused());
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "device move semantics") {
