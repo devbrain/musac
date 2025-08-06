@@ -7,6 +7,7 @@
 #include <musac/sdk/from_float_converter.hh>
 #include <musac/error.hh>
 #include <failsafe/failsafe.hh>
+#include "device_guard.hh"
 #include <vector>
 #include <memory>
 #include <mutex>
@@ -97,10 +98,15 @@ audio_device audio_device::open_device(const std::string& device_id, const audio
 
 // audio_device implementation
 struct audio_device::impl {
-    uint32_t device_handle = 0;
+    // Order matters! Members are destroyed in reverse order of declaration
+    // 1. stream is destroyed first (may use device)
     std::unique_ptr<audio_stream_interface> stream;
+    
+    // 2. device_guard is destroyed second (closes device after stream is gone)
+    device_guard device;
+    
+    // 3. Other members don't have cleanup dependencies
     audio_spec spec;
-    std::shared_ptr<audio_device_interface> manager; // Keep manager alive
     std::atomic<int> stream_count{0}; // Track active streams
 };
 
@@ -109,8 +115,8 @@ audio_device::audio_device(const device_info& info, const audio_spec* desired_sp
     
     // No longer enforce single device constraint since we support device switching
     
-    m_pimpl->manager = get_device_manager();
-    if (!m_pimpl->manager) {
+    auto manager = get_device_manager();
+    if (!manager) {
         THROW_RUNTIME("No audio device manager available");
     }
     
@@ -127,11 +133,18 @@ audio_device::audio_device(const device_info& info, const audio_spec* desired_sp
     }
     
     audio_spec obtained_spec;
-    m_pimpl->device_handle = m_pimpl->manager->open_device(
+    uint32_t handle = manager->open_device(
         info.id, spec, obtained_spec
     );
     
+    if (!handle) {
+        THROW_RUNTIME("Failed to open audio device: " + info.name);
+    }
+    
     m_pimpl->spec = obtained_spec;
+    
+    // Initialize device guard - will auto-close on destruction
+    m_pimpl->device = device_guard(manager, handle);
     
     // Only register as active device if there isn't one already
     // Otherwise, user must explicitly switch using audio_system::switch_device
@@ -154,22 +167,10 @@ audio_device::~audio_device() {
         }
     }
     
-    if (m_pimpl) {
-        // Destroy the stream first (if any)
-        if (m_pimpl->stream) {
-            // LOG_INFO("AudioDevice", "Destroying stream");
-            m_pimpl->stream.reset();
-        }
-        
-        // Close the device handle if we have a manager and handle
-        if (m_pimpl->manager && m_pimpl->device_handle) {
-            // LOG_INFO("AudioDevice", "Closing device handle:", m_pimpl->device_handle);
-            
-            // The manager is kept alive by shared_ptr, so this is safe
-            // even if audio_system::done() was already called
-            m_pimpl->manager->close_device(m_pimpl->device_handle);
-        }
-    }
+    // RAII cleanup: The impl destructor will handle everything in the correct order:
+    // 1. m_pimpl->stream will be destroyed first (may still use device)
+    // 2. m_pimpl->device (device_guard) will be destroyed second (closes device)
+    // No manual cleanup needed thanks to RAII!
 }
 
 audio_device::audio_device(audio_device&&) noexcept = default;
@@ -197,36 +198,36 @@ int audio_device::get_freq() const {
 }
 
 bool audio_device::pause() {
-    if (m_pimpl->manager) {
-        return m_pimpl->manager->pause_device(m_pimpl->device_handle);
+    if (m_pimpl->device.valid()) {
+        return m_pimpl->device.manager()->pause_device(m_pimpl->device.handle());
     }
     return false;
 }
 
 bool audio_device::is_paused() const {
-    if (m_pimpl->manager) {
-        return m_pimpl->manager->is_device_paused(m_pimpl->device_handle);
+    if (m_pimpl->device.valid()) {
+        return m_pimpl->device.manager()->is_device_paused(m_pimpl->device.handle());
     }
     return false;
 }
 
 bool audio_device::resume() {
-    if (m_pimpl->manager) {
-        return m_pimpl->manager->resume_device(m_pimpl->device_handle);
+    if (m_pimpl->device.valid()) {
+        return m_pimpl->device.manager()->resume_device(m_pimpl->device.handle());
     }
     return false;
 }
 
 float audio_device::get_gain() const {
-    if (m_pimpl->manager) {
-        return m_pimpl->manager->get_device_gain(m_pimpl->device_handle);
+    if (m_pimpl->device.valid()) {
+        return m_pimpl->device.manager()->get_device_gain(m_pimpl->device.handle());
     }
     return 0.0f;
 }
 
 void audio_device::set_gain(float v) {
-    if (m_pimpl->manager) {
-        m_pimpl->manager->set_device_gain(m_pimpl->device_handle, v);
+    if (m_pimpl->device.valid()) {
+        m_pimpl->device.manager()->set_device_gain(m_pimpl->device.handle(), v);
     }
 }
 
@@ -235,12 +236,12 @@ void audio_device::create_stream_with_callback(
     void (*callback)(void* userdata, uint8_t* stream, int len),
     void* userdata) {
     
-    if (!m_pimpl->manager) {
-        THROW_RUNTIME("No device manager available");
+    if (!m_pimpl->device.valid()) {
+        THROW_RUNTIME("No device available");
     }
     
-    m_pimpl->stream = m_pimpl->manager->create_stream(
-        m_pimpl->device_handle, m_pimpl->spec, callback, userdata
+    m_pimpl->stream = m_pimpl->device.manager()->create_stream(
+        m_pimpl->device.handle(), m_pimpl->spec, callback, userdata
     );
     
     // Stream is already bound if using callback-based creation

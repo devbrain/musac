@@ -50,6 +50,7 @@ add_executable(musac_unittest
         core/test_audio_device.cc
         core/test_thread_safety.cc
         core/test_cleanup.cc
+        core/test_device_cleanup.cc
         core/test_phase1_thread_safety.cc
         core/test_mixer_public_api.cc
         core/test_mixer_simple.cc
