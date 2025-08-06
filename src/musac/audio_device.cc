@@ -254,6 +254,30 @@ audio_stream audio_device::create_stream(audio_source&& audio_src) {
     aud.m_frame_size = 4096; // Default frame size
     aud.m_sample_converter = get_from_float_converter(m_pimpl->spec.format);
     
+    // Pre-calculate bytes per sample for performance
+    switch (m_pimpl->spec.format) {
+        case audio_format::u8:
+        case audio_format::s8:
+            aud.m_bytes_per_sample = 1;
+            break;
+        case audio_format::s16le:
+        case audio_format::s16be:
+            aud.m_bytes_per_sample = 2;
+            break;
+        case audio_format::s32le:
+        case audio_format::s32be:
+        case audio_format::f32le:
+        case audio_format::f32be:
+            aud.m_bytes_per_sample = 4;
+            break;
+        default:
+            LOG_ERROR("audio_device", "Unknown audio format");
+            aud.m_bytes_per_sample = 2; // Default to 16-bit
+            break;
+    }
+    aud.m_bytes_per_frame = aud.m_bytes_per_sample * m_pimpl->spec.channels;
+    aud.m_ms_per_frame = 1000.0f / static_cast<float>(m_pimpl->spec.freq);
+    
     audio_stream::set_audio_device_data(aud);
     
     // Create the callback that will call audio_stream's callback

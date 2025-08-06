@@ -16,6 +16,11 @@ namespace musac {
         int m_frame_size;
         // This points to an appropriate converter for the current audio format.
         from_float_converter_func_t  m_sample_converter;
+        
+        // Pre-calculated values for performance
+        int m_bytes_per_sample;  // Cached to avoid switch in hot path
+        int m_bytes_per_frame;   // m_bytes_per_sample * channels
+        float m_ms_per_frame;    // 1000.0f / freq (for tick calculations)
     };
 }
 
