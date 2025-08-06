@@ -68,6 +68,18 @@ namespace musac {
             m_entries.erase(it, m_entries.end());
         }
         
+        // Update stream pointer when stream is moved
+        void update_stream_pointer(int token_id, audio_stream* new_stream) {
+            std::unique_lock lock(m_mutex);
+            
+            auto it = std::find_if(m_entries.begin(), m_entries.end(),
+                [token_id](const stream_entry& e) { return e.token_id == token_id; });
+                
+            if (it != m_entries.end()) {
+                it->stream = new_stream;
+            }
+        }
+        
         // Get a snapshot of valid streams for the audio callback
         std::shared_ptr<std::vector<stream_entry>> get_valid_streams() const {
             std::shared_lock lock(m_mutex);

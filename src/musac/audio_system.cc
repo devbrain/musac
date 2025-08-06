@@ -97,6 +97,8 @@ namespace musac {
         }
         
         THROW_RUNTIME("No audio devices available.");
+        // Unreachable, but satisfies compiler warning
+        return device_info{};
     }
     
     bool audio_system::switch_device(audio_device& new_device) {
