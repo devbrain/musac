@@ -24,6 +24,8 @@ namespace musac {
             void add_stream(audio_stream* s, std::weak_ptr<void> lifetime_token);
 
             void remove_stream(int token);
+            
+            void update_stream_pointer(int token, audio_stream* new_stream);
 
             void resize(unsigned int out_len_samples);
 
@@ -41,6 +43,9 @@ namespace musac {
             float* finalMixData();
 
             [[nodiscard]] unsigned int allocatedSamples() const;
+            
+            // Buffer management - force compaction during quiet periods
+            void compact_buffers();
             
             // Device switching support
             [[nodiscard]] mixer_snapshot capture_state() const;

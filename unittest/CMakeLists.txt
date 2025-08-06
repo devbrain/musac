@@ -59,6 +59,9 @@ add_executable(musac_unittest
         core/test_device_switching.cc
         core/test_audio_system_api.cc
         core/test_phase5_integration.cc
+        core/test_internal_mixer_safety.cc
+        core/test_buffer_shrinking.cc
+        core/test_stream_move.cc
 
         # SDK tests
         sdk/test_audio_converter.cc

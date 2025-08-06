@@ -27,16 +27,76 @@ namespace musac {
     void audio_mixer::remove_stream(int token) {
         m_stream_container.remove(token);
     }
+    
+    void audio_mixer::update_stream_pointer(int token, audio_stream* new_stream) {
+        m_stream_container.update_stream_pointer(token, new_stream);
+    }
 
     void audio_mixer::resize(unsigned int out_len_samples) {
-        // Only grow buffers; never shrink
+        // Buffer management constants
+        static constexpr size_t MAX_RETAINED_SAMPLES = 256 * 1024;  // ~1MB for float (256K * 4 bytes)
+        static constexpr size_t MIN_BUFFER_SAMPLES = 4096;          // Minimum buffer size
+        static constexpr float SHRINK_THRESHOLD = 0.25f;            // Shrink if using < 25%
+        static constexpr size_t SHRINK_HEADROOM = 2;                // Shrink to 2x current need
+        static constexpr size_t STABILITY_FRAMES = 100;             // Wait 100 callbacks before shrinking
+        
+        // Track usage patterns for stability
+        static size_t frames_at_current_size = 0;
+        static size_t consecutive_small_requests = 0;
+        
         if (out_len_samples > m_allocated_samples) {
+            // Need to grow - do it immediately for real-time safety
             m_final_mix_buf.resize(out_len_samples);
             m_stream_buf.resize(out_len_samples);
             m_processor_buf.resize(out_len_samples);
             m_allocated_samples = out_len_samples;
+            
+            // Reset stability counters since size changed
+            frames_at_current_size = 0;
+            consecutive_small_requests = 0;
+            
+            // Log significant growth for debugging
+            if (out_len_samples > MAX_RETAINED_SAMPLES) {
+                LOG_WARN("audio_mixer", "Large buffer allocation:", out_len_samples, "samples");
+            }
+            
+        } else if (m_allocated_samples > MAX_RETAINED_SAMPLES && 
+                   out_len_samples < static_cast<unsigned int>(m_allocated_samples * SHRINK_THRESHOLD)) {
+            // Buffer is large and we're using less than 25% of it
+            consecutive_small_requests++;
+            
+            // Only shrink after consistent small usage for STABILITY_FRAMES callbacks
+            if (consecutive_small_requests > STABILITY_FRAMES) {
+                // Calculate new size with headroom for growth
+                size_t new_size = std::max(
+                    static_cast<size_t>(out_len_samples * SHRINK_HEADROOM),
+                    MIN_BUFFER_SAMPLES
+                );
+                
+                // Ensure we don't grow beyond MAX_RETAINED_SAMPLES
+                new_size = std::min(new_size, MAX_RETAINED_SAMPLES);
+                
+                // Resize buffers (but don't shrink_to_fit to avoid reallocation in audio thread)
+                m_final_mix_buf.resize(new_size);
+                m_stream_buf.resize(new_size);
+                m_processor_buf.resize(new_size);
+                m_allocated_samples = static_cast<unsigned int>(new_size);
+                
+                // Reset counters
+                consecutive_small_requests = 0;
+                frames_at_current_size = 0;
+                
+                LOG_INFO("audio_mixer", "Shrunk buffers from", m_allocated_samples, "to", new_size, "samples");
+            }
+        } else {
+            // Size is acceptable, just track stability
+            frames_at_current_size++;
+            
+            // Reset small request counter if we're using a reasonable amount
+            if (out_len_samples >= static_cast<unsigned int>(m_allocated_samples * SHRINK_THRESHOLD)) {
+                consecutive_small_requests = 0;
+            }
         }
-        // if out_len_samples <= m_allocated_samples, keep existing buffers
     }
 
     void audio_mixer::set_zeros() {
@@ -112,6 +172,28 @@ namespace musac {
 
     unsigned int audio_mixer::allocatedSamples() const {
         return m_allocated_samples;
+    }
+    
+    void audio_mixer::compact_buffers() {
+        // This can be called by the application during quiet periods
+        // (e.g., menu screens, level transitions) to force memory cleanup
+        
+        static constexpr size_t MIN_BUFFER_SAMPLES = 4096;
+        
+        // Only compact if we have excessively large buffers
+        if (m_allocated_samples > MIN_BUFFER_SAMPLES * 4) {
+            auto old_size = m_allocated_samples;
+            
+            // Resize buffers - buffer::resize() already reallocates memory
+            // so we don't need shrink_to_fit()
+            m_final_mix_buf.resize(MIN_BUFFER_SAMPLES);
+            m_stream_buf.resize(MIN_BUFFER_SAMPLES);
+            m_processor_buf.resize(MIN_BUFFER_SAMPLES);
+            
+            m_allocated_samples = MIN_BUFFER_SAMPLES;
+            
+            LOG_INFO("audio_mixer", "Compacted buffers from", old_size, "to", MIN_BUFFER_SAMPLES, "samples");
+        }
     }
     
     mixer_snapshot audio_mixer::capture_state() const {

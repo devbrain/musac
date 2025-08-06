@@ -426,6 +426,10 @@ namespace musac {
 
     audio_stream::audio_stream(audio_stream&& other) noexcept
         : m_pimpl(std::move(other.m_pimpl)) {
+        // Update the mixer to point to this new stream object
+        if (m_pimpl) {
+            impl::s_mixer.update_stream_pointer(m_pimpl->m_token, this);
+        }
     }
 
     auto audio_stream::operator=(audio_stream&& other) noexcept -> audio_stream& {
@@ -457,6 +461,11 @@ namespace musac {
             
             // Take ownership of other's implementation
             m_pimpl = std::move(other.m_pimpl);
+            
+            // Update the mixer to point to this stream object
+            if (m_pimpl) {
+                impl::s_mixer.update_stream_pointer(m_pimpl->m_token, this);
+            }
         }
         return *this;
     }
