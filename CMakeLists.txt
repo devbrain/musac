@@ -129,6 +129,10 @@ set (MUSAC_PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 add_subdirectory(ext)
 add_subdirectory(src/musac)
+
+# Add test data library before example (example will use it)
+add_subdirectory(test_data)
+
 add_subdirectory(example)
 
 # Add unittest directory

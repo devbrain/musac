@@ -7,6 +7,8 @@
 #include <musac/sdk/io_stream.h>
 #include <memory>
 #include <vector>
+#include <thread>
+#include <chrono>
 
 namespace musac::benchmark {
 
@@ -71,6 +73,40 @@ inline audio_device setup_benchmark_device() {
     device.resume();
     return device;
 }
+
+// Helper to ensure clean shutdown of audio device
+inline void cleanup_benchmark_device(audio_device& device) {
+    // Pause the device to stop callbacks
+    device.pause();
+    
+    // Give more time for any running callbacks to complete
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    // The device destructor will handle the rest
+}
+
+// RAII wrapper for benchmark device that ensures proper cleanup
+class benchmark_device_guard {
+    audio_device m_device;
+    
+public:
+    benchmark_device_guard() : m_device(setup_benchmark_device()) {}
+    
+    ~benchmark_device_guard() {
+        cleanup_benchmark_device(m_device);
+    }
+    
+    audio_device& get() { return m_device; }
+    const audio_device& get() const { return m_device; }
+    
+    // Disable copy
+    benchmark_device_guard(const benchmark_device_guard&) = delete;
+    benchmark_device_guard& operator=(const benchmark_device_guard&) = delete;
+    
+    // Enable move
+    benchmark_device_guard(benchmark_device_guard&&) = default;
+    benchmark_device_guard& operator=(benchmark_device_guard&&) = default;
+};
 
 } // namespace musac::benchmark
 

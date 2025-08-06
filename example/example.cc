@@ -7,7 +7,7 @@
 #include <chrono>
 #include <musac/audio_system.hh>
 #include <musac/audio_device.hh>
-#include "loader.hh"
+#include <musac/test_data/loader.hh>
 #include "musac/audio_loader.hh"
 #include <musac/stream.hh>
 
@@ -53,7 +53,7 @@ int main(int argc, char* argv[]) {
         // 12 - tick
 
 
-        auto strm = device.create_stream(loader::load(music_type::opb));
+        auto strm = device.create_stream(musac::test_data::loader::load(musac::test_data::music_type::opb));
         audio_stream stream(std::move(strm));
 
         device.resume();
@@ -86,5 +86,5 @@ int main(int argc, char* argv[]) {
     }
 
     audio_system::done();
-    loader::done();
+    musac::test_data::loader::done();
 }

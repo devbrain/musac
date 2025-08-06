@@ -311,7 +311,16 @@ namespace musac {
             friend class audio_mixer;  // For state capture during device switching
             friend struct in_use_guard;
             friend class audio_system;  // For device switching
+            
+#ifdef MUSAC_BENCHMARK_MODE
+        public:  // Make constructor public for benchmarking
+#endif
             audio_stream(audio_source&& audio_src);
+#ifdef MUSAC_BENCHMARK_MODE
+        public:  // Keep public for benchmarking
+#else
+        private:  // Private in normal mode
+#endif
 
             static void audio_callback(uint8_t out[], unsigned int out_len);
             static void set_audio_device_data(const audio_device_data& aud);
