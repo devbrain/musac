@@ -5,7 +5,7 @@
 #include <musac/codecs/decoder_aiff.hh>
 #include <musac/sdk/samples_converter.hh>
 #include <musac/sdk/audio_format.h>
-#include <musac/sdk/audio_converter.h>
+#include <musac/sdk/audio_converter_v2.hh>
 #include <musac/sdk/endian.h>
 #include <musac/sdk/memory.h>
 #include <musac/error.hh>
@@ -18,19 +18,12 @@ namespace musac {
 
 // Helper function to convert audio samples and return a vector
 static std::vector<uint8> convert_audio_samples_to_vector(
-    const audio_spec* src_spec, const uint8* src_data, int src_len,
-    const audio_spec* dst_spec) {
-    uint8* dst_data = nullptr;
-    int dst_len = 0;
-    
-    if (!convert_audio_samples(src_spec, src_data, src_len, dst_spec, &dst_data, &dst_len)) {
-        throw std::runtime_error("Failed to convert audio samples");
-    }
-    
-    // Transfer ownership to vector and cleanup
-    std::vector<uint8> result(dst_data, dst_data + dst_len);
-    delete[] dst_data;
-    return result;
+    const audio_spec& src_spec, const uint8* src_data, size_t src_len,
+    const audio_spec& dst_spec) {
+    // Use new audio converter API
+    buffer<uint8> converted = audio_converter::convert(src_spec, src_data, src_len, dst_spec);
+    // Copy to vector (until we refactor to use buffer throughout)
+    return std::vector<uint8>(converted.begin(), converted.end());
 }
 
 // AIFF format constants (big-endian)
@@ -262,7 +255,7 @@ struct decoder_aiff::impl {
         
         try {
             // First try to convert to target format
-            m_buffer = convert_audio_samples_to_vector(&m_spec, m_buffer.data(), m_buffer.size(), &dst_spec);
+            m_buffer = convert_audio_samples_to_vector(m_spec, m_buffer.data(), m_buffer.size(), dst_spec);
         } catch (const std::exception&) {
             // If conversion fails, try intermediate conversion
             if (m_spec.format == audio_format::s16be || m_spec.format == audio_format::s8) {
@@ -272,12 +265,12 @@ struct decoder_aiff::impl {
                 
                 try {
                     std::vector<uint8> temp_buffer = convert_audio_samples_to_vector(
-                        &m_spec, m_buffer.data(), m_buffer.size(), &intermediate_spec);
+                        m_spec, m_buffer.data(), m_buffer.size(), intermediate_spec);
                     
                     // Now convert from intermediate to final format
                     try {
                         m_buffer = convert_audio_samples_to_vector(
-                            &intermediate_spec, temp_buffer.data(), temp_buffer.size(), &dst_spec);
+                            intermediate_spec, temp_buffer.data(), temp_buffer.size(), dst_spec);
                     } catch (const std::exception&) {
                         // If still failing, just keep intermediate format
                         m_buffer = temp_buffer;
