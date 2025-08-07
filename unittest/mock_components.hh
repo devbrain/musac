@@ -1,5 +1,5 @@
-#ifndef MUSAC_TEST_HELPERS_HH
-#define MUSAC_TEST_HELPERS_HH
+#ifndef MUSAC_MOCK_COMPONENTS_HH
+#define MUSAC_MOCK_COMPONENTS_HH
 
 #include <musac/sdk/decoder.hh>
 #include <musac/sdk/io_stream.h>
@@ -352,6 +352,206 @@ inline std::unique_ptr<mock_audio_source> create_mock_source(musac::size frames 
     return mock_audio_source::create(frames);
 }
 
+// Mock decoder that can simulate errors
+class mock_decoder_with_errors : public decoder {
+private:
+    unsigned int m_channels{2};
+    unsigned int m_rate{44100};
+    size_t m_total_samples;
+    size_t m_current_sample{0};
+    bool m_is_open{false};
+    
+public:
+    // Error injection flags
+    bool fail_on_decode{false};
+    bool wrong_format{false};
+    bool fail_on_seek{false};
+    bool return_partial_data{false};
+    
+    mock_decoder_with_errors() : m_total_samples(44100) {} // 1 second default
+    
+    void open(io_stream* stream) override {
+        (void)stream; // Unused
+        m_is_open = true;
+        set_is_open(true);
+    }
+    
+    unsigned int get_channels() const override {
+        return m_channels;
+    }
+    
+    unsigned int get_rate() const override {
+        return m_rate;
+    }
+    
+    bool rewind() override {
+        if (fail_on_seek) {
+            return false;
+        }
+        m_current_sample = 0;
+        return true;
+    }
+    
+    std::chrono::microseconds duration() const override {
+        double duration_secs = static_cast<double>(m_total_samples) / m_rate;
+        return std::chrono::microseconds(static_cast<long long>(duration_secs * 1000000));
+    }
+    
+    bool seek_to_time(std::chrono::microseconds pos) override {
+        if (fail_on_seek) {
+            return false;
+        }
+        
+        double position_secs = static_cast<double>(pos.count()) / 1000000.0;
+        size_t target_sample = static_cast<size_t>(position_secs * m_rate);
+        if (target_sample <= m_total_samples) {
+            m_current_sample = target_sample;
+            return true;
+        }
+        return false;
+    }
+    
+protected:
+    unsigned int do_decode(float* buf, unsigned int len, bool& call_again) override {
+        if (fail_on_decode) {
+            throw std::runtime_error("Simulated decode failure");
+        }
+        
+        unsigned int samples_to_generate = len;
+        
+        if (return_partial_data) {
+            samples_to_generate /= 2; // Return only half
+        }
+        
+        // Don't exceed total samples
+        size_t remaining = m_total_samples - m_current_sample;
+        samples_to_generate = std::min(static_cast<unsigned int>(remaining), samples_to_generate);
+        
+        if (samples_to_generate == 0) {
+            call_again = false;
+            return 0; // End of stream
+        }
+        
+        // Generate corrupted or normal data
+        if (buf) {
+            if (fail_on_decode) {
+                // Write random floats
+                for (unsigned int i = 0; i < samples_to_generate; ++i) {
+                    buf[i] = (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f;
+                }
+            } else {
+                // Write zeros (silence)
+                std::memset(buf, 0, samples_to_generate * sizeof(float));
+            }
+        }
+        
+        m_current_sample += samples_to_generate;
+        call_again = (m_current_sample < m_total_samples);
+        return samples_to_generate;
+    }
+};
+
+// Mock IO stream that can simulate errors  
+class mock_io_stream : public io_stream {
+private:
+    std::vector<uint8_t> m_data;
+    size_t m_position{0};
+    bool m_is_open{true};
+    
+public:
+    // Error injection flags
+    bool fail_on_read{false};
+    bool fail_on_seek{false};
+    bool return_partial_reads{false};
+    
+    mock_io_stream(size_t data_size = 1024) : m_data(data_size, 0) {}
+    
+    size read(void* buffer, size bytes) override {
+        if (fail_on_read) {
+            return 0;
+        }
+        
+        size available = m_data.size() - m_position;
+        size to_read = std::min(bytes, available);
+        
+        if (return_partial_reads && to_read > 0) {
+            to_read /= 2;
+        }
+        
+        if (buffer && to_read > 0) {
+            std::memcpy(buffer, m_data.data() + m_position, to_read);
+            m_position += to_read;
+        }
+        
+        return to_read;
+    }
+    
+    size write(const void* buffer, size bytes) override {
+        if (m_position + bytes > m_data.size()) {
+            m_data.resize(m_position + bytes);
+        }
+        
+        if (buffer) {
+            std::memcpy(m_data.data() + m_position, buffer, bytes);
+            m_position += bytes;
+        }
+        
+        return bytes;
+    }
+    
+    int64 seek(int64 offset, seek_origin whence) override {
+        if (fail_on_seek) {
+            return -1;
+        }
+        
+        size_t new_position;
+        switch (whence) {
+            case seek_origin::set:
+                if (offset < 0) return -1;
+                new_position = static_cast<size_t>(offset);
+                break;
+            case seek_origin::cur:
+                if (offset < 0 && static_cast<size_t>(-offset) > m_position) {
+                    return -1;
+                }
+                new_position = m_position + static_cast<size_t>(offset);
+                break;
+            case seek_origin::end:
+                if (offset > 0) return -1;
+                if (static_cast<size_t>(-offset) > m_data.size()) {
+                    return -1;
+                }
+                new_position = m_data.size() + static_cast<size_t>(offset);
+                break;
+            default:
+                return -1;
+        }
+        
+        if (new_position > m_data.size()) {
+            return -1;
+        }
+        
+        m_position = new_position;
+        return static_cast<int64>(m_position);
+    }
+    
+    int64 tell() override {
+        return static_cast<int64>(m_position);
+    }
+    
+    int64 get_size() override {
+        return static_cast<int64>(m_data.size());
+    }
+    
+    void close() override {
+        m_is_open = false;
+    }
+    
+    bool is_open() const override {
+        return m_is_open;
+    }
+};
+
 } // namespace musac::test
 
-#endif // MUSAC_TEST_HELPERS_HH
+#endif // MUSAC_MOCK_COMPONENTS_HH

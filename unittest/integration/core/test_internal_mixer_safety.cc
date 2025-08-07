@@ -11,22 +11,19 @@
 #include <memory>
 #include <random>
 #include <set>
-#include "../test_helpers.hh"
-#include "../test_helpers_v2.hh"
+#include "../../mock_components.hh"
+#include "../../test_fixtures.hh"
 
 // Only include internal headers if we have access to them
 #ifdef MUSAC_INTERNAL_TESTING
-#include "../../src/musac/audio_mixer.hh"
+#include "../../../../src/musac/audio_mixer.hh"
 #endif
 
 namespace musac::test {
 
-TEST_SUITE("internal_mixer_thread_safety") {
-    struct audio_test_fixture : test::audio_test_fixture_v2 {
-        ~audio_test_fixture() {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-    };
+TEST_SUITE("Mixer::ThreadSafety::Internal") {
+    // Use the shared thread-safe fixture from test_helpers_v2.hh
+    using audio_test_fixture = audio_test_fixture_threadsafe;
 
 #ifdef MUSAC_INTERNAL_TESTING
     // Direct mixer tests - only available with internal testing
@@ -36,8 +33,9 @@ TEST_SUITE("internal_mixer_thread_safety") {
         const int OPERATIONS = 1000;
         const int THREADS = 8;
         
-        // Create a pool of mock streams
+        // Create a pool of mock streams with lifetime tokens
         std::vector<std::unique_ptr<audio_stream>> streams;
+        std::vector<std::shared_ptr<void>> lifetime_tokens;
         auto device = audio_device::open_default_device(backend);
         device.resume();
         
@@ -46,18 +44,20 @@ TEST_SUITE("internal_mixer_thread_safety") {
             streams.push_back(std::make_unique<audio_stream>(
                 device.create_stream(std::move(*source))
             ));
+            // Create a lifetime token for each stream
+            lifetime_tokens.push_back(std::make_shared<int>(i));
         }
         
         std::vector<std::future<void>> futures;
         
         // Add threads
         for (int t = 0; t < THREADS; ++t) {
-            futures.push_back(std::async(std::launch::async, [&mixer, &streams, t, OPERATIONS, THREADS] {
+            futures.push_back(std::async(std::launch::async, [&mixer, &streams, &lifetime_tokens, t, OPERATIONS, THREADS] {
                 int start = (t * OPERATIONS) / THREADS;
                 int end = ((t + 1) * OPERATIONS) / THREADS;
                 
                 for (int i = start; i < end; ++i) {
-                    mixer.add_stream(streams[i].get());
+                    mixer.add_stream(streams[i].get(), std::weak_ptr<void>(lifetime_tokens[i]));
                     std::this_thread::yield();
                 }
             }));
@@ -73,8 +73,11 @@ TEST_SUITE("internal_mixer_thread_safety") {
         auto final_streams = mixer.get_streams();
         CHECK(final_streams->size() == OPERATIONS);
         
-        // Check no duplicates
-        std::set<audio_stream*> unique_streams(final_streams->begin(), final_streams->end());
+        // Check no duplicates by extracting stream pointers
+        std::set<audio_stream*> unique_streams;
+        for (const auto& entry : *final_streams) {
+            unique_streams.insert(entry.stream);
+        }
         CHECK(unique_streams.size() == final_streams->size());
     }
     

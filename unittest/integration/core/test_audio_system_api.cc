@@ -2,11 +2,11 @@
 #include <musac/audio_system.hh>
 #include <musac/audio_device.hh>
 #include <musac/error.hh>
-#include "../test_helpers_v2.hh"
+#include "../../test_fixtures.hh"
 
 namespace musac::test {
 
-TEST_SUITE("audio_system_api") {
+TEST_SUITE("AudioSystem::Integration") {
     // Test fixture to ensure proper initialization/cleanup
     struct audio_system_fixture {
         std::shared_ptr<audio_backend_v2> backend;

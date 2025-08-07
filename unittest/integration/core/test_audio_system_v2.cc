@@ -9,7 +9,7 @@
 
 using namespace musac;
 
-TEST_SUITE("audio_system v2 backend API") {
+TEST_SUITE("AudioSystem::BackendV2::Integration") {
     
     TEST_CASE("init with explicit backend") {
         // Create a backend explicitly

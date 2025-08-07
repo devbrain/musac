@@ -184,7 +184,7 @@ public:
 
 } // namespace musac::test
 
-TEST_SUITE("audio_backend_v2 interface") {
+TEST_SUITE("Backend::Interface::Integration") {
     using namespace musac;
     using namespace musac::test;
     

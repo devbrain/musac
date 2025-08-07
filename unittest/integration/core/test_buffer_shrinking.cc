@@ -3,6 +3,8 @@
 #include <thread>
 #include <chrono>
 
+TEST_SUITE("Mixer::BufferManagement::Integration") {
+
 TEST_CASE("audio_mixer buffer shrinking") {
     using namespace musac;
     
@@ -155,3 +157,5 @@ TEST_CASE("audio_mixer buffer shrinking") {
         CHECK(mixer.allocatedSamples() < 300000);
     }
 }
+
+} // TEST_SUITE

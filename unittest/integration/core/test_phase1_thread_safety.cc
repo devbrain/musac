@@ -9,17 +9,14 @@
 #include <future>
 #include <chrono>
 #include <memory>
-#include "../test_helpers.hh"
-#include "../test_helpers_v2.hh"
+#include "../../mock_components.hh"
+#include "../../test_fixtures.hh"
 
 namespace musac::test {
 
-TEST_SUITE("phase1_thread_safety") {
-    struct audio_test_fixture : test::audio_test_fixture_v2 {
-        ~audio_test_fixture() {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-    };
+TEST_SUITE("ThreadSafety::Phase1::Integration") {
+    // Use the shared thread-safe fixture from test_helpers_v2.hh
+    using audio_test_fixture = audio_test_fixture_threadsafe;
     
     // Test 1.1: Basic Destruction Safety
     TEST_CASE_FIXTURE(audio_test_fixture, "destruction during active playback") {

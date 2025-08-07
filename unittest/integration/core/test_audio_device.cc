@@ -6,12 +6,12 @@
 #include <thread>
 #include <chrono>
 #include <stdexcept>
-#include "../test_helpers.hh"
-#include "../test_helpers_v2.hh"
+#include "../../mock_components.hh"
+#include "../../test_fixtures.hh"
 
 namespace musac::test {
 
-TEST_SUITE("audio_device") {
+TEST_SUITE("AudioDevice::Integration") {
     // Use v2 test fixture
     using audio_test_fixture = test::audio_test_fixture_v2;
     

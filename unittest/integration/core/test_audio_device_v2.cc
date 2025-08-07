@@ -9,7 +9,7 @@
 
 using namespace musac;
 
-TEST_SUITE("audio_device v2 backend API") {
+TEST_SUITE("AudioDevice::BackendV2::Integration") {
     
     TEST_CASE("enumerate devices with v2 backend") {
         // Create a backend explicitly
