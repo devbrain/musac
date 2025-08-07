@@ -68,6 +68,12 @@ add_executable(musac_unittest
         sdk/test_samples_converter.cc
         sdk/test_decoder_base.cc
 
+        # Backend v2 interface tests
+        test_backend_v2_interface.cc
+        test_sdl3_backend_v2.cc
+        test_audio_device_v2.cc
+        test_audio_system_v2.cc
+
         # Codec tests
         codecs/test_decoder_aiff.cc
         codecs/test_decoder_voc.cc
@@ -94,6 +100,7 @@ if (MUSAC_BUILD_SHARED AND TARGET musac_internal)
             musac_internal  # Static library with internal symbols
             musac_sdk
             musac_codecs
+            musac_backend_sdl3
             thirdparty::failsafe
     )
 else ()
@@ -104,6 +111,7 @@ else ()
             musac
             musac_sdk
             musac_codecs
+            musac_backend_sdl3
             thirdparty::failsafe
     )
 endif ()

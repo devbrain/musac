@@ -12,25 +12,21 @@
 #include <cmath>
 #include <memory>
 #include "../test_helpers.hh"
+#include "../test_helpers_v2.hh"
 
 namespace musac::test {
 
 TEST_SUITE("audio_stream") {
     // Test fixture to ensure proper initialization/cleanup
-    struct audio_test_fixture {
-        audio_test_fixture() {
-            audio_system::init();
-        }
-        
+    struct audio_test_fixture : test::audio_test_fixture_v2 {
         ~audio_test_fixture() {
             // Small delay to ensure audio callbacks complete
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            audio_system::done();
         }
     };
     
     TEST_CASE_FIXTURE(audio_test_fixture, "stream construction and destruction") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         auto source = create_mock_source();
         
         {
@@ -41,7 +37,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "stream play and stop") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         SUBCASE("immediate stop") {
@@ -75,7 +71,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "stream pause and resume") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         auto source = create_mock_source();
         
         auto stream = device.create_stream(std::move(*source));
@@ -95,7 +91,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "stream finish callback") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         auto source = create_mock_source(4410); // 0.1 second at 44.1kHz
         
         auto stream = device.create_stream(std::move(*source));
@@ -123,7 +119,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "stream loop callback") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         auto source = create_mock_source(4410); // 0.1 second
         
         auto stream = device.create_stream(std::move(*source));
@@ -149,7 +145,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "stream volume control") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         auto source = create_mock_source();
         
         auto stream = device.create_stream(std::move(*source));
@@ -168,7 +164,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "stream stereo position") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         auto source = create_mock_source();
         
         auto stream = device.create_stream(std::move(*source));
@@ -187,7 +183,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "stream mute/unmute") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         auto source = create_mock_source();
         
         auto stream = device.create_stream(std::move(*source));
@@ -203,7 +199,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "stream seeking") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         auto source = create_mock_source(44100); // 1 second
         
         auto stream = device.create_stream(std::move(*source));
@@ -219,7 +215,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "concurrent stream operations") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         std::vector<std::unique_ptr<audio_stream>> streams;
@@ -253,7 +249,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "stream destruction during playback") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         std::atomic<bool> callback_called{false};
@@ -282,7 +278,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "callback removal") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         auto source = create_mock_source(4410); // 0.1 second
         
         auto stream = device.create_stream(std::move(*source));
@@ -314,7 +310,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "rapid play/stop cycles") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         auto source = create_mock_source(44100);
@@ -334,7 +330,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "stream state machine transitions") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         auto source = create_mock_source(44100 * 5); // 5 seconds
@@ -381,7 +377,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "callback thread safety stress test") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         const int num_streams = 10;
@@ -438,7 +434,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "stream cleanup with pending callbacks") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         std::atomic<int> callback_executions{0};
@@ -477,7 +473,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "pause/resume with callbacks") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         auto source = create_mock_source(44100); // 1 second
@@ -518,7 +514,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "seek during playback") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         auto source = create_mock_source(44100 * 2); // 2 seconds
@@ -539,7 +535,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "multiple callbacks on same stream") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         auto source = create_mock_source(4410); // 0.1 second
@@ -570,7 +566,7 @@ TEST_SUITE("audio_stream") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "stream destruction order stress") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         // Create streams with interdependencies

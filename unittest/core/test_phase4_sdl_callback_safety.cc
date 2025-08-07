@@ -10,24 +10,20 @@
 #include <chrono>
 #include <memory>
 #include "../test_helpers.hh"
+#include "../test_helpers_v2.hh"
 
 namespace musac::test {
 
 TEST_SUITE("phase4_sdl_callback_safety") {
-    struct audio_test_fixture {
-        audio_test_fixture() {
-            audio_system::init();
-        }
-        
+    struct audio_test_fixture : test::audio_test_fixture_v2 {
         ~audio_test_fixture() {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            audio_system::done();
         }
     };
     
     // Test 4.1: Basic SDL Stream Destruction During Callback
     TEST_CASE_FIXTURE(audio_test_fixture, "sdl stream destruction during active callback") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         // Create a source that generates continuous audio
@@ -58,7 +54,7 @@ TEST_SUITE("phase4_sdl_callback_safety") {
     
     // Test 4.2: Rapid Stream Creation/Destruction
     TEST_CASE_FIXTURE(audio_test_fixture, "rapid sdl stream lifecycle") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         const int CYCLES = 20;
@@ -82,7 +78,7 @@ TEST_SUITE("phase4_sdl_callback_safety") {
     
     // Test 4.3: Concurrent Stream Operations with SDL Backend
     TEST_CASE_FIXTURE(audio_test_fixture, "concurrent sdl stream operations") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         const int STREAM_COUNT = 10;
@@ -119,7 +115,7 @@ TEST_SUITE("phase4_sdl_callback_safety") {
     
     // Test 4.4: Stream Destruction During Heavy Callback Load
     TEST_CASE_FIXTURE(audio_test_fixture, "sdl destruction under heavy load") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         // Create multiple streams to increase callback frequency
@@ -153,7 +149,7 @@ TEST_SUITE("phase4_sdl_callback_safety") {
     
     // Test 4.5: Pause/Resume During Destruction
     TEST_CASE_FIXTURE(audio_test_fixture, "sdl pause resume during destruction") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         auto source = create_mock_source(44100 * 5); // 5 seconds

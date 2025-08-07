@@ -6,17 +6,19 @@
 #include <thread>
 #include <chrono>
 #include "../test_helpers.hh"
+#include "../test_helpers_v2.hh"
 
 namespace musac::test {
 
 TEST_SUITE("sdl_shutdown_order") {
     // Test basic initialization and shutdown without any streams
     TEST_CASE("basic init and shutdown") {
-        CHECK(audio_system::init());
+        auto backend = init_test_audio_system();
+        CHECK(backend.get() != nullptr);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
         
         // Verify system is initialized by opening a device
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         CHECK(device.get_channels() > 0);
         CHECK(device.get_freq() > 0);
         
@@ -28,14 +30,15 @@ TEST_SUITE("sdl_shutdown_order") {
     
     // Test with device but no streams
     TEST_CASE("device without streams") {
-        CHECK(audio_system::init());
+        auto backend = init_test_audio_system();
+        CHECK(backend.get() != nullptr);
         
         // Track device state
         bool device_opened = false;
         bool device_resumed = false;
         
         {
-            auto device = audio_device::open_default_device();
+            auto device = audio_device::open_default_device(backend);
             device_opened = (device.get_channels() > 0);
             CHECK(device_opened);
             
@@ -59,13 +62,14 @@ TEST_SUITE("sdl_shutdown_order") {
     
     // Test with device and one stream
     TEST_CASE("device with single stream") {
-        CHECK(audio_system::init());
+        auto backend = init_test_audio_system();
+        CHECK(backend.get() != nullptr);
         
         bool stream_opened = false;
         bool stream_played = false;
         
         {
-            auto device = audio_device::open_default_device();
+            auto device = audio_device::open_default_device(backend);
             CHECK(device.get_channels() > 0);
             device.resume();
             
@@ -99,11 +103,12 @@ TEST_SUITE("sdl_shutdown_order") {
         int failed_cycles = 0;
         
         for (int i = 0; i < 5; ++i) {
-            bool init_success = audio_system::init();
+            auto backend = init_test_audio_system();
+            bool init_success = (backend != nullptr);
             CHECK(init_success);
             
             if (init_success) {
-                auto device = audio_device::open_default_device();
+                auto device = audio_device::open_default_device(backend);
                 CHECK(device.get_channels() > 0);
                 device.resume();
                 
@@ -134,9 +139,10 @@ TEST_SUITE("sdl_shutdown_order") {
     
     // Test that device survives audio_system::done() - fool-proof behavior
     TEST_CASE("device survives system shutdown") {
-        CHECK(audio_system::init());
+        auto backend = init_test_audio_system();
+        CHECK(backend.get() != nullptr);
         
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         CHECK(device.get_channels() > 0);
         CHECK(device.get_freq() > 0);
         

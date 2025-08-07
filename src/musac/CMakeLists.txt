@@ -52,29 +52,27 @@ set(MUSAC_SOURCES
         ${codecs_sources}
         
         # Audio abstraction interfaces
-        ${MUSAC_PROJECT_ROOT}/musac/audio_backend.hh
-        ${MUSAC_PROJECT_ROOT}/musac/audio_device_interface.hh
         ${MUSAC_PROJECT_ROOT}/musac/audio_stream_interface.hh
-        audio_backend_factory.cc
 )
 
 add_library(musac ${LIB_BUILD_TYPE} ${MUSAC_SOURCES})
 
-# Add SDL3 backend sources conditionally
-if(MUSAC_USE_SDL3)
-    target_sources(musac PRIVATE
-        backends/sdl3/sdl3_audio_backend.cc
-        backends/sdl3/sdl3_audio_backend.hh
-        backends/sdl3/sdl3_device_manager.cc
-        backends/sdl3/sdl3_device_manager.hh
-        backends/sdl3/sdl3_audio_stream.cc
-        backends/sdl3/sdl3_audio_stream.hh
-        resampler/resampler_sdl.cc
-        resampler/resampler_sdl.hh
-    )
+# Null backend removed - using SDL3 with dummy driver for testing
+
+# Build SDL3 backend as separate library
+if(MUSAC_BUILD_SDL3_BACKEND)
+    add_subdirectory(backends/sdl3)
 endif()
 
 target_link_libraries(musac PUBLIC musac_codecs musac_sdk thirdparty::failsafe)
+
+# Define backend availability macros
+if(MUSAC_BUILD_NULL_BACKEND)
+    target_compile_definitions(musac PRIVATE MUSAC_HAS_NULL_BACKEND)
+endif()
+
+# Note: SDL3 backend is now separate, so we don't define MUSAC_HAS_SDL3_BACKEND here
+# Applications linking musac_backend_sdl3 will need to handle this
 
 # Set logger category for musac
 target_compile_definitions(musac PRIVATE LOGGER_DEFAULT_CATEGORY=musac)
@@ -111,17 +109,16 @@ if(MUSAC_BUILD_TESTS AND MUSAC_BUILD_SHARED)
     # Create a static library with internal symbols for testing
     add_library(musac_internal STATIC ${MUSAC_SOURCES})
     
+    # Null backend removed - using SDL3 with dummy driver for testing
+    
     # Add SDL3 backend sources conditionally
     if(MUSAC_USE_SDL3)
         target_sources(musac_internal PRIVATE
-            backends/sdl3/sdl3_audio_backend.cc
-            backends/sdl3/sdl3_audio_backend.hh
-            backends/sdl3/sdl3_device_manager.cc
-            backends/sdl3/sdl3_device_manager.hh
             backends/sdl3/sdl3_audio_stream.cc
             backends/sdl3/sdl3_audio_stream.hh
-            resampler/resampler_sdl.cc
-            resampler/resampler_sdl.hh
+            backends/sdl3/sdl3_backend_v2.cc
+            backends/sdl3/sdl3_backend_v2.hh
+            backends/sdl3/sdl3_backend_factory.cc
         )
     endif()
     

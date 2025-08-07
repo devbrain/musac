@@ -1,13 +1,13 @@
 #include <musac/audio_device.hh>
-#include <musac/audio_device_interface.hh>
 #include <musac/audio_stream_interface.hh>
-#include <musac/audio_backend.hh>
+#include <musac/sdk/audio_backend_v2.hh>
+#include <musac/backends/sdl3/sdl3_backend.hh>
+#include <musac/backends/null/null_backend.hh>
 #include <musac/stream.hh>
 #include <musac/audio_device_data.hh>
 #include <musac/sdk/from_float_converter.hh>
 #include <musac/error.hh>
 #include <failsafe/failsafe.hh>
-#include "device_guard.hh"
 #include <vector>
 #include <memory>
 #include <mutex>
@@ -20,9 +20,10 @@ namespace musac {
 extern void close_audio_stream();
 extern void reset_audio_stream();
 
-// Global device manager instance - use shared_ptr for safe lifetime management
-static std::shared_ptr<audio_device_interface> s_device_manager;
-static std::mutex s_manager_mutex;
+// Global backend instance for backward compatibility
+static std::shared_ptr<audio_backend_v2> s_global_backend;
+static std::mutex s_backend_mutex;
+
 
 // Track the active device to enforce single device constraint
 static audio_device* s_active_device = nullptr;
@@ -34,15 +35,14 @@ audio_device* get_active_audio_device() {
     return s_active_device;
 }
 
-// Initialize device manager if needed
-static std::shared_ptr<audio_device_interface> get_device_manager() {
-    std::lock_guard<std::mutex> lock(s_manager_mutex);
-    if (!s_device_manager) {
-        // Need to include the factory header to get create_default_audio_device_manager
-        extern std::unique_ptr<audio_device_interface> create_default_audio_device_manager();
-        s_device_manager = create_default_audio_device_manager();
-    }
-    return s_device_manager;
+
+// Helper functions to convert between v1 and v2 device info
+static device_info to_v1_info(const device_info_v2& v2) {
+    return {v2.name, v2.id, v2.is_default, v2.channels, v2.sample_rate};
+}
+
+static device_info_v2 to_v2_info(const device_info& v1) {
+    return {v1.name, v1.id, v1.is_default, v1.channels, v1.sample_rate};
 }
 
 // Close all audio devices (called from audio_system::done)
@@ -52,49 +52,75 @@ void close_audio_devices() {
         s_active_device = nullptr;
     }
     {
-        std::lock_guard<std::mutex> lock(s_manager_mutex);
-        s_device_manager.reset();
+        std::lock_guard<std::mutex> lock(s_backend_mutex);
+        if (s_global_backend && s_global_backend->is_initialized()) {
+            s_global_backend->shutdown();
+        }
+        s_global_backend.reset();
     }
 }
 
-// Static factory methods
-std::vector<device_info> audio_device::enumerate_devices(bool playback_devices) {
-    auto manager = get_device_manager();
-    if (!manager) {
-        return {};
+// New v2 API factory methods
+std::vector<device_info> audio_device::enumerate_devices(
+    std::shared_ptr<audio_backend_v2> backend,
+    bool playback_devices) {
+    
+    if (!backend) {
+        THROW_RUNTIME("Backend is null");
+    }
+    if (!backend->is_initialized()) {
+        THROW_RUNTIME("Backend is not initialized");
     }
     
-    return manager->enumerate_devices(playback_devices);
-}
-
-audio_device audio_device::open_default_device(const audio_spec* spec) {
-    auto manager = get_device_manager();
-    if (!manager) {
-        THROW_RUNTIME("No audio device manager available");
+    auto devices_v2 = backend->enumerate_devices(playback_devices);
+    std::vector<device_info> devices_v1;
+    devices_v1.reserve(devices_v2.size());
+    
+    for (const auto& dev : devices_v2) {
+        devices_v1.push_back(to_v1_info(dev));
     }
     
-    device_info info = manager->get_default_device(true);
-    return audio_device(info, spec);
+    return devices_v1;
 }
 
-audio_device audio_device::open_device(const std::string& device_id, const audio_spec* spec) {
-    auto manager = get_device_manager();
-    if (!manager) {
-        THROW_RUNTIME("No audio device manager available");
+audio_device audio_device::open_default_device(
+    std::shared_ptr<audio_backend_v2> backend,
+    const audio_spec* spec) {
+    
+    if (!backend) {
+        THROW_RUNTIME("Backend is null");
+    }
+    if (!backend->is_initialized()) {
+        THROW_RUNTIME("Backend is not initialized");
+    }
+    
+    device_info_v2 info = backend->get_default_device(true);
+    return audio_device(backend, info, spec);
+}
+
+audio_device audio_device::open_device(
+    std::shared_ptr<audio_backend_v2> backend,
+    const std::string& device_id, 
+    const audio_spec* spec) {
+    
+    if (!backend) {
+        THROW_RUNTIME("Backend is null");
+    }
+    if (!backend->is_initialized()) {
+        THROW_RUNTIME("Backend is not initialized");
     }
     
     // Find the device with matching ID
-    auto devices = manager->enumerate_devices(true);
+    auto devices = backend->enumerate_devices(true);
     for (const auto& dev : devices) {
         if (dev.id == device_id) {
-            return audio_device(dev, spec);
+            return audio_device(backend, dev, spec);
         }
     }
     
     THROW_RUNTIME("Device not found: " + device_id);
-    // This is unreachable due to THROW_RUNTIME, but needed to satisfy compiler
-    return audio_device(devices[0], spec);
 }
+
 
 // audio_device implementation
 struct audio_device::impl {
@@ -102,61 +128,24 @@ struct audio_device::impl {
     // 1. stream is destroyed first (may use device)
     std::unique_ptr<audio_stream_interface> stream;
     
-    // 2. device_guard is destroyed second (closes device after stream is gone)
-    device_guard device;
+    // 2. For v2 backend path
+    std::shared_ptr<audio_backend_v2> backend_v2;
+    uint32_t device_handle_v2 = 0;
     
-    // 3. Other members don't have cleanup dependencies
+    // 3. Common members
     audio_spec spec;
     std::atomic<int> stream_count{0}; // Track active streams
-};
-
-audio_device::audio_device(const device_info& info, const audio_spec* desired_spec)
-    : m_pimpl(std::make_unique<impl>()) {
+    std::string device_name;
+    std::string device_id;
     
-    // No longer enforce single device constraint since we support device switching
-    
-    auto manager = get_device_manager();
-    if (!manager) {
-        THROW_RUNTIME("No audio device manager available");
-    }
-    
-    // Use device info to open device
-    audio_spec spec;
-    if (desired_spec) {
-        spec = *desired_spec;
-    } else {
-        // Use device defaults - we need to get format from the device manager
-        // For now, use sensible defaults
-        spec.format = audio_format::f32le;
-        spec.channels = info.channels;
-        spec.freq = info.sample_rate;
-    }
-    
-    audio_spec obtained_spec;
-    uint32_t handle = manager->open_device(
-        info.id, spec, obtained_spec
-    );
-    
-    if (!handle) {
-        THROW_RUNTIME("Failed to open audio device: " + info.name);
-    }
-    
-    m_pimpl->spec = obtained_spec;
-    
-    // Initialize device guard - will auto-close on destruction
-    m_pimpl->device = device_guard(manager, handle);
-    
-    // Only register as active device if there isn't one already
-    // Otherwise, user must explicitly switch using audio_system::switch_device
-    {
-        std::lock_guard<std::mutex> lock(s_device_mutex);
-        if (s_active_device == nullptr) {
-            s_active_device = this;
-            // Reset the audio stream state for the new device
-            reset_audio_stream();
+    // Destructor to handle cleanup
+    ~impl() {
+        if (backend_v2 && device_handle_v2) {
+            backend_v2->close_device(device_handle_v2);
         }
     }
-}
+};
+
 
 audio_device::~audio_device() {
     {
@@ -167,22 +156,69 @@ audio_device::~audio_device() {
         }
     }
     
-    // RAII cleanup: The impl destructor will handle everything in the correct order:
-    // 1. m_pimpl->stream will be destroyed first (may still use device)
-    // 2. m_pimpl->device (device_guard) will be destroyed second (closes device)
-    // No manual cleanup needed thanks to RAII!
+    // RAII cleanup: The impl destructor will handle everything
+}
+
+// New v2 backend constructor
+audio_device::audio_device(
+    std::shared_ptr<audio_backend_v2> backend,
+    const device_info_v2& info, 
+    const audio_spec* desired_spec)
+    : m_pimpl(std::make_unique<impl>()) {
+    
+    if (!backend) {
+        THROW_RUNTIME("Backend is null");
+    }
+    if (!backend->is_initialized()) {
+        THROW_RUNTIME("Backend is not initialized");
+    }
+    
+    // Store backend reference
+    m_pimpl->backend_v2 = backend;
+    m_pimpl->device_name = info.name;
+    m_pimpl->device_id = info.id;
+    
+    // Prepare audio spec
+    audio_spec spec;
+    if (desired_spec) {
+        spec = *desired_spec;
+    } else {
+        // Use device defaults
+        spec.format = audio_format::f32le;
+        spec.channels = info.channels;
+        spec.freq = info.sample_rate;
+    }
+    
+    // Open device through v2 backend
+    audio_spec obtained_spec;
+    m_pimpl->device_handle_v2 = backend->open_device(
+        info.id, spec, obtained_spec
+    );
+    
+    if (!m_pimpl->device_handle_v2) {
+        THROW_RUNTIME("Failed to open audio device: " + info.name);
+    }
+    
+    m_pimpl->spec = obtained_spec;
+    
+    // Register as active device if there isn't one
+    {
+        std::lock_guard<std::mutex> lock(s_device_mutex);
+        if (s_active_device == nullptr) {
+            s_active_device = this;
+            reset_audio_stream();
+        }
+    }
 }
 
 audio_device::audio_device(audio_device&&) noexcept = default;
 
 std::string audio_device::get_device_name() const {
-    // We would need to store the device name in impl
-    return "Default Device";
+    return m_pimpl->device_name.empty() ? "Default Device" : m_pimpl->device_name;
 }
 
 std::string audio_device::get_device_id() const {
-    // We would need to store the device id in impl
-    return "";
+    return m_pimpl->device_id;
 }
 
 audio_format audio_device::get_format() const {
@@ -198,36 +234,36 @@ int audio_device::get_freq() const {
 }
 
 bool audio_device::pause() {
-    if (m_pimpl->device.valid()) {
-        return m_pimpl->device.manager()->pause_device(m_pimpl->device.handle());
+    if (m_pimpl->backend_v2 && m_pimpl->device_handle_v2) {
+        return m_pimpl->backend_v2->pause_device(m_pimpl->device_handle_v2);
     }
     return false;
 }
 
 bool audio_device::is_paused() const {
-    if (m_pimpl->device.valid()) {
-        return m_pimpl->device.manager()->is_device_paused(m_pimpl->device.handle());
+    if (m_pimpl->backend_v2 && m_pimpl->device_handle_v2) {
+        return m_pimpl->backend_v2->is_device_paused(m_pimpl->device_handle_v2);
     }
     return false;
 }
 
 bool audio_device::resume() {
-    if (m_pimpl->device.valid()) {
-        return m_pimpl->device.manager()->resume_device(m_pimpl->device.handle());
+    if (m_pimpl->backend_v2 && m_pimpl->device_handle_v2) {
+        return m_pimpl->backend_v2->resume_device(m_pimpl->device_handle_v2);
     }
     return false;
 }
 
 float audio_device::get_gain() const {
-    if (m_pimpl->device.valid()) {
-        return m_pimpl->device.manager()->get_device_gain(m_pimpl->device.handle());
+    if (m_pimpl->backend_v2 && m_pimpl->device_handle_v2) {
+        return m_pimpl->backend_v2->get_device_gain(m_pimpl->device_handle_v2);
     }
     return 0.0f;
 }
 
 void audio_device::set_gain(float v) {
-    if (m_pimpl->device.valid()) {
-        m_pimpl->device.manager()->set_device_gain(m_pimpl->device.handle(), v);
+    if (m_pimpl->backend_v2 && m_pimpl->device_handle_v2) {
+        m_pimpl->backend_v2->set_device_gain(m_pimpl->device_handle_v2, v);
     }
 }
 
@@ -236,15 +272,14 @@ void audio_device::create_stream_with_callback(
     void (*callback)(void* userdata, uint8_t* stream, int len),
     void* userdata) {
     
-    if (!m_pimpl->device.valid()) {
-        THROW_RUNTIME("No device available");
+    if (m_pimpl->backend_v2 && m_pimpl->device_handle_v2) {
+        m_pimpl->stream = m_pimpl->backend_v2->create_stream(
+            m_pimpl->device_handle_v2, m_pimpl->spec, callback, userdata
+        );
+        return;
     }
     
-    m_pimpl->stream = m_pimpl->device.manager()->create_stream(
-        m_pimpl->device.handle(), m_pimpl->spec, callback, userdata
-    );
-    
-    // Stream is already bound if using callback-based creation
+    THROW_RUNTIME("No device available");
 }
 
 audio_stream audio_device::create_stream(audio_source&& audio_src) {

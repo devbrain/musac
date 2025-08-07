@@ -2,14 +2,17 @@
 #include <musac/audio_system.hh>
 #include <musac/audio_device.hh>
 #include <musac/error.hh>
+#include "../test_helpers_v2.hh"
 
 namespace musac::test {
 
 TEST_SUITE("audio_system_api") {
     // Test fixture to ensure proper initialization/cleanup
     struct audio_system_fixture {
+        std::shared_ptr<audio_backend_v2> backend;
+        
         audio_system_fixture() {
-            audio_system::init();
+            backend = init_test_audio_system();
         }
         
         ~audio_system_fixture() {
@@ -19,7 +22,7 @@ TEST_SUITE("audio_system_api") {
     
     TEST_CASE_FIXTURE(audio_system_fixture, "device enumeration") {
         SUBCASE("enumerate playback devices") {
-            auto devices = audio_system::enumerate_devices(true);
+            auto devices = audio_device::enumerate_devices(backend, true);
             
             // Should have at least one device (default)
             CHECK(devices.size() >= 1);
@@ -44,8 +47,20 @@ TEST_SUITE("audio_system_api") {
         }
         
         SUBCASE("get default device") {
-            auto default_device = audio_system::get_default_device(true);
+            auto devices = audio_device::enumerate_devices(backend, true);
             
+            // Find the default device
+            device_info default_device;
+            bool found = false;
+            for (const auto& dev : devices) {
+                if (dev.is_default) {
+                    default_device = dev;
+                    found = true;
+                    break;
+                }
+            }
+            
+            CHECK(found);
             CHECK(!default_device.name.empty());
             CHECK(!default_device.id.empty());
             CHECK(default_device.is_default == true);
@@ -54,32 +69,41 @@ TEST_SUITE("audio_system_api") {
         }
         
         SUBCASE("default device appears in enumeration") {
-            auto default_device = audio_system::get_default_device(true);
-            auto all_devices = audio_system::enumerate_devices(true);
+            auto all_devices = audio_device::enumerate_devices(backend, true);
             
+            // Find the default device
+            device_info default_device;
             bool found_default = false;
             for (const auto& device : all_devices) {
-                if (device.id == default_device.id) {
+                if (device.is_default) {
+                    default_device = device;
                     found_default = true;
-                    CHECK(device.is_default == true);
                     break;
                 }
             }
             CHECK(found_default);
+            
+            // Verify it's marked as default in the enumeration
+            for (const auto& device : all_devices) {
+                if (device.id == default_device.id) {
+                    CHECK(device.is_default == true);
+                    break;
+                }
+            }
         }
     }
     
     TEST_CASE_FIXTURE(audio_system_fixture, "switch_device validation") {
         SUBCASE("switch device requires audio_device object") {
             // Create a device to switch to
-            auto device = audio_device::open_default_device();
+            auto device = audio_device::open_default_device(backend);
             
             // Switching to the device should succeed
             CHECK(audio_system::switch_device(device) == true);
         }
         
         SUBCASE("switch to same device succeeds") {
-            auto device1 = audio_device::open_default_device();
+            auto device1 = audio_device::open_default_device(backend);
             CHECK(audio_system::switch_device(device1) == true);
             
             // Switching to same device again should succeed
@@ -92,11 +116,15 @@ TEST_SUITE("audio_system_api") {
         audio_system::done();
         
         SUBCASE("enumerate_devices throws when not initialized") {
-            CHECK_THROWS(audio_system::enumerate_devices(true));
+            // Can't enumerate without a backend
+            std::shared_ptr<audio_backend_v2> null_backend;
+            CHECK_THROWS(audio_device::enumerate_devices(null_backend, true));
         }
         
-        SUBCASE("get_default_device throws when not initialized") {
-            CHECK_THROWS(audio_system::get_default_device(true));
+        SUBCASE("open_default_device throws when not initialized") {
+            // Can't open device without a backend
+            std::shared_ptr<audio_backend_v2> null_backend;
+            CHECK_THROWS(audio_device::open_default_device(null_backend));
         }
         
         SUBCASE("switch_device returns false when not initialized") {

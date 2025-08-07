@@ -13,6 +13,7 @@
 #include <memory>
 #include <iostream>
 #include "../test_helpers.hh"
+#include "../test_helpers_v2.hh"
 
 namespace musac::test {
 
@@ -50,20 +51,21 @@ TEST_SUITE("phase5_integration") {
         test_metrics metrics;
         
         integration_fixture() {
-            CHECK(audio_system::init());
+            auto backend_local = init_test_audio_system();
+            CHECK(backend_local != nullptr);
         }
         
         ~integration_fixture() {
             // Small delay to ensure callbacks complete
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            audio_system::done();
             metrics.print_summary("Integration Test");
+            audio_system::done();
         }
     };
     
     TEST_CASE_FIXTURE(integration_fixture, "real world usage pattern - music player") {
         // Simulate a music player with playlist
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(audio_system::get_backend());
         device.resume();
         
         // Playlist of "songs" (mock sources)
@@ -115,7 +117,7 @@ TEST_SUITE("phase5_integration") {
     }
     
     TEST_CASE_FIXTURE(integration_fixture, "stress test - concurrent operations") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(audio_system::get_backend());
         device.resume();
         
         const int num_threads = 8;
@@ -260,7 +262,7 @@ TEST_SUITE("phase5_integration") {
     TEST_CASE_FIXTURE(integration_fixture, "edge case - rapid init/done cycles with active streams") {
         for (int cycle = 0; cycle < 10; ++cycle) {
             // Create device and streams
-            auto device = audio_device::open_default_device();
+            auto device = audio_device::open_default_device(audio_system::get_backend());
             device.resume();
             
             std::vector<std::unique_ptr<audio_stream>> streams;
@@ -300,7 +302,7 @@ TEST_SUITE("phase5_integration") {
     }
     
     TEST_CASE_FIXTURE(integration_fixture, "callback synchronization - complex scenario") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(audio_system::get_backend());
         device.resume();
         
         std::mutex callback_mutex;
@@ -393,7 +395,7 @@ TEST_SUITE("phase5_integration") {
     }
     
     TEST_CASE_FIXTURE(integration_fixture, "memory stress - create/destroy thousands of streams") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(audio_system::get_backend());
         device.resume();
         
         const int iterations = 100;
@@ -446,7 +448,7 @@ TEST_SUITE("phase5_integration") {
             std::vector<std::unique_ptr<audio_stream>> streams;
             
             {
-                auto device = audio_device::open_default_device();
+                auto device = audio_device::open_default_device(audio_system::get_backend());
                 device.resume();
                 
                 for (int i = 0; i < 5; ++i) {
@@ -468,7 +470,7 @@ TEST_SUITE("phase5_integration") {
         }
         
         SUBCASE("system shutdown with active device and streams") {
-            auto device = audio_device::open_default_device();
+            auto device = audio_device::open_default_device(audio_system::get_backend());
             device.resume();
             
             auto source = create_mock_source(44100);
@@ -484,7 +486,7 @@ TEST_SUITE("phase5_integration") {
         }
         
         SUBCASE("interleaved destruction") {
-            auto device1 = audio_device::open_default_device();
+            auto device1 = audio_device::open_default_device(audio_system::get_backend());
             device1.resume();
             
             auto source1 = create_mock_source(4410);

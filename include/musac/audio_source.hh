@@ -21,6 +21,7 @@ namespace musac {
                          std::unique_ptr<musac::io_stream> rwops);
 
             audio_source(audio_source&&) noexcept;
+            audio_source& operator=(audio_source&&) noexcept = delete;
 
             audio_source(const audio_source&) = delete;
             audio_source& operator = (const audio_source&) = delete;

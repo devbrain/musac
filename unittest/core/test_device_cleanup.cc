@@ -1,19 +1,22 @@
 #include <doctest/doctest.h>
 #include <musac/audio_device.hh>
 #include <musac/audio_system.hh>
+#include <musac/backends/sdl3/sdl3_backend.hh>
+#include <musac/sdk/audio_backend_v2.hh>
 #include <memory>
 #include <thread>
 #include <chrono>
 
 TEST_CASE("Resource cleanup ordering with device_guard") {
-    musac::audio_system::init();
+    std::shared_ptr<musac::audio_backend_v2> backend(musac::create_sdl3_backend_v2());
+    musac::audio_system::init(backend);
     
     SUBCASE("Device destroyed with active callback") {
         // This tests that the device guard properly cleans up
         // Previously could cause use-after-free if ordering was wrong
         
         auto device = std::make_unique<musac::audio_device>(
-            musac::audio_device::open_default_device()
+            musac::audio_device::open_default_device(backend)
         );
         
         bool callback_running = false;
@@ -47,7 +50,7 @@ TEST_CASE("Resource cleanup ordering with device_guard") {
     SUBCASE("Multiple device creation and destruction") {
         // Test that device guard handles multiple devices properly
         for (int i = 0; i < 5; i++) {
-            auto device = musac::audio_device::open_default_device();
+            auto device = musac::audio_device::open_default_device(backend);
             
             // Create callback to ensure device is active
             device.create_stream_with_callback(
@@ -65,7 +68,7 @@ TEST_CASE("Resource cleanup ordering with device_guard") {
     }
     
     SUBCASE("Device move semantics") {
-        auto device1 = musac::audio_device::open_default_device();
+        auto device1 = musac::audio_device::open_default_device(backend);
         
         // Move device to another variable
         auto device2 = std::move(device1);
@@ -87,7 +90,7 @@ TEST_CASE("Resource cleanup ordering with device_guard") {
     
     SUBCASE("Device destroyed before pause/resume operations") {
         auto device = std::make_unique<musac::audio_device>(
-            musac::audio_device::open_default_device()
+            musac::audio_device::open_default_device(backend)
         );
         
         // Try pause/resume operations

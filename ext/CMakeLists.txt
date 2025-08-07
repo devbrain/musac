@@ -21,7 +21,6 @@ add_compile_options(
     $<$<CXX_COMPILER_ID:MSVC>:/W0>
 )
 
-add_subdirectory(sdl3)
 add_subdirectory(failsafe)
 
 # Restore original flags (though subdirectories won't inherit the change back)

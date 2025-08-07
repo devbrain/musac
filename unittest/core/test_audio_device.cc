@@ -7,22 +7,16 @@
 #include <chrono>
 #include <stdexcept>
 #include "../test_helpers.hh"
+#include "../test_helpers_v2.hh"
 
 namespace musac::test {
 
 TEST_SUITE("audio_device") {
-    struct audio_test_fixture {
-        audio_test_fixture() {
-            audio_system::init();
-        }
-        
-        ~audio_test_fixture() {
-            audio_system::done();
-        }
-    };
+    // Use v2 test fixture
+    using audio_test_fixture = test::audio_test_fixture_v2;
     
     TEST_CASE_FIXTURE(audio_test_fixture, "device enumeration") {
-        auto devices = audio_device::enumerate_devices(true);
+        auto devices = audio_device::enumerate_devices(backend, true);
         
         // Should have at least one device (even if it's just a null device)
         CHECK(devices.size() > 0);
@@ -49,7 +43,7 @@ TEST_SUITE("audio_device") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "open default device") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         
         // Device should be valid
         CHECK(device.get_channels() > 0);
@@ -63,7 +57,7 @@ TEST_SUITE("audio_device") {
         desired.channels = 2;
         desired.freq = 48000;
         
-        auto device = audio_device::open_default_device(&desired);
+        auto device = audio_device::open_default_device(backend, &desired);
         
         // Device should respect requested spec or provide compatible alternative
         CHECK(device.get_channels() > 0);
@@ -71,7 +65,7 @@ TEST_SUITE("audio_device") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "device pause/resume") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         
         CHECK_FALSE(device.is_paused());
         
@@ -83,7 +77,7 @@ TEST_SUITE("audio_device") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "device gain control") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         
         float initial_gain = device.get_gain();
         CHECK(initial_gain >= 0.0f);
@@ -98,11 +92,11 @@ TEST_SUITE("audio_device") {
     
     TEST_CASE_FIXTURE(audio_test_fixture, "multiple device instances") {
         // Multiple devices can now be created (for device switching support)
-        auto device1 = audio_device::open_default_device();
+        auto device1 = audio_device::open_default_device(backend);
         CHECK(device1.get_channels() > 0);
         
         // Creating a second device should now succeed
-        auto device2 = audio_device::open_default_device();
+        auto device2 = audio_device::open_default_device(backend);
         CHECK(device2.get_channels() > 0);
         
         // Operations on both devices should work
@@ -119,7 +113,7 @@ TEST_SUITE("audio_device") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "device move semantics") {
-        auto device1 = audio_device::open_default_device();
+        auto device1 = audio_device::open_default_device(backend);
         auto channels = device1.get_channels();
         
         // Move construction
@@ -133,7 +127,7 @@ TEST_SUITE("audio_device") {
     TEST_CASE_FIXTURE(audio_test_fixture, "device destruction order") {
         // Test device switching - can only have one device at a time
         {
-            auto device1 = audio_device::open_default_device();
+            auto device1 = audio_device::open_default_device(backend);
             
             // Create stream from device
             auto source1 = mock_audio_source::create();
@@ -144,7 +138,7 @@ TEST_SUITE("audio_device") {
         
         // Now we can create a new device
         {
-            auto device2 = audio_device::open_default_device();
+            auto device2 = audio_device::open_default_device(backend);
             
             // Create stream from new device
             auto source2 = mock_audio_source::create();
@@ -156,7 +150,7 @@ TEST_SUITE("audio_device") {
     
     TEST_CASE_FIXTURE(audio_test_fixture, "open non-existent device") {
         // Try to open a device with invalid ID
-        CHECK_THROWS(audio_device::open_device("non_existent_device_id_12345"));
+        CHECK_THROWS(audio_device::open_device(backend, "non_existent_device_id_12345"));
     }
 }
 

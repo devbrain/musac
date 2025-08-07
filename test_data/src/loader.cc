@@ -20,8 +20,8 @@
 
 #include <musac/audio_loader.hh>
 
-namespace musac {
-namespace test_data {
+
+namespace musac::test_data {
 
 using loader_func_t = musac::audio_source (*)(std::unique_ptr<musac::io_stream>);
 using data_t = std::tuple<music_type, const unsigned char*, std::size_t, loader_func_t>;
@@ -52,7 +52,7 @@ void loader::done() {
 }
 
 musac::audio_source loader::load(music_type type) {
-    auto idx = static_cast <int>(type);
+    auto idx = static_cast <unsigned int>(type);
     auto ldr = std::get<3>(s_data[idx]);
     
     // We need to create a new io_stream for each load since ownership is transferred
@@ -60,5 +60,4 @@ musac::audio_source loader::load(music_type type) {
     return ldr(musac::io_from_memory(buf, sz));
 }
 
-} // namespace test_data
-} // namespace musac
+} // namespace musac::test_data

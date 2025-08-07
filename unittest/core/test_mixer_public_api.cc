@@ -11,24 +11,21 @@
 #include <memory>
 #include <random>
 #include "../test_helpers.hh"
+#include "../test_helpers_v2.hh"
 
 namespace musac::test {
 
 TEST_SUITE("mixer_thread_safety_public_api") {
-    struct audio_test_fixture {
-        audio_test_fixture() {
-            audio_system::init();
-        }
-        
+    // Use v2 test fixture with added delay in destructor
+    struct audio_test_fixture : test::audio_test_fixture_v2 {
         ~audio_test_fixture() {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            audio_system::done();
         }
     };
     
     // Test mixer indirectly through public API
     TEST_CASE_FIXTURE(audio_test_fixture, "mixer_thread_safety_public_api :: concurrent stream operations") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
 
         constexpr int STREAM_COUNT = 50;
@@ -87,7 +84,7 @@ TEST_SUITE("mixer_thread_safety_public_api") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "stream lifecycle stress test") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         std::atomic<bool> stop{false};
@@ -135,7 +132,7 @@ TEST_SUITE("mixer_thread_safety_public_api") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "concurrent volume operations") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         // Create streams
@@ -204,7 +201,7 @@ TEST_SUITE("mixer_thread_safety_public_api") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "pause resume race conditions") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         // Create multiple streams

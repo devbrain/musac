@@ -17,6 +17,14 @@ namespace musac {
     class audio_mixer {
         public:
             audio_mixer();
+            
+            // Delete copy operations (contains static data and buffers)
+            audio_mixer(const audio_mixer&) = delete;
+            audio_mixer& operator=(const audio_mixer&) = delete;
+            
+            // Default move operations
+            audio_mixer(audio_mixer&&) = default;
+            audio_mixer& operator=(audio_mixer&&) = default;
 
             // Get valid streams for the audio thread
             [[nodiscard]] std::shared_ptr<std::vector<stream_container::stream_entry>> get_streams() const;

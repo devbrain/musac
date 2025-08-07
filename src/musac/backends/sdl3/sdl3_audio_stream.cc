@@ -40,28 +40,38 @@ sdl3_audio_stream::sdl3_audio_stream(SDL_AudioDeviceID device_id, const audio_sp
     sdl_spec.channels = spec.channels;
     sdl_spec.freq = spec.freq;
     
-    // LOG_INFO("SDL3Stream", "Creating stream for device", device_id, 
-    //          "with callback:", (m_callback != nullptr), 
-    //          "format:", static_cast<int>(spec.format), "channels:", spec.channels, "freq:", spec.freq);
-    
     if (m_callback) {
+        // We already have an opened device, so we need to:
+        // 1. Get the device format
+        // 2. Create a stream that converts from our format to device format
+        // 3. Set up a callback
+        // 4. Bind the stream to the device
+        
+        SDL_AudioSpec device_spec;
+        if (!SDL_GetAudioDeviceFormat(m_device_id, &device_spec, nullptr)) {
+            THROW_RUNTIME("Failed to get device format");
+        }
+        
+        // Create a stream that converts from our source format to device format
         m_stream = std::shared_ptr<SDL_AudioStream>(
-            SDL_OpenAudioDeviceStream(m_device_id, &sdl_spec, sdl_callback, this),
+            SDL_CreateAudioStream(&sdl_spec, &device_spec),
             safe_destroy_audio_stream
         );
-        // SDL_OpenAudioDeviceStream automatically binds the stream
-        m_bound = true;
-        // LOG_INFO("SDL3Stream", "Stream created with SDL_OpenAudioDeviceStream, bound:", m_bound);
         
-        // Check if stream is paused
-        bool stream_paused = SDL_AudioStreamDevicePaused(m_stream.get());
-        // LOG_INFO("SDL3Stream", "Stream paused state:", stream_paused);
-        
-        // Try resuming the stream 
-        if (stream_paused) {
-            bool resume_result = SDL_ResumeAudioStreamDevice(m_stream.get());
-            // LOG_INFO("SDL3Stream", "Stream resume result:", resume_result);
+        if (!m_stream) {
+            THROW_RUNTIME("Failed to create audio stream");
         }
+        
+        // Set the callback for when the stream needs data
+        if (!SDL_SetAudioStreamGetCallback(m_stream.get(), sdl_callback, this)) {
+            THROW_RUNTIME("Failed to set stream callback");
+        }
+        
+        // Bind the stream to the device
+        if (!SDL_BindAudioStream(m_device_id, m_stream.get())) {
+            THROW_RUNTIME("Failed to bind stream to device");
+        }
+        m_bound = true;
     } else {
         // Get device spec for creating compatible stream
         SDL_AudioSpec device_spec;
@@ -81,23 +91,17 @@ sdl3_audio_stream::~sdl3_audio_stream() {
 }
 
 void sdl3_audio_stream::sdl_callback(void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount) {
-    static int sdl_callback_count = 0;
-    // if (++sdl_callback_count % 100 == 0) {
-    //     LOG_INFO("SDL3Stream", "SDL callback called", sdl_callback_count, "times, additional:", additional_amount);
-    // }
-    
     auto* self = static_cast<sdl3_audio_stream*>(userdata);
     if (!self) {
-        // LOG_ERROR("SDL3Stream", "Callback called with null userdata!");
         return;
     }
     
     if (self->m_callback && additional_amount > 0) {
-        auto* data = SDL_stack_alloc(uint8_t, additional_amount);
+        std::vector<uint8_t> buffer(additional_amount);
+        auto* data = buffer.data();
         if (data) {
             self->m_callback(self->m_userdata, data, additional_amount);
             SDL_PutAudioStreamData(stream, data, additional_amount);
-            SDL_stack_free(data);
         }
     }
 }

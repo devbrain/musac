@@ -67,7 +67,11 @@ namespace musac {
              *  \retval true Playback was started successfully, or it was already started.
              *  \retval false Playback could not be started.
              */
-            virtual bool play(unsigned int iterations = 1, std::chrono::microseconds fadeTime = {});
+            virtual bool play(unsigned int iterations, std::chrono::microseconds fadeTime);
+            
+            // Non-virtual overloads for API compatibility
+            bool play() { return play(1, std::chrono::microseconds{}); }
+            bool play(unsigned int iterations) { return play(iterations, std::chrono::microseconds{}); }
 
             /*!
              * \brief Stop playback.
@@ -77,7 +81,10 @@ namespace musac {
              * \param fade_time
              *  Fade-out over the specified amount of time.
              */
-            virtual void stop(std::chrono::microseconds fade_time = {});
+            virtual void stop(std::chrono::microseconds fade_time);
+            
+            // Non-virtual overload for API compatibility
+            void stop() { stop(std::chrono::microseconds{}); }
 
             /*!
              * \brief Pause playback.
@@ -85,7 +92,10 @@ namespace musac {
              * \param fade_time
              *  Fade-out over the specified amount of time.
              */
-            virtual void pause(std::chrono::microseconds fade_time = {});
+            virtual void pause(std::chrono::microseconds fade_time);
+            
+            // Non-virtual overload for API compatibility
+            void pause() { pause(std::chrono::microseconds{}); }
 
             /*!
              * \brief Resume playback.
@@ -93,7 +103,10 @@ namespace musac {
              * \param fadeTime
              *  Fade-in over the specified amount of time.
              */
-            virtual void resume(std::chrono::microseconds fadeTime = {});
+            virtual void resume(std::chrono::microseconds fadeTime);
+            
+            // Non-virtual overload for API compatibility
+            void resume() { resume(std::chrono::microseconds{}); }
 
             /*!
              * \brief Rewind stream to the beginning.

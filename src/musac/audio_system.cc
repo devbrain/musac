@@ -3,7 +3,9 @@
 //
 
 #include <musac/audio_system.hh>
-#include <musac/audio_backend.hh>
+#include <musac/sdk/audio_backend_v2.hh>
+#include <musac/backends/sdl3/sdl3_backend.hh>
+#include <musac/backends/null/null_backend.hh>
 #include <musac/audio_device.hh>
 #include <musac/stream.hh>
 #include <musac/error.hh>
@@ -22,7 +24,8 @@ namespace musac {
     extern void reset_audio_stream();
     extern audio_device* get_active_audio_device();
     
-    static std::unique_ptr<audio_backend> s_backend;
+    // v2 backend
+    static std::shared_ptr<audio_backend_v2> s_backend_v2;
     static std::mutex s_system_mutex;
     
     
@@ -34,77 +37,54 @@ namespace musac {
     };
     
 
-    bool audio_system::init() {
-        if (!s_backend) {
-            s_backend = create_default_audio_backend();
-        }
+    // New v2 API init method
+    bool audio_system::init(std::shared_ptr<audio_backend_v2> backend) {
+        std::lock_guard<std::mutex> lock(s_system_mutex);
         
-        if (!s_backend) {
+        if (!backend) {
             return false;
         }
         
-        try {
-            s_backend->init();
-            return true;
-        } catch (const std::exception& e) {
-            // Log the error and return false
-            // The caller can decide whether to handle this as fatal
-            s_backend.reset();
-            return false;
+        // Store the v2 backend
+        s_backend_v2 = backend;
+        
+        // Initialize if not already initialized
+        if (!backend->is_initialized()) {
+            try {
+                backend->init();
+            } catch (const std::exception& e) {
+                s_backend_v2.reset();
+                return false;
+            }
         }
+        
+        return true;
     }
+    
 
+    std::shared_ptr<audio_backend_v2> audio_system::get_backend() {
+        std::lock_guard<std::mutex> lock(s_system_mutex);
+        return s_backend_v2;
+    }
+    
     void audio_system::done() {
         close_audio_stream();
         close_audio_devices();
         
-        if (s_backend) {
-            s_backend->shutdown();
-            // Important: reset the backend so a new one is created on next init
-            s_backend.reset();
-        }
-    }
-    
-    std::vector<device_info> audio_system::enumerate_devices(bool playback_devices) {
-        std::lock_guard<std::mutex> lock(s_system_mutex);
-        
-        if (!s_backend) {
-            THROW_RUNTIME("Audio system not initialized. Call audio_system::init() first.");
-        }
-        
-        // Use the existing audio_device API
-        return audio_device::enumerate_devices(playback_devices);
-    }
-    
-    device_info audio_system::get_default_device(bool playback_device) {
-        std::lock_guard<std::mutex> lock(s_system_mutex);
-        
-        if (!s_backend) {
-            THROW_RUNTIME("Audio system not initialized. Call audio_system::init() first.");
-        }
-        
-        // Get default device info through enumeration
-        auto devices = audio_device::enumerate_devices(playback_device);
-        for (const auto& device : devices) {
-            if (device.is_default) {
-                return device;
+        // Shutdown v2 backend if present
+        if (s_backend_v2) {
+            if (s_backend_v2->is_initialized()) {
+                s_backend_v2->shutdown();
             }
+            s_backend_v2.reset();
         }
-        
-        // If no default found, return the first device if available
-        if (!devices.empty()) {
-            return devices[0];
-        }
-        
-        THROW_RUNTIME("No audio devices available.");
-        // Unreachable, but satisfies compiler warning
-        return device_info{};
     }
+    
     
     bool audio_system::switch_device(audio_device& new_device) {
         std::lock_guard<std::mutex> lock(s_system_mutex);
         
-        if (!s_backend) {
+        if (!s_backend_v2) {
             return false;
         }
         
