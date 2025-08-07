@@ -2,7 +2,7 @@
 #define MUSAC_SDL3_AUDIO_STREAM_HH
 
 #include <musac/audio_stream_interface.hh>
-#include <musac/audio_device_interface.hh>
+#include <musac/sdk/audio_format.h>
 #include <SDL3/SDL.h>
 #include <memory>
 

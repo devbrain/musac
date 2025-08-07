@@ -10,6 +10,7 @@
 #include <atomic>
 #include <cstdlib>
 #include "../test_helpers.hh"
+#include "../test_helpers_v2.hh"
 
 namespace musac::test {
 
@@ -49,18 +50,19 @@ TEST_SUITE("cleanup") {
     TEST_CASE("audio system init/done cycles") {
         // Multiple init/done cycles should work
         for (int i = 0; i < 3; ++i) {
-            CHECK(audio_system::init());
+            auto backend = init_test_audio_system();
+            CHECK(backend.get() != nullptr);
             audio_system::done();
         }
     }
     
     TEST_CASE("device cleanup before streams") {
-        audio_system::init();
+        auto backend = init_test_audio_system();
         
         // With single device constraint, we can't have multiple devices
         // So test that streams are cleaned up when device is destroyed
         {
-            auto device = audio_device::open_default_device();
+            auto device = audio_device::open_default_device(backend);
             auto source = create_mock_source();
             auto stream = device.create_stream(std::move(*source));
             REQUIRE_NOTHROW(stream.open());
@@ -71,7 +73,7 @@ TEST_SUITE("cleanup") {
         
         // Now we can create a new device
         {
-            auto new_device = audio_device::open_default_device();
+            auto new_device = audio_device::open_default_device(backend);
             CHECK(new_device.get_channels() > 0);
         }
         
@@ -79,10 +81,10 @@ TEST_SUITE("cleanup") {
     }
     
     TEST_CASE("stream cleanup during callback") {
-        audio_system::init();
+        auto backend = init_test_audio_system();
         
         {
-            auto device = audio_device::open_default_device();
+            auto device = audio_device::open_default_device(backend);
             device.resume();
             
             {
@@ -117,10 +119,10 @@ TEST_SUITE("cleanup") {
     }
     
     TEST_CASE("audio system cleanup with active streams") {
-        audio_system::init();
+        auto backend = init_test_audio_system();
         
         {
-            auto device = audio_device::open_default_device();
+            auto device = audio_device::open_default_device(backend);
             device.resume();
             
             // Create multiple active streams
@@ -142,10 +144,10 @@ TEST_SUITE("cleanup") {
     }
     
     TEST_CASE("exception during stream creation") {
-        audio_system::init();
+        auto backend = init_test_audio_system();
         
         {
-            auto device = audio_device::open_default_device();
+            auto device = audio_device::open_default_device(backend);
             
             // Test cleanup when exception occurs during stream setup
             try {
@@ -163,10 +165,10 @@ TEST_SUITE("cleanup") {
     }
     
     TEST_CASE("callback cleanup on stream destruction") {
-        audio_system::init();
+        auto backend = init_test_audio_system();
         
         {
-            auto device = audio_device::open_default_device();
+            auto device = audio_device::open_default_device(backend);
             device.resume();
             
             std::atomic<bool> callback_executed{false};
@@ -199,10 +201,10 @@ TEST_SUITE("cleanup") {
     }
     
     TEST_CASE("device cleanup with paused streams") {
-        audio_system::init();
+        auto backend = init_test_audio_system();
         
         {
-            auto device = audio_device::open_default_device();
+            auto device = audio_device::open_default_device(backend);
             device.resume();
             
             auto source = create_mock_source();
@@ -222,10 +224,10 @@ TEST_SUITE("cleanup") {
     }
     
     TEST_CASE("rapid stream creation and destruction") {
-        audio_system::init();
+        auto backend = init_test_audio_system();
         
         {
-            auto device = audio_device::open_default_device();
+            auto device = audio_device::open_default_device(backend);
             device.resume();
             
             // Create and destroy many streams rapidly
@@ -248,10 +250,10 @@ TEST_SUITE("cleanup") {
     TEST_CASE("cleanup order stress test") {
         // Test various cleanup orders with single device constraint
         for (int scenario = 0; scenario < 4; ++scenario) {
-            audio_system::init();
+            auto backend = init_test_audio_system();
             
             {
-                auto device = audio_device::open_default_device();
+                auto device = audio_device::open_default_device(backend);
                 device.resume();
                 
                 auto source1 = mock_audio_source::create();
@@ -293,11 +295,11 @@ TEST_SUITE("cleanup") {
     
     TEST_CASE("memory leak check simulation") {
         // This test helps verify no memory leaks by creating/destroying many objects
-        audio_system::init();
+        auto backend = init_test_audio_system();
         
         for (int iteration = 0; iteration < 10; ++iteration) {
             {
-                auto device = audio_device::open_default_device();
+                auto device = audio_device::open_default_device(backend);
                 device.resume();
                 
                 std::vector<std::unique_ptr<audio_stream>> streams;

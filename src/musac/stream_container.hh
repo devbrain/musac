@@ -33,6 +33,15 @@ namespace musac {
         };
         
         stream_container() = default;
+        ~stream_container() = default;
+        
+        // Container is not copyable (contains raw pointers)
+        stream_container(const stream_container&) = delete;
+        stream_container& operator=(const stream_container&) = delete;
+        
+        // Move operations are safe with mutex and atomic
+        stream_container(stream_container&&) = default;
+        stream_container& operator=(stream_container&&) = default;
         
         // Add a stream and its lifetime token
         void add(audio_stream* stream, std::weak_ptr<void> lifetime_token, int token_id) {
@@ -112,8 +121,8 @@ namespace musac {
         // Get count of valid streams
         size_t valid_count() const {
             std::shared_lock lock(m_mutex);
-            return std::count_if(m_entries.begin(), m_entries.end(),
-                [](const stream_entry& e) { return e.is_valid(); });
+            return static_cast<size_t>(std::count_if(m_entries.begin(), m_entries.end(),
+                [](const stream_entry& e) { return e.is_valid(); }));
         }
         
         // Force cleanup of invalid entries

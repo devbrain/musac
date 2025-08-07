@@ -10,6 +10,9 @@
 #include <musac/test_data/loader.hh>
 #include "musac/audio_loader.hh"
 #include <musac/stream.hh>
+#include <musac/sdk/audio_backend_v2.hh>
+#include <musac/backends/sdl3/sdl3_backend.hh>
+#include <musac/backends/null/null_backend.hh>
 
 
 
@@ -30,15 +33,31 @@
 int main(int argc, char* argv[]) {
     using namespace musac;
 
-    audio_system::init();
-    auto devices = audio_device::enumerate_devices(true);
+    // Create backend explicitly using v2 API
+    std::shared_ptr<audio_backend_v2> backend;
+    
+#ifdef MUSAC_HAS_SDL3_BACKEND
+    // Use SDL3 backend for actual audio output
+    backend = create_sdl3_backend_v2();
+    std::cout << "Using SDL3 backend for audio output" << std::endl;
+#else
+    // Use Null backend for testing (no sound)
+    backend = create_null_backend_v2();
+    std::cout << "Using Null backend - no sound will be produced" << std::endl;
+#endif
+
+    // Initialize audio system with explicit backend
+    audio_system::init(backend);
+    // Enumerate devices using the backend
+    auto devices = audio_device::enumerate_devices(backend, true);
     for (const auto& d : devices) {
         std::cout << "[" << d.name << "]" << " ID: " << d.id
             << " Channels " << d.channels << " Freq " << d.sample_rate
             << (d.is_default ? " (Default)" : "");
         std::cout << std::endl;
     } {
-        auto device = audio_device::open_default_device();
+        // Open default device using the backend
+        auto device = audio_device::open_default_device(backend);
         //auto strm = device.create_stream(loader::load(music_type::mp3));
         // 1 - on sunk
         // 2 - applause
@@ -56,6 +75,8 @@ int main(int argc, char* argv[]) {
         auto strm = device.create_stream(musac::test_data::loader::load(musac::test_data::music_type::opb));
         audio_stream stream(std::move(strm));
 
+        // Set gain to ensure audio is audible
+        device.set_gain(2.0f);
         device.resume();
 
         bool done = false;

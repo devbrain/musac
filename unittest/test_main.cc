@@ -1,15 +1,25 @@
 // Main test runner for musac unit tests
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#define DOCTEST_CONFIG_IMPLEMENT
 #include <doctest/doctest.h>
+#include <cstdlib>
 
-// Custom doctest configuration
-namespace doctest {
-    struct TestRunnerConfig {
-        TestRunnerConfig() {
-            // Set default options
-            // Can be overridden by command line arguments
-        }
-    };
+int main(int argc, char** argv) {
+    // Set SDL to use dummy audio driver for testing
+    // This avoids needing actual audio hardware and prevents the null backend issues
+    setenv("SDL_AUDIODRIVER", "dummy", 1);
+    
+    // Also set video driver to dummy to avoid any GUI dependencies
+    setenv("SDL_VIDEODRIVER", "dummy", 1);
+    
+    // Run the tests
+    doctest::Context context;
+    context.applyCommandLine(argc, argv);
+    
+    int res = context.run();
+    
+    if(context.shouldExit()) {
+        return res;
+    }
+    
+    return res;
 }
-
-// You can add global test fixtures or setup here if needed

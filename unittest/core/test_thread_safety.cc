@@ -10,23 +10,19 @@
 #include <mutex>
 #include <memory>
 #include "../test_helpers.hh"
+#include "../test_helpers_v2.hh"
 
 namespace musac::test {
 
 TEST_SUITE("thread_safety") {
-    struct audio_test_fixture {
-        audio_test_fixture() {
-            audio_system::init();
-        }
-        
+    struct audio_test_fixture : test::audio_test_fixture_v2 {
         ~audio_test_fixture() {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            audio_system::done();
         }
     };
     
     TEST_CASE_FIXTURE(audio_test_fixture, "concurrent stream creation") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         std::vector<std::thread> threads;
@@ -53,7 +49,7 @@ TEST_SUITE("thread_safety") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "concurrent stream operations") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         auto source = create_mock_source(44100 * 10); // 10 seconds
@@ -121,7 +117,7 @@ TEST_SUITE("thread_safety") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "callback thread safety") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         std::atomic<int> callback_count{0};
@@ -170,7 +166,7 @@ TEST_SUITE("thread_safety") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "device enumeration during playback") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         // Start playing a stream
@@ -183,9 +179,9 @@ TEST_SUITE("thread_safety") {
         std::vector<std::thread> threads;
         
         // Thread 1: Enumerate devices repeatedly
-        threads.emplace_back([&stop_flag]() {
+        threads.emplace_back([&stop_flag, this]() {
             while (!stop_flag) {
-                auto devices = audio_device::enumerate_devices(true);
+                auto devices = audio_device::enumerate_devices(backend, true);
                 CHECK(devices.size() > 0);
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
@@ -216,7 +212,7 @@ TEST_SUITE("thread_safety") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "rapid callback changes") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         auto source = create_mock_source(44100);
@@ -245,7 +241,7 @@ TEST_SUITE("thread_safety") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "stream destruction race") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         // Create and destroy streams rapidly from multiple threads

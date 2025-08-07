@@ -6,21 +6,21 @@
 #define  MUSAC_AUDIO_SYSTEM_HH
 
 #include <musac/export_musac.h>
-#include <musac/audio_device_interface.hh>
-#include <vector>
+#include <memory>
 
 namespace musac {
-    // Forward declaration
+    // Forward declarations
     class audio_device;
+    class audio_backend_v2;
     
     struct MUSAC_EXPORT audio_system {
-        static bool init();
+        // Initialize with a backend (v2 API)
+        static bool init(std::shared_ptr<audio_backend_v2> backend);
 
         static void done();
         
-        // Device enumeration
-        static std::vector<device_info> enumerate_devices(bool playback_devices = true);
-        static device_info get_default_device(bool playback_device = true);
+        // Get the current backend
+        static std::shared_ptr<audio_backend_v2> get_backend();
         
         // Device switching - takes a user-created device
         static bool switch_device(audio_device& new_device);

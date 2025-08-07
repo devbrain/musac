@@ -12,6 +12,7 @@
 #include <random>
 #include <set>
 #include "../test_helpers.hh"
+#include "../test_helpers_v2.hh"
 
 // Only include internal headers if we have access to them
 #ifdef MUSAC_INTERNAL_TESTING
@@ -21,14 +22,9 @@
 namespace musac::test {
 
 TEST_SUITE("internal_mixer_thread_safety") {
-    struct audio_test_fixture {
-        audio_test_fixture() {
-            audio_system::init();
-        }
-        
+    struct audio_test_fixture : test::audio_test_fixture_v2 {
         ~audio_test_fixture() {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            audio_system::done();
         }
     };
 
@@ -42,7 +38,7 @@ TEST_SUITE("internal_mixer_thread_safety") {
         
         // Create a pool of mock streams
         std::vector<std::unique_ptr<audio_stream>> streams;
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         for (int i = 0; i < OPERATIONS; ++i) {
@@ -87,7 +83,7 @@ TEST_SUITE("internal_mixer_thread_safety") {
     // Public API tests - always available
     
     TEST_CASE_FIXTURE(audio_test_fixture, "concurrent stream creation and playback") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         const int STREAM_COUNT = 50;
@@ -142,11 +138,11 @@ TEST_SUITE("internal_mixer_thread_safety") {
             workers.emplace_back([&all_streams, &stop, &operations] {
                 std::random_device rd;
                 std::mt19937 gen(rd());
-                std::uniform_int_distribution<> dis(0, all_streams.size() - 1);
+                std::uniform_int_distribution<size_t> dis(0, all_streams.size() - 1);
                 std::uniform_real_distribution<float> vol_dis(0.0f, 1.0f);
                 
                 while (!stop) {
-                    int idx = dis(gen);
+                    size_t idx = dis(gen);
                     
                     // Random operations
                     switch (dis(gen) % 4) {
@@ -182,7 +178,7 @@ TEST_SUITE("internal_mixer_thread_safety") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "stream destruction during playback") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         // Create streams in threads and destroy them while playing
@@ -223,7 +219,7 @@ TEST_SUITE("internal_mixer_thread_safety") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "rapid pause resume cycles") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         // Create multiple streams

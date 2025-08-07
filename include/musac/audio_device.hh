@@ -10,19 +10,37 @@
 #include <memory>
 #include <musac/export_musac.h>
 #include <musac/sdk/audio_format.h>
-#include <musac/audio_device_interface.hh>
 
 namespace musac {
+    // Device information structure (from v1, kept for compatibility)
+    struct device_info {
+        std::string name;
+        std::string id;
+        bool is_default;
+        int channels;
+        int sample_rate;
+    };
+    
     // Forward declarations
     class audio_stream;
     class audio_source;
+    class audio_backend_v2;
+    struct device_info_v2;
 
     class MUSAC_EXPORT audio_device {
         public:
-            // Factory methods
-            static std::vector<device_info> enumerate_devices(bool playback_devices = true);
-            static audio_device open_default_device(const audio_spec* spec = nullptr);
-            static audio_device open_device(const std::string& device_id, const audio_spec* spec = nullptr);
+            // New factory methods that accept backend (v2 API)
+            static std::vector<device_info> enumerate_devices(
+                std::shared_ptr<audio_backend_v2> backend,
+                bool playback_devices = true);
+            static audio_device open_default_device(
+                std::shared_ptr<audio_backend_v2> backend,
+                const audio_spec* spec = nullptr);
+            static audio_device open_device(
+                std::shared_ptr<audio_backend_v2> backend,
+                const std::string& device_id, 
+                const audio_spec* spec = nullptr);
+            
 
             ~audio_device();
             audio_device(audio_device&&) noexcept;
@@ -50,7 +68,11 @@ namespace musac {
                 void* userdata);
 
         private:
-            explicit audio_device(const device_info& info, const audio_spec* spec);
+            // Constructor with backend
+            audio_device(
+                std::shared_ptr<audio_backend_v2> backend,
+                const device_info_v2& info, 
+                const audio_spec* spec);
             
             // For device switching
             friend class audio_system;

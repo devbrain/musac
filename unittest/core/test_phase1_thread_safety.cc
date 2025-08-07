@@ -10,24 +10,20 @@
 #include <chrono>
 #include <memory>
 #include "../test_helpers.hh"
+#include "../test_helpers_v2.hh"
 
 namespace musac::test {
 
 TEST_SUITE("phase1_thread_safety") {
-    struct audio_test_fixture {
-        audio_test_fixture() {
-            audio_system::init();
-        }
-        
+    struct audio_test_fixture : test::audio_test_fixture_v2 {
         ~audio_test_fixture() {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            audio_system::done();
         }
     };
     
     // Test 1.1: Basic Destruction Safety
     TEST_CASE_FIXTURE(audio_test_fixture, "destruction during active playback") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         // Create a longer source to ensure callback is active
@@ -54,7 +50,7 @@ TEST_SUITE("phase1_thread_safety") {
     
     // Test 1.3: Concurrent Destruction
     TEST_CASE_FIXTURE(audio_test_fixture, "multiple streams destroyed simultaneously") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         const int STREAM_COUNT = 10;
@@ -90,7 +86,7 @@ TEST_SUITE("phase1_thread_safety") {
     
     // Test rapid creation/destruction cycles
     TEST_CASE_FIXTURE(audio_test_fixture, "rapid stream lifecycle") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         const int CYCLES = 50;
@@ -126,7 +122,7 @@ TEST_SUITE("phase1_thread_safety") {
     
     // Test destruction with callbacks
     TEST_CASE_FIXTURE(audio_test_fixture, "destruction with active callbacks") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         std::atomic<int> callback_count{0};
@@ -177,7 +173,7 @@ TEST_SUITE("phase1_thread_safety") {
     
     // Test concurrent operations during destruction
     TEST_CASE_FIXTURE(audio_test_fixture, "operations during destruction") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         auto source = create_mock_source(44100 * 2); // 2 seconds

@@ -6,24 +6,18 @@
 #include <thread>
 #include <chrono>
 #include "../test_helpers.hh"
+#include "../test_helpers_v2.hh"
 
 namespace musac::test {
 
 TEST_SUITE("device_switching") {
     // Test fixture to ensure proper initialization/cleanup
-    struct device_switching_fixture {
-        device_switching_fixture() {
-            audio_system::init();
-        }
-        
-        ~device_switching_fixture() {
-            audio_system::done();
-        }
-    };
+    // Use v2 test fixture
+    using device_switching_fixture = test::audio_test_fixture_v2;
     
     TEST_CASE_FIXTURE(device_switching_fixture, "device enumeration") {
         // Test device enumeration through public API
-        auto devices = audio_system::enumerate_devices();
+        auto devices = audio_device::enumerate_devices(backend, true);
         
         CHECK(devices.size() >= 1); // At least one device
         
@@ -38,13 +32,20 @@ TEST_SUITE("device_switching") {
         CHECK(found_default);
         
         // Test get_default_device
-        auto default_device = audio_system::get_default_device();
+        // Find default device from enumeration
+        device_info default_device;
+        for (const auto& dev : devices) {
+            if (dev.is_default) {
+                default_device = dev;
+                break;
+            }
+        }
         CHECK(!default_device.id.empty());
         CHECK(default_device.is_default);
     }
     
     TEST_CASE_FIXTURE(device_switching_fixture, "stream public API state preservation") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         auto source = create_mock_source(44100);
         auto stream = device.create_stream(std::move(*source));
         
@@ -96,7 +97,7 @@ TEST_SUITE("device_switching") {
     }
     
     TEST_CASE_FIXTURE(device_switching_fixture, "multiple streams state management") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         
         // Create multiple streams
         std::vector<audio_stream> streams;
@@ -134,14 +135,14 @@ TEST_SUITE("device_switching") {
     
     TEST_CASE_FIXTURE(device_switching_fixture, "device switching API validation") {
         // Test the switch_device implementation with user-created devices
-        auto devices = audio_system::enumerate_devices();
+        auto devices = audio_device::enumerate_devices(backend, true);
         REQUIRE(devices.size() >= 1);
         
         // Create first device
-        auto device1 = audio_device::open_default_device();
+        auto device1 = audio_device::open_default_device(backend);
         
         // Create second device (same device for testing)
-        auto device2 = audio_device::open_device(devices[0].id);
+        auto device2 = audio_device::open_device(backend, devices[0].id);
         
         // Test switching without an active device fails
         // (device2 is already active from constructor)
@@ -155,7 +156,7 @@ TEST_SUITE("device_switching") {
     }
     
     TEST_CASE_FIXTURE(device_switching_fixture, "stream pause/resume behavior") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         
         // Create streams with different states
         auto source1 = create_mock_source(44100);
@@ -190,7 +191,7 @@ TEST_SUITE("device_switching") {
         // Test device switching preserves stream state
         
         // Open initial device
-        auto device1 = audio_device::open_default_device();
+        auto device1 = audio_device::open_default_device(backend);
         
         // Create and configure streams
         auto source1 = create_mock_source(44100);
@@ -215,7 +216,7 @@ TEST_SUITE("device_switching") {
         CHECK(stream2.volume() == 0.8f);
         
         // Create a new device with same specs
-        auto device2 = audio_device::open_default_device();
+        auto device2 = audio_device::open_default_device(backend);
         
         // Switch to the new device
         bool switch_result = audio_system::switch_device(device2);
@@ -243,7 +244,7 @@ TEST_SUITE("device_switching") {
         // Test device switching between devices with different audio formats
         
         // Open initial device with default format
-        auto device1 = audio_device::open_default_device();
+        auto device1 = audio_device::open_default_device(backend);
         
         // Create stream
         auto source1 = create_mock_source(44100);
@@ -263,7 +264,7 @@ TEST_SUITE("device_switching") {
         // Create a device with different specs if possible
         // For testing purposes, we'll create another default device
         // In real usage, this might be a device with different capabilities
-        auto device2 = audio_device::open_default_device();
+        auto device2 = audio_device::open_default_device(backend);
         
         // Log the formats for debugging
         INFO("Device 1: ", dev1_freq, " Hz, ", dev1_channels, " ch, format ", dev1_format);

@@ -6,23 +6,19 @@
 #include <thread>
 #include <chrono>
 #include "../test_helpers.hh"
+#include "../test_helpers_v2.hh"
 
 namespace musac::test {
 
 TEST_SUITE("mixer_simple_test") {
-    struct audio_test_fixture {
-        audio_test_fixture() {
-            audio_system::init();
-        }
-        
+    struct audio_test_fixture : test::audio_test_fixture_v2 {
         ~audio_test_fixture() {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            audio_system::done();
         }
     };
     
     TEST_CASE_FIXTURE(audio_test_fixture, "single stream creation") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         // device doesn't have is_open() method
         
         device.resume();
@@ -39,7 +35,7 @@ TEST_SUITE("mixer_simple_test") {
     }
     
     TEST_CASE_FIXTURE(audio_test_fixture, "multiple sequential streams") {
-        auto device = audio_device::open_default_device();
+        auto device = audio_device::open_default_device(backend);
         device.resume();
         
         for (int i = 0; i < 5; ++i) {

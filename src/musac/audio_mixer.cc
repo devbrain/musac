@@ -6,7 +6,7 @@
 #include <musac/stream.hh>
 #include <failsafe/failsafe.hh>
 #include <algorithm>
-#include <SDL3/SDL.h>
+#include <chrono>
 namespace musac {
     audio_device_data audio_mixer::m_audio_device_data {};
 
@@ -201,7 +201,12 @@ namespace musac {
         
         // Capture timing
         snapshot.snapshot_time = std::chrono::steady_clock::now();
-        snapshot.global_tick_count = SDL_GetTicks(); // TODO: Remove SDL dependency
+        // Calculate milliseconds since some fixed point (similar to SDL_GetTicks)
+        static auto start_time = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::steady_clock::now() - start_time;
+        snapshot.global_tick_count = static_cast<uint32_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count()
+        );
         
         // Capture audio format
         snapshot.audio_spec.channels = m_audio_device_data.m_audio_spec.channels;

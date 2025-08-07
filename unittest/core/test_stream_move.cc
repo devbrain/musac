@@ -1,8 +1,19 @@
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress"
+#endif
+
 #include <doctest/doctest.h>
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
 #include <musac/audio_device.hh>
 #include <musac/stream.hh>
 #include <musac/audio_source.hh>
 #include "../test_helpers.hh"
+#include "../test_helpers_v2.hh"
 #include <thread>
 #include <chrono>
 #include <vector>
@@ -12,10 +23,13 @@ TEST_CASE("audio_stream move semantics") {
     using namespace musac;
     using namespace musac::test;
     
+    // Initialize test backend
+    auto backend = init_test_audio_system();
+    
     SUBCASE("move constructor basic") {
         try {
             // Open audio device
-            auto device = audio_device::open_default_device();
+            auto device = audio_device::open_default_device(backend);
             
             // Create a stream using device
             auto source = create_mock_source(8000);  // Short duration
@@ -49,7 +63,7 @@ TEST_CASE("audio_stream move semantics") {
     SUBCASE("move assignment basic") {
         try {
             // Open audio device
-            auto device = audio_device::open_default_device();
+            auto device = audio_device::open_default_device(backend);
             
             // Create and play a stream
             auto source1 = create_mock_source(8000);
@@ -84,7 +98,7 @@ TEST_CASE("audio_stream move semantics") {
     SUBCASE("moved streams in containers") {
         try {
             // Open audio device
-            auto device = audio_device::open_default_device();
+            auto device = audio_device::open_default_device(backend);
             
             // Create streams in a vector
             std::vector<audio_stream> streams;
@@ -118,7 +132,7 @@ TEST_CASE("audio_stream move semantics") {
     SUBCASE("stress test - multiple moves during playback") {
         try {
             // Open audio device
-            auto device = audio_device::open_default_device();
+            auto device = audio_device::open_default_device(backend);
             
             // Create initial stream
             auto source = create_mock_source(44100);  // 1 second
@@ -154,7 +168,7 @@ TEST_CASE("audio_stream move semantics") {
     SUBCASE("move return from function") {
         try {
             // Open audio device
-            auto device = audio_device::open_default_device();
+            auto device = audio_device::open_default_device(backend);
             
             // Function that returns a stream by move
             auto create_playing_stream = [&device]() -> audio_stream {
@@ -183,4 +197,7 @@ TEST_CASE("audio_stream move semantics") {
             WARN("Skipping test - audio device not available");
         }
     }
+    
+    // Cleanup
+    audio_system::done();
 }
