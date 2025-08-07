@@ -11,19 +11,14 @@
 #include <mutex>
 #include <cmath>
 #include <memory>
-#include "../test_helpers.hh"
-#include "../test_helpers_v2.hh"
+#include "../../mock_components.hh"
+#include "../../test_fixtures.hh"
 
 namespace musac::test {
 
-TEST_SUITE("audio_stream") {
-    // Test fixture to ensure proper initialization/cleanup
-    struct audio_test_fixture : test::audio_test_fixture_v2 {
-        ~audio_test_fixture() {
-            // Small delay to ensure audio callbacks complete
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        }
-    };
+TEST_SUITE("AudioStream::Integration") {
+    // Use the shared thread-safe fixture from test_helpers_v2.hh
+    using audio_test_fixture = audio_test_fixture_threadsafe;
     
     TEST_CASE_FIXTURE(audio_test_fixture, "stream construction and destruction") {
         auto device = audio_device::open_default_device(backend);

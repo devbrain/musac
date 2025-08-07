@@ -12,8 +12,8 @@
 #include <condition_variable>
 #include <memory>
 #include <iostream>
-#include "../test_helpers.hh"
-#include "../test_helpers_v2.hh"
+#include "../../mock_components.hh"
+#include "../../test_fixtures.hh"
 
 namespace musac::test {
 
@@ -45,7 +45,7 @@ public:
     }
 };
 
-TEST_SUITE("phase5_integration") {
+TEST_SUITE("ThreadSafety::Phase5::Integration") {
     // Test fixture for integration tests
     struct integration_fixture {
         test_metrics metrics;

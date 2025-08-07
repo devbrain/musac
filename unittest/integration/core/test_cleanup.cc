@@ -9,8 +9,8 @@
 #include <vector>
 #include <atomic>
 #include <cstdlib>
-#include "../test_helpers.hh"
-#include "../test_helpers_v2.hh"
+#include "../../mock_components.hh"
+#include "../../test_fixtures.hh"
 
 namespace musac::test {
 
@@ -46,7 +46,7 @@ std::unique_ptr<audio_source> create_lifecycle_source(bool* destroyed_flag, size
     return lifecycle_mock_source::create(destroyed_flag, frames);
 }
 
-TEST_SUITE("cleanup") {
+TEST_SUITE("Core::Cleanup::Integration") {
     TEST_CASE("audio system init/done cycles") {
         // Multiple init/done cycles should work
         for (int i = 0; i < 3; ++i) {

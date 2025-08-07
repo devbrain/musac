@@ -40,46 +40,60 @@ add_executable(musac_unittest
         # Main test runner
         test_main.cc
 
-        # Core tests
-        core/test_types.cc
-        core/test_endian.cc
-        core/test_io_stream.cc
-        core/test_audio_format.cc
-        core/test_memory.cc
-        core/test_audio_stream.cc
-        core/test_audio_device.cc
-        core/test_thread_safety.cc
-        core/test_cleanup.cc
-        core/test_device_cleanup.cc
-        core/test_phase1_thread_safety.cc
-        core/test_mixer_public_api.cc
-        core/test_mixer_simple.cc
-        core/test_phase4_sdl_callback_safety.cc
-        core/test_sdl_shutdown_order.cc
-        core/test_device_switching.cc
-        core/test_audio_system_api.cc
-        core/test_phase5_integration.cc
-        core/test_internal_mixer_safety.cc
-        core/test_buffer_shrinking.cc
-        core/test_stream_move.cc
+        # === UNIT TESTS (with mocks) ===
+        # Core unit tests
+        unit/core/test_audio_device_unit.cc
+        unit/core/test_audio_stream_unit.cc
+        unit/core/test_audio_system_unit.cc
+        unit/core/test_mixer_unit.cc
+        unit/core/test_error_scenarios.cc
+        
+        # === INTEGRATION TESTS (with real backends) ===
+        # Core integration tests
+        integration/core/test_types.cc
+        integration/core/test_endian.cc
+        integration/core/test_io_stream.cc
+        integration/core/test_audio_format.cc
+        integration/core/test_memory.cc
+        integration/core/test_audio_stream.cc
+        integration/core/test_audio_device.cc
+        integration/core/test_cleanup.cc
+        integration/core/test_device_cleanup.cc
+        integration/core/test_mixer_public_api.cc
+        integration/core/test_mixer_simple.cc
+        integration/core/test_sdl_shutdown_order.cc
+        integration/core/test_device_switching.cc
+        integration/core/test_audio_system_api.cc
+        integration/core/test_buffer_shrinking.cc
+        integration/core/test_stream_move.cc
+        integration/core/test_audio_device_v2.cc
+        integration/core/test_audio_system_v2.cc
+        
+        # Comprehensive thread safety tests (merged)
+        integration/core/test_thread_safety_comprehensive.cc
+        # Individual thread safety tests (to be deprecated)
+        integration/core/test_thread_safety.cc
+        integration/core/test_phase1_thread_safety.cc
+        integration/core/test_phase4_sdl_callback_safety.cc
+        integration/core/test_phase5_integration.cc
+        integration/core/test_internal_mixer_safety.cc
 
-        # SDK tests
-        sdk/test_audio_converter.cc
-        sdk/test_samples_converter.cc
-        sdk/test_decoder_base.cc
+        # SDK integration tests
+        integration/sdk/test_audio_converter.cc
+        integration/sdk/test_samples_converter.cc
+        integration/sdk/test_decoder_base.cc
 
-        # Backend v2 interface tests
-        test_backend_v2_interface.cc
-        test_sdl3_backend_v2.cc
-        test_audio_device_v2.cc
-        test_audio_system_v2.cc
+        # Backend integration tests
+        integration/backends/test_backend_v2_interface.cc
+        integration/backends/test_sdl3_backend_v2.cc
+        integration/backends/compile_test_backend_v2.cc
 
-        # Codec tests
-        codecs/test_decoder_aiff.cc
-        codecs/test_decoder_voc.cc
-        codecs/test_decoder_wav.cc
-        codecs/test_decoders_with_golden_data.cc
-        codecs/test_decoders_with_golden_data_synth.cc
+        # Codec integration tests
+        integration/codecs/test_decoder_aiff.cc
+        integration/codecs/test_decoder_voc.cc
+        integration/codecs/test_decoder_wav.cc
+        integration/codecs/test_decoders_with_golden_data.cc
+        integration/codecs/test_decoders_with_golden_data_synth.cc
 )
 
 # Include directories
@@ -119,15 +133,34 @@ endif ()
 # Compile options
 target_compile_options(musac_unittest PRIVATE ${MUSAC_WARNING_FLAGS})
 
+# Enable internal testing if available
+if (TARGET musac_internal)
+    target_compile_definitions(musac_unittest PRIVATE MUSAC_INTERNAL_TESTING)
+endif()
+
 # Register tests with CTest
 include(CTest)
 include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
 doctest_discover_tests(musac_unittest)
 
-# Add custom target for running tests
+# Add custom targets for running specific test types
 add_custom_target(run_tests
         COMMAND musac_unittest
         DEPENDS musac_unittest
         WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-        COMMENT "Running unit tests..."
+        COMMENT "Running all tests..."
+)
+
+add_custom_target(run_unit_tests
+        COMMAND musac_unittest -tc="*unit*"
+        DEPENDS musac_unittest
+        WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+        COMMENT "Running unit tests only..."
+)
+
+add_custom_target(run_integration_tests
+        COMMAND musac_unittest -tc="*integration*,*thread_safety*,*codec*,*backend*"
+        DEPENDS musac_unittest
+        WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+        COMMENT "Running integration tests only..."
 )

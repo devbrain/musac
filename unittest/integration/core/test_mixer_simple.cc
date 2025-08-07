@@ -5,17 +5,14 @@
 #include <musac/audio_source.hh>
 #include <thread>
 #include <chrono>
-#include "../test_helpers.hh"
-#include "../test_helpers_v2.hh"
+#include "../../mock_components.hh"
+#include "../../test_fixtures.hh"
 
 namespace musac::test {
 
-TEST_SUITE("mixer_simple_test") {
-    struct audio_test_fixture : test::audio_test_fixture_v2 {
-        ~audio_test_fixture() {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-    };
+TEST_SUITE("Mixer::Simple::Integration") {
+    // Use the shared thread-safe fixture from test_helpers_v2.hh
+    using audio_test_fixture = audio_test_fixture_threadsafe;
     
     TEST_CASE_FIXTURE(audio_test_fixture, "single stream creation") {
         auto device = audio_device::open_default_device(backend);

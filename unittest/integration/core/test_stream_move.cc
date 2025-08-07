@@ -12,12 +12,14 @@
 #include <musac/audio_device.hh>
 #include <musac/stream.hh>
 #include <musac/audio_source.hh>
-#include "../test_helpers.hh"
-#include "../test_helpers_v2.hh"
+#include "../../mock_components.hh"
+#include "../../test_fixtures.hh"
 #include <thread>
 #include <chrono>
 #include <vector>
 #include <memory>
+
+TEST_SUITE("AudioStream::MoveSemantics::Integration") {
 
 TEST_CASE("audio_stream move semantics") {
     using namespace musac;
@@ -201,3 +203,5 @@ TEST_CASE("audio_stream move semantics") {
     // Cleanup
     audio_system::done();
 }
+
+} // TEST_SUITE

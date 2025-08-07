@@ -5,12 +5,12 @@
 #include <musac/audio_source.hh>
 #include <thread>
 #include <chrono>
-#include "../test_helpers.hh"
-#include "../test_helpers_v2.hh"
+#include "../../mock_components.hh"
+#include "../../test_fixtures.hh"
 
 namespace musac::test {
 
-TEST_SUITE("sdl_shutdown_order") {
+TEST_SUITE("Core::ShutdownOrder::Integration") {
     // Test basic initialization and shutdown without any streams
     TEST_CASE("basic init and shutdown") {
         auto backend = init_test_audio_system();

@@ -5,12 +5,12 @@
 #include <musac/audio_source.hh>
 #include <thread>
 #include <chrono>
-#include "../test_helpers.hh"
-#include "../test_helpers_v2.hh"
+#include "../../mock_components.hh"
+#include "../../test_fixtures.hh"
 
 namespace musac::test {
 
-TEST_SUITE("device_switching") {
+TEST_SUITE("AudioSystem::DeviceSwitching::Integration") {
     // Test fixture to ensure proper initialization/cleanup
     // Use v2 test fixture
     using device_switching_fixture = test::audio_test_fixture_v2;

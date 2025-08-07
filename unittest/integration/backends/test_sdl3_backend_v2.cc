@@ -5,7 +5,7 @@
 #include <thread>
 #include <chrono>
 
-TEST_SUITE("SDL3 Backend v2") {
+TEST_SUITE("Backend::SDL3::Integration") {
     TEST_CASE("SDL3 backend v2 creation") {
         auto backend = musac::create_sdl3_backend_v2();
         CHECK(backend != nullptr);
