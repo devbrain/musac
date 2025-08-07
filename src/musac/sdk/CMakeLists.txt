@@ -17,13 +17,15 @@ set (sdk_sources
         # New core headers and sources
         ${MUSAC_PROJECT_ROOT}/musac/sdk/types.h
         ${MUSAC_PROJECT_ROOT}/musac/sdk/audio_format.h
+        audio_format.cc
         ${MUSAC_PROJECT_ROOT}/musac/sdk/io_stream.h
         ${MUSAC_PROJECT_ROOT}/musac/sdk/endian.h
         ${MUSAC_PROJECT_ROOT}/musac/sdk/memory.h
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/audio_converter.h
+        ${MUSAC_PROJECT_ROOT}/musac/sdk/audio_converter_v2.hh
         ${CMAKE_CURRENT_BINARY_DIR}/musac/sdk/musac_sdk_config.h
         io_stream.cc
-        audio_converter.cc
+        audio_converter_v2.cc
+        audio_converter_internal.cc
 )
 
 set(opl_sources

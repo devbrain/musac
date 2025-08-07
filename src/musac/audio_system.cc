@@ -10,7 +10,6 @@
 #include <musac/stream.hh>
 #include <musac/error.hh>
 #include <failsafe/failsafe.hh>
-#include <musac/sdk/audio_converter.h>
 #include "audio_mixer.hh"
 #include "stream_container.hh"
 #include <memory>

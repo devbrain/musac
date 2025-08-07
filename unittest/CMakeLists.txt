@@ -79,9 +79,12 @@ add_executable(musac_unittest
         integration/core/test_internal_mixer_safety.cc
 
         # SDK integration tests
-        integration/sdk/test_audio_converter.cc
         integration/sdk/test_samples_converter.cc
         integration/sdk/test_decoder_base.cc
+        integration/sdk/test_audio_converter_comprehensive.cc
+        
+        # SDK unit tests
+        unit/sdk/test_audio_converter_v2.cc
 
         # Backend integration tests
         integration/backends/test_backend_v2_interface.cc
