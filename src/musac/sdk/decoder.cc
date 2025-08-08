@@ -23,7 +23,7 @@ namespace musac {
     }
 
     // Conversion happens in-place.
-    static constexpr void mono_to_stereo(float buf[], unsigned int len) {
+    static constexpr void mono_to_stereo(float buf[], size_t len) {
         if (len < 1 || !buf) {
             return;
         }
@@ -33,17 +33,17 @@ namespace musac {
         }
     }
 
-    static constexpr void stereo_to_mono(float dst[], const float src[], unsigned int src_len) {
+    static constexpr void stereo_to_mono(float dst[], const float src[], size_t src_len) {
         if (src_len < 1 || !dst || !src) {
             return;
         }
-        for (unsigned int i = 0, j = 0; i < src_len; i += 2, ++j) {
+        for (size_t i = 0, j = 0; i < src_len; i += 2, ++j) {
             dst[j] = src[i] * 0.5f;
             dst[j] += src[i + 1] * 0.5f;
         }
     }
 
-    unsigned int decoder::decode(float buf[], unsigned int len, bool& call_again, unsigned int device_channels) {
+    size_t decoder::decode(float buf[], size_t len, bool& call_again, channels_t device_channels) {
         if (this->get_channels() == 1 && device_channels == 2) {
             auto srcLen = this->do_decode(buf, len / 2, call_again);
             mono_to_stereo(buf, srcLen * 2);

@@ -9,7 +9,8 @@
 #include <string>
 #include <memory>
 #include <musac/export_musac.h>
-#include <musac/sdk/audio_format.h>
+#include <musac/sdk/audio_format.hh>
+#include <musac/sdk/types.hh>
 
 namespace musac {
     // Device information structure (from v1, kept for compatibility)
@@ -17,8 +18,8 @@ namespace musac {
         std::string name;
         std::string id;
         bool is_default;
-        int channels;
-        int sample_rate;
+        channels_t channels;
+        sample_rate_t sample_rate;
     };
     
     // Forward declarations
@@ -49,8 +50,8 @@ namespace musac {
             std::string get_device_name() const;
             std::string get_device_id() const;
             audio_format get_format() const;
-            int get_channels() const;
-            int get_freq() const;
+            channels_t get_channels() const;
+            sample_rate_t get_freq() const;
 
             // Playback control
             bool pause();

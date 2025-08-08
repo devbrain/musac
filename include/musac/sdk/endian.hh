@@ -1,7 +1,7 @@
 #ifndef MUSAC_SDK_ENDIAN_H
 #define MUSAC_SDK_ENDIAN_H
 
-#include <musac/sdk/types.h>
+#include <musac/sdk/types.hh>
 #include <musac/sdk/musac_sdk_config.h>
 #include <cstring>
 

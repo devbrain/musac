@@ -3,7 +3,7 @@
 //
 
 #include <musac/sdk/samples_converter.hh>
-#include <musac/sdk/endian.h>
+#include <musac/sdk/endian.hh>
 #include <limits>
 #include <type_traits>
 #include <algorithm>

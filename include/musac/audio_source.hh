@@ -8,6 +8,7 @@
 #include <chrono>
 #include <musac/sdk/decoder.hh>
 #include <musac/sdk/resampler.hh>
+#include <musac/sdk/types.hh>
 #include <musac/export_musac.h>
 
 namespace musac {
@@ -30,9 +31,9 @@ namespace musac {
 
             virtual bool rewind();
 
-            virtual void open(unsigned int rate, unsigned int channels, unsigned int frame_size);
+            virtual void open(sample_rate_t rate, channels_t channels, size_t frame_size);
 
-            virtual void read_samples(float* buf, unsigned int& cur_pos, unsigned int len, unsigned int device_channels);
+            virtual void read_samples(float* buf, size_t& cur_pos, size_t len, channels_t device_channels);
 
             virtual std::chrono::microseconds duration() const;
             virtual bool seek_to_time(std::chrono::microseconds pos) const;

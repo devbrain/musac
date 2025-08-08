@@ -3,7 +3,7 @@
 #include <musac/codecs/decoder_seq.hh>
 #include <musac/codecs/decoder_opb.hh>
 #include <musac/codecs/decoder_vgm.hh>
-#include <musac/sdk/io_stream.h>
+#include <musac/sdk/io_stream.hh>
 #include <vector>
 #include <iostream>
 

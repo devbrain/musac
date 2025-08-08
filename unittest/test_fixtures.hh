@@ -161,7 +161,7 @@ inline std::pair<audio_device, std::unique_ptr<audio_stream>> create_device_with
 template<typename Operation>
 inline void run_concurrent_test(Operation op, int thread_count, int operations_per_thread = 1) {
     std::vector<std::thread> threads;
-    threads.reserve(thread_count);
+    threads.reserve(static_cast<size_t>(thread_count));
     
     for (int i = 0; i < thread_count; ++i) {
         threads.emplace_back([&op, operations_per_thread]() {

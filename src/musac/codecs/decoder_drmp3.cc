@@ -3,7 +3,7 @@
 #include <musac/error.hh>
 #include <failsafe/failsafe.hh>
 
-#include <musac/sdk/io_stream.h>
+#include <musac/sdk/io_stream.hh>
 
 #define DRMP3_API static
 #define DR_MP3_NO_STDIO
@@ -87,7 +87,7 @@ namespace musac {
         set_is_open(true);
     }
 
-    unsigned int decoder_drmp3::do_decode(float* const buf, unsigned int len, bool& /*callAgain*/) {
+    size_t decoder_drmp3::do_decode(float* const buf, size_t len, bool& /*callAgain*/) {
         if (m_pimpl->fEOF || !is_open()) {
             return 0;
         }
@@ -100,11 +100,11 @@ namespace musac {
         return static_cast <unsigned int>(ret);
     }
 
-    unsigned int decoder_drmp3::get_channels() const {
+    channels_t decoder_drmp3::get_channels() const {
         return m_pimpl->handle_.channels;
     }
 
-    unsigned int decoder_drmp3::get_rate() const {
+    sample_rate_t decoder_drmp3::get_rate() const {
         return m_pimpl->handle_.sampleRate;
     }
 

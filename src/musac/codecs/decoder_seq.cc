@@ -40,11 +40,11 @@ namespace musac {
         set_is_open(true);
     }
 
-    unsigned int decoder_seq::get_channels() const {
+    channels_t decoder_seq::get_channels() const {
         return m_pimpl->m_player->stereo() ? 2 : 1;
     }
 
-    unsigned int decoder_seq::get_rate() const {
+    sample_rate_t decoder_seq::get_rate() const {
         return m_pimpl->m_player->sampleRate();
     }
 
@@ -61,7 +61,7 @@ namespace musac {
         return false;
     }
 
-    unsigned int decoder_seq::do_decode(float buf[], unsigned int len, [[maybe_unused]] bool& call_again) {
+    size_t decoder_seq::do_decode(float buf[], size_t len, [[maybe_unused]] bool& call_again) {
         if (m_pimpl->m_player->atEnd()) {
             return 0;
         }

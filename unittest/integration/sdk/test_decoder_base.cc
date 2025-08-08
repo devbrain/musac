@@ -8,8 +8,8 @@ class TestDecoder : public musac::decoder {
 private:
     std::vector<float> m_data;
     size_t m_position = 0;
-    unsigned int m_channels = 2;
-    unsigned int m_rate = 44100;
+    musac::channels_t m_channels = 2;
+    musac::sample_rate_t m_rate = 44100;
     
 public:
     TestDecoder() = default;
@@ -20,7 +20,7 @@ public:
         m_position = 0;
     }
     
-    void setFormat(unsigned int channels, unsigned int rate) {
+    void setFormat(musac::channels_t channels, musac::sample_rate_t rate) {
         m_channels = channels;
         m_rate = rate;
     }
@@ -32,11 +32,11 @@ public:
         m_position = 0;
     }
     
-    unsigned int get_channels() const override {
+    musac::channels_t get_channels() const override {
         return m_channels;
     }
     
-    unsigned int get_rate() const override {
+    musac::sample_rate_t get_rate() const override {
         return m_rate;
     }
     
@@ -70,9 +70,9 @@ public:
     }
     
 protected:
-    unsigned int do_decode(float* buf, unsigned int len, bool& call_again) override {
+    size_t do_decode(float* buf, size_t len, bool& call_again) override {
         size_t available = m_data.size() - m_position;
-        size_t to_copy = std::min(static_cast<size_t>(len), available);
+        size_t to_copy = std::min(len, available);
         
         if (to_copy > 0) {
             std::memcpy(buf, m_data.data() + m_position, to_copy * sizeof(float));
@@ -80,7 +80,7 @@ protected:
         }
         
         call_again = (m_position < m_data.size());
-        return static_cast<unsigned int>(to_copy);
+        return to_copy;
     }
 };
 
@@ -119,10 +119,10 @@ TEST_SUITE("SDK::DecoderBase") {
         SUBCASE("Decode in chunks") {
             float buffer[1024];
             bool call_again = true;
-            unsigned int total_decoded = 0;
+            size_t total_decoded = 0;
             
             while (call_again) {
-                unsigned int decoded = decoder.decode(buffer, 1024, call_again, 2);
+                size_t decoded = decoder.decode(buffer, 1024, call_again, 2);
                 total_decoded += decoded;
                 
                 if (decoded > 0) {
@@ -140,14 +140,14 @@ TEST_SUITE("SDK::DecoderBase") {
             bool call_again;
             
             // Decode some data
-            unsigned int decoded_count = decoder.decode(buffer, 100, call_again, 2);
+            size_t decoded_count = decoder.decode(buffer, 100, call_again, 2);
             CHECK(decoded_count > 0);
             
             // Rewind
             CHECK(decoder.rewind());
             
             // Should decode from beginning again
-            unsigned int decoded_count2 = decoder.decode(buffer, 100, call_again, 2);
+            size_t decoded_count2 = decoder.decode(buffer, 100, call_again, 2);
             CHECK(decoded_count2 > 0);
             CHECK(buffer[0] == doctest::Approx(0.0f));
         }
@@ -199,7 +199,7 @@ TEST_SUITE("SDK::DecoderBase") {
             
             float buffer[2];
             bool call_again;
-            unsigned int decoded_count = decoder.decode(buffer, 2, call_again, 2);
+            size_t decoded_count = decoder.decode(buffer, 2, call_again, 2);
             CHECK(decoded_count == 2);
             
             // Should be at sample 22050 * 2 = 44100
@@ -213,7 +213,7 @@ TEST_SUITE("SDK::DecoderBase") {
             
             float buffer[2];
             bool call_again;
-            unsigned int decoded_count = decoder.decode(buffer, 2, call_again, 2);
+            size_t decoded_count = decoder.decode(buffer, 2, call_again, 2);
             CHECK(decoded_count == 2);
             
             // Should be at frame 66150, sample 132300
@@ -234,7 +234,7 @@ TEST_SUITE("SDK::DecoderBase") {
             
             float buffer[100];
             bool call_again;
-            unsigned int decoded = decoder.decode(buffer, 100, call_again, 2);
+            size_t decoded = decoder.decode(buffer, 100, call_again, 2);
             
             CHECK(decoded == 0);
             CHECK_FALSE(call_again);
@@ -245,7 +245,7 @@ TEST_SUITE("SDK::DecoderBase") {
             decoder.open(nullptr);
             
             bool call_again;
-            unsigned int decoded = decoder.decode(nullptr, 0, call_again, 2);
+            size_t decoded = decoder.decode(nullptr, 0, call_again, 2);
             
             CHECK(decoded == 0);
             CHECK(call_again); // Still has data

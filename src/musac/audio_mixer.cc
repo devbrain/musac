@@ -32,7 +32,7 @@ namespace musac {
         m_stream_container.update_stream_pointer(token, new_stream);
     }
 
-    void audio_mixer::resize(unsigned int out_len_samples) {
+    void audio_mixer::resize(size_t out_len_samples) {
         // Buffer management constants
         static constexpr size_t MAX_RETAINED_SAMPLES = 256 * 1024;  // ~1MB for float (256K * 4 bytes)
         static constexpr size_t MIN_BUFFER_SAMPLES = 4096;          // Minimum buffer size
@@ -120,7 +120,7 @@ namespace musac {
 #endif
 
 
-    void audio_mixer::mix_channels(unsigned int channels, unsigned int out_offset, unsigned int cur_pos,
+    void audio_mixer::mix_channels(channels_t channels, size_t out_offset, size_t cur_pos,
         float volume_left, float volume_right) {
         float* dst = m_final_mix_buf.data() + out_offset;
         float* src = m_stream_buf.data() + out_offset;

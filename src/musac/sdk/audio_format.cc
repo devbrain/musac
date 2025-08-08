@@ -1,4 +1,4 @@
-#include <musac/sdk/audio_format.h>
+#include <musac/sdk/audio_format.hh>
 #include <ostream>
 
 namespace musac {

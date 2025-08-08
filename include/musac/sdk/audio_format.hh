@@ -1,7 +1,7 @@
 #ifndef MUSAC_SDK_AUDIO_FORMAT_H
 #define MUSAC_SDK_AUDIO_FORMAT_H
 
-#include <musac/sdk/types.h>
+#include <musac/sdk/types.hh>
 #include <musac/sdk/musac_sdk_config.h>
 #include <musac/sdk/export_musac_sdk.h>
 #include <iosfwd>

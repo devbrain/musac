@@ -2,7 +2,7 @@
 // Created by igor on 3/20/25.
 //
 
-#include <musac/sdk/audio_format.h>
+#include <musac/sdk/audio_format.hh>
 #include <cstring>
 #include <alloca.h>
 

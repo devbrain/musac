@@ -1,8 +1,8 @@
 #ifndef MUSAC_SDK_AUDIO_CONVERTER_V2_HH
 #define MUSAC_SDK_AUDIO_CONVERTER_V2_HH
 
-#include <musac/sdk/types.h>
-#include <musac/sdk/audio_format.h>
+#include <musac/sdk/types.hh>
+#include <musac/sdk/audio_format.hh>
 #include <musac/sdk/buffer.hh>
 #include <musac/sdk/export_musac_sdk.h>
 #include <stdexcept>

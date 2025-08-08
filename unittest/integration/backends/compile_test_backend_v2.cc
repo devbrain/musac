@@ -31,8 +31,8 @@ public:
     musac::audio_format get_device_format(uint32_t /*device_handle*/) override { 
         return musac::audio_format::s16le; 
     }
-    int get_device_frequency(uint32_t /*device_handle*/) override { return 44100; }
-    int get_device_channels(uint32_t /*device_handle*/) override { return 2; }
+    uint32_t get_device_frequency(uint32_t /*device_handle*/) override { return 44100; }
+    uint8_t get_device_channels(uint32_t /*device_handle*/) override { return 2; }
     float get_device_gain(uint32_t /*device_handle*/) override { return 1.0f; }
     void set_device_gain(uint32_t /*device_handle*/, float /*gain*/) override {}
     

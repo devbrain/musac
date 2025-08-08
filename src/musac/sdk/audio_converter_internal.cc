@@ -1,5 +1,5 @@
 #include <musac/sdk/audio_converter_v2.hh>
-#include <musac/sdk/endian.h>
+#include <musac/sdk/endian.hh>
 #include <musac/sdk/buffer.hh>
 #include <cmath>
 #include <algorithm>

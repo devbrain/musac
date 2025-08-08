@@ -5,7 +5,7 @@
 #pragma once
 #include <memory>
 #include <musac/sdk/from_float_converter.hh>
-#include <musac/sdk/audio_format.h>
+#include <musac/sdk/audio_format.hh>
 
 namespace musac {
     class audio_stream_interface;

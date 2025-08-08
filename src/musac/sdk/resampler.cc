@@ -147,7 +147,7 @@ namespace musac {
         m_pimpl->m_decoder = std::move(decoder);
     }
 
-    int resampler::set_spec(unsigned int dst_rate, unsigned int channels, unsigned int chunk_size) {
+    int resampler::set_spec(sample_rate_t dst_rate, channels_t channels, size_t chunk_size) {
         m_pimpl->m_dst_rate = dst_rate;
         m_pimpl->m_channels = channels;
         m_pimpl->m_chunk_size = chunk_size;

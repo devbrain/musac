@@ -7,7 +7,7 @@
 #include <musac/codecs/decoder_opb.hh>
 #include <musac/codecs/decoder_vgm.hh>
 #include <musac/sdk/decoder.hh>
-#include <musac/sdk/io_stream.h>
+#include <musac/sdk/io_stream.hh>
 #include <vector>
 #include <cmath>
 #include <algorithm>
@@ -68,9 +68,9 @@ namespace {
                 if (to_decode == 0) break;
             }
             
-            unsigned int decoded = dec.decode(chunk.data(), static_cast<unsigned int>(to_decode), call_again, device_channels);
+            size_t decoded = dec.decode(chunk.data(), to_decode, call_again, static_cast<musac::channels_t>(device_channels));
             if (decoded > 0) {
-                result.insert(result.end(), chunk.begin(), chunk.begin() + decoded);
+                result.insert(result.end(), chunk.begin(), chunk.begin() + static_cast<std::ptrdiff_t>(decoded));
             }
             
             // Stop if we've reached the limit
@@ -169,7 +169,7 @@ TEST_SUITE("Decoders::GoldenData") {
             std::vector<float> buffer(decode_limit);
             bool call_again;
             
-            unsigned int decoded = decoder.decode(buffer.data(), decode_limit, call_again, soundcard_wav_channels);
+            size_t decoded = decoder.decode(buffer.data(), decode_limit, call_again, soundcard_wav_channels);
             CHECK(decoded > 0);
             CHECK(decoded <= decode_limit);
             

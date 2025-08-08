@@ -1,11 +1,9 @@
 #ifndef __PATCHES_H
 #define __PATCHES_H
 
-#include <musac/sdk/io_stream.h>
-#include <cstddef>
+#include <musac/sdk/io_stream.hh>
 #include <string>
 #include <unordered_map>
-#include <cstdint>
 
 namespace ymfmidi {
 	// one carrier/modulator pair in a patch, out of a possible two

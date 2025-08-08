@@ -1,5 +1,5 @@
-#include <musac/sdk/io_stream.h>
-#include <musac/sdk/endian.h>
+#include <musac/sdk/io_stream.hh>
+#include <musac/sdk/endian.hh>
 #include <fstream>
 #include <vector>
 #include <cstring>

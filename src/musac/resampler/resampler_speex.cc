@@ -56,7 +56,7 @@ namespace musac {
         src_len = spxInLen * channels;
     }
 
-    auto resampler_speex::adjust_for_output_spec(unsigned int dst_rate, unsigned int src_rate, unsigned int channels) -> int {
+    auto resampler_speex::adjust_for_output_spec(uint32_t dst_rate, uint32_t src_rate, uint8_t channels) -> int {
         int err;
         m_pimpl->m_resampler.reset(speex_resampler_init(
             channels, src_rate,
