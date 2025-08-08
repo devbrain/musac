@@ -2,7 +2,7 @@
 #include <musac/error.hh>
 #include <failsafe/failsafe.hh>
 
-#include <musac/sdk/io_stream.h>
+#include <musac/sdk/io_stream.hh>
 
 #define DR_WAV_NO_STDIO
 #define DR_WAV_IMPLEMENTATION
@@ -80,7 +80,7 @@ namespace musac {
         set_is_open(true);
     }
 
-    unsigned int decoder_drwav::do_decode(float* const buf, unsigned int len, bool& callAgain) {
+    size_t decoder_drwav::do_decode(float* const buf, size_t len, bool& callAgain) {
         if (m_pimpl->m_eof || !is_open()) {
             callAgain = false;
             return 0;
@@ -97,11 +97,11 @@ namespace musac {
         return static_cast<unsigned int>(ret);
     }
 
-    unsigned int decoder_drwav::get_channels() const {
+    channels_t decoder_drwav::get_channels() const {
         return m_pimpl->m_handle.channels;
     }
 
-    unsigned int decoder_drwav::get_rate() const {
+    sample_rate_t decoder_drwav::get_rate() const {
         return m_pimpl->m_handle.sampleRate;
     }
 

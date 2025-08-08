@@ -51,8 +51,8 @@ public:
     
     // Device properties
     audio_format get_device_format(uint32_t device_handle) override;
-    int get_device_frequency(uint32_t device_handle) override;
-    int get_device_channels(uint32_t device_handle) override;
+    sample_rate_t get_device_frequency(uint32_t device_handle) override;
+    channels_t get_device_channels(uint32_t device_handle) override;
     float get_device_gain(uint32_t device_handle) override;
     void set_device_gain(uint32_t device_handle, float gain) override;
     

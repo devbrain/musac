@@ -4,10 +4,8 @@
 
 #include <musac/codecs/decoder_aiff.hh>
 #include <musac/sdk/samples_converter.hh>
-#include <musac/sdk/audio_format.h>
+#include <musac/sdk/audio_format.hh>
 #include <musac/sdk/audio_converter_v2.hh>
-#include <musac/sdk/endian.h>
-#include <musac/sdk/memory.h>
 #include <musac/error.hh>
 #include <failsafe/failsafe.hh>
 #include <algorithm>
@@ -202,7 +200,7 @@ struct decoder_aiff::impl {
         }
         
         // Setup audio spec
-        musac::zero(m_spec);
+        std::memset(&m_spec, 0, sizeof(m_spec));
         m_spec.freq = frequency;
         m_spec.channels = channels;
         
@@ -307,11 +305,11 @@ void decoder_aiff::open(io_stream* rwops) {
     m_pimpl->m_consumed = 0;
 }
 
-unsigned int decoder_aiff::get_channels() const {
+channels_t decoder_aiff::get_channels() const {
     return m_pimpl->m_spec.channels;
 }
 
-unsigned int decoder_aiff::get_rate() const {
+sample_rate_t decoder_aiff::get_rate() const {
     return m_pimpl->m_spec.freq;
 }
 
@@ -328,7 +326,7 @@ bool decoder_aiff::seek_to_time(std::chrono::microseconds) {
     return false;
 }
 
-unsigned int decoder_aiff::do_decode(float* buf, unsigned int len, bool& call_again) {
+size_t decoder_aiff::do_decode(float* buf, size_t len, bool& call_again) {
     auto remains = m_pimpl->m_total_samples - m_pimpl->m_consumed;
     auto take = std::min(remains, (size_t)len);
     

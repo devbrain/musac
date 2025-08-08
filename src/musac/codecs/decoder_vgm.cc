@@ -33,11 +33,11 @@ namespace musac {
         set_is_open(true);
     }
 
-    unsigned int decoder_vgm::get_channels() const {
+    channels_t decoder_vgm::get_channels() const {
         return 2;
     }
 
-    unsigned int decoder_vgm::get_rate() const {
+    sample_rate_t decoder_vgm::get_rate() const {
         return SAMPLE_RATE;
     }
 
@@ -53,7 +53,7 @@ namespace musac {
         return false;
     }
 
-    unsigned int decoder_vgm::do_decode(float buf[], unsigned int len, bool& callAgain) {
+    size_t decoder_vgm::do_decode(float buf[], size_t len, bool& callAgain) {
         int rc = m_pimpl->m_player.render(buf, len);
         if (m_pimpl->m_player.done() && rc == 0) {
             return 0;

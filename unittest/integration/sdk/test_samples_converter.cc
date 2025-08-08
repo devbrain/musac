@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 #include <musac/sdk/samples_converter.hh>
-#include <musac/sdk/audio_format.h>
+#include <musac/sdk/audio_format.hh>
 #include <vector>
 #include <cmath>
 #include <algorithm>

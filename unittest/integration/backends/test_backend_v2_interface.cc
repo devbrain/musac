@@ -52,7 +52,7 @@ public:
     }
     
     // Device enumeration
-    std::vector<device_info_v2> enumerate_devices(bool playback) override {
+    std::vector<device_info_v2> enumerate_devices(bool /*playback*/) override {
         if (!m_initialized) {
             throw std::runtime_error("Backend not initialized");
         }
@@ -60,7 +60,7 @@ public:
         return m_devices;
     }
     
-    device_info_v2 get_default_device(bool playback) override {
+    device_info_v2 get_default_device(bool /*playback*/) override {
         if (!m_initialized) {
             throw std::runtime_error("Backend not initialized");
         }
@@ -111,7 +111,7 @@ public:
         return it->second.format;
     }
     
-    int get_device_frequency(uint32_t device_handle) override {
+    uint32_t get_device_frequency(uint32_t device_handle) override {
         auto it = m_open_devices.find(device_handle);
         if (it == m_open_devices.end()) {
             throw std::runtime_error("Invalid device handle");
@@ -119,7 +119,7 @@ public:
         return it->second.freq;
     }
     
-    int get_device_channels(uint32_t device_handle) override {
+    uint8_t get_device_channels(uint32_t device_handle) override {
         auto it = m_open_devices.find(device_handle);
         if (it == m_open_devices.end()) {
             throw std::runtime_error("Invalid device handle");
@@ -134,7 +134,7 @@ public:
         return 1.0f; // Mock: always full volume
     }
     
-    void set_device_gain(uint32_t device_handle, float gain) override {
+    void set_device_gain(uint32_t device_handle, float /*gain*/) override {
         if (m_open_devices.find(device_handle) == m_open_devices.end()) {
             throw std::runtime_error("Invalid device handle");
         }
@@ -160,9 +160,9 @@ public:
     // Stream creation
     std::unique_ptr<audio_stream_interface> create_stream(
         uint32_t device_handle,
-        const audio_spec& spec,
-        void (*callback)(void* userdata, uint8_t* stream, int len),
-        void* userdata) override {
+        const audio_spec& /*spec*/,
+        void (*/*callback*/)(void* userdata, uint8_t* stream, int len),
+        void* /*userdata*/) override {
         
         if (m_open_devices.find(device_handle) == m_open_devices.end()) {
             throw std::runtime_error("Invalid device handle");

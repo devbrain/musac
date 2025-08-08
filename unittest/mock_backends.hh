@@ -3,7 +3,7 @@
 
 #include <musac/sdk/audio_backend_v2.hh>
 #include <musac/audio_stream_interface.hh>
-#include <musac/sdk/audio_format.h>
+#include <musac/sdk/audio_format.hh>
 #include <memory>
 #include <vector>
 #include <map>
@@ -304,16 +304,16 @@ public:
     }
     
     
-    int get_device_channels(uint32_t device_handle) override {
+    uint8_t get_device_channels(uint32_t device_handle) override {
         std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_device_specs.find(device_handle);
         return it != m_device_specs.end() ? it->second.channels : 0;
     }
     
-    int get_device_frequency(uint32_t device_handle) override {
+    uint32_t get_device_frequency(uint32_t device_handle) override {
         std::lock_guard<std::mutex> lock(m_mutex);
         auto it = m_device_specs.find(device_handle);
-        return it != m_device_specs.end() ? static_cast<int>(it->second.freq) : 0;
+        return it != m_device_specs.end() ? it->second.freq : 0;
     }
     
     audio_format get_device_format(uint32_t device_handle) override {

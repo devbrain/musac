@@ -9,7 +9,7 @@
 #include <vector>
 #include <memory>
 #include <string>
-#include <musac/sdk/io_stream.h>
+#include <musac/sdk/io_stream.hh>
 #include <musac/sdk/opl/ymfm_chip.hh>
 
 #if defined(_MSC_VER)

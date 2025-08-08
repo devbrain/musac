@@ -2,7 +2,7 @@
 #include <musac/error.hh>
 #include <failsafe/failsafe.hh>
 
-#include <musac/sdk/io_stream.h>
+#include <musac/sdk/io_stream.hh>
 
 #define DR_FLAC_NO_STDIO
 #define DR_FLAC_IMPLEMENTATION
@@ -75,7 +75,7 @@ namespace musac {
         set_is_open(true);
     }
 
-    unsigned int decoder_drflac::do_decode(float* const buf, unsigned int len, bool& /*callAgain*/) {
+    size_t decoder_drflac::do_decode(float* const buf, size_t len, bool& /*callAgain*/) {
         if (m_pimpl->m_eof || !is_open()) {
             return 0;
         }
@@ -88,14 +88,14 @@ namespace musac {
         return (unsigned int)ret;
     }
 
-    unsigned int decoder_drflac::get_channels() const {
+    channels_t decoder_drflac::get_channels() const {
         if (!is_open()) {
             return 0;
         }
         return (unsigned int)(m_pimpl->m_handle->channels);
     }
 
-    unsigned int decoder_drflac::get_rate() const {
+    sample_rate_t decoder_drflac::get_rate() const {
         if (!is_open()) {
             return 0;
         }

@@ -1,7 +1,6 @@
 // This is copyrighted software. More information is at the end of this file.
 #include <musac/codecs/decoder_modplug.hh>
 #include <musac/sdk/buffer.hh>
-#include <musac/sdk/memory.h>
 #include <musac/error.hh>
 #include <failsafe/failsafe.hh>
 #include "musac/codecs/libmodplug/modplug.h"
@@ -30,7 +29,7 @@ namespace musac {
             ModPlug_Init();
             initialized = true;
         }
-        musac::zero(settings);
+
 
         /* The settings will require some experimenting. I've borrowed some
             of them from the XMMS ModPlug plugin. */
@@ -79,15 +78,15 @@ namespace musac {
         set_is_open(true);
     }
 
-    unsigned int decoder_modplug::get_channels() const {
+    channels_t decoder_modplug::get_channels() const {
         return (unsigned int)m_pimpl->settings.mChannels;
     }
 
-    unsigned int decoder_modplug::get_rate() const {
+    sample_rate_t decoder_modplug::get_rate() const {
         return (unsigned int)m_pimpl->settings.mFrequency;
     }
 
-    unsigned int decoder_modplug::do_decode(float buf[], unsigned int len, bool& /*callAgain*/) {
+    size_t decoder_modplug::do_decode(float buf[], size_t len, bool& /*callAgain*/) {
         if (m_pimpl->m_eof || !is_open()) {
             return 0;
         }

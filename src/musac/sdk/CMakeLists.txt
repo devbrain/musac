@@ -15,12 +15,11 @@ set (sdk_sources
         ${MUSAC_PROJECT_ROOT}/musac/sdk/from_float_converter.hh
         
         # New core headers and sources
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/types.h
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/audio_format.h
+        ${MUSAC_PROJECT_ROOT}/musac/sdk/types.hh
+        ${MUSAC_PROJECT_ROOT}/musac/sdk/audio_format.hh
         audio_format.cc
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/io_stream.h
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/endian.h
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/memory.h
+        ${MUSAC_PROJECT_ROOT}/musac/sdk/io_stream.hh
+        ${MUSAC_PROJECT_ROOT}/musac/sdk/endian.hh
         ${MUSAC_PROJECT_ROOT}/musac/sdk/audio_converter_v2.hh
         ${CMAKE_CURRENT_BINARY_DIR}/musac/sdk/musac_sdk_config.h
         io_stream.cc

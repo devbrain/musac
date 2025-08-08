@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <memory>
 #include <musac/sdk/export_musac_sdk.h>
+#include <musac/sdk/types.hh>
 namespace musac {
     class decoder;
     /*!
@@ -42,7 +43,7 @@ namespace musac {
              *  function. It is recommended to set this to the same value that was used as buffer size in
              *  the call to Aulib::init().
              */
-            int set_spec(unsigned int dst_rate, unsigned int channels, unsigned int chunk_size);
+            int set_spec(sample_rate_t dst_rate, channels_t channels, size_t chunk_size);
 
             [[nodiscard]] unsigned int get_current_rate() const;
             [[nodiscard]] unsigned int get_current_channels() const;
@@ -79,7 +80,7 @@ namespace musac {
              *
              * \param channels Amount of channels in both the source as well as the target audio buffers.
              */
-            virtual int adjust_for_output_spec(unsigned int dst_rate, unsigned int src_rate, unsigned int channels) = 0;
+            virtual int adjust_for_output_spec(sample_rate_t dst_rate, sample_rate_t src_rate, channels_t channels) = 0;
 
             /*! This function must be implemented when subclassing. It must resample
              * the audio contained in 'src' containing 'srcLen' samples, and store the

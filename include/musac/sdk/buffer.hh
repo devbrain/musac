@@ -14,7 +14,7 @@ namespace musac {
     class buffer final {
         static_assert(std::is_trivially_copyable_v<T>, "buffer<T> requires trivially copyable T");
     public:
-        explicit buffer(unsigned int size)
+        explicit buffer(std::size_t size)
             : m_data(std::make_unique<T[]>(size)), m_size(size) {
             // initialize to default value
             std::fill_n(m_data.get(), m_size, T{});
@@ -39,14 +39,14 @@ namespace musac {
         }
 
         // Resets buffer to new size, zero-initializes
-        void reset(unsigned int newSize) {
+        void reset(std::size_t newSize) {
             m_data = std::make_unique<T[]>(newSize);
             m_size = newSize;
             std::fill_n(m_data.get(), m_size, T{});
         }
 
         // Resize buffer, preserves existing content up to new size
-        void resize(unsigned int new_size) {
+        void resize(std::size_t new_size) {
             auto new_data = std::make_unique<T[]>(new_size);
             // copy existing elements up to min(new_size, old_size)
             if constexpr (std::is_trivially_copyable_v<T>) {
@@ -79,6 +79,6 @@ namespace musac {
 
     private:
         std::unique_ptr<T[]> m_data;
-        unsigned int m_size;
+        std::size_t m_size;
     };
 }

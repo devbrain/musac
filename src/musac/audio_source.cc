@@ -35,7 +35,7 @@ bool musac::audio_source::rewind() {
     return m_decoder->rewind();
 }
 
-void musac::audio_source::open(unsigned int rate, unsigned int channels, unsigned int frame_size) {
+void musac::audio_source::open(sample_rate_t rate, channels_t channels, size_t frame_size) {
     if (!m_rwops) {
         THROW_RUNTIME("No IO stream available for audio source");
     }
@@ -52,7 +52,7 @@ void musac::audio_source::open(unsigned int rate, unsigned int channels, unsigne
     }
 }
 
-void musac::audio_source::read_samples(float buf[], unsigned int& cur_pos, unsigned int len, unsigned int device_channels) {
+void musac::audio_source::read_samples(float buf[], size_t& cur_pos, size_t len, channels_t device_channels) {
     if (m_resampler) {
         cur_pos += m_resampler->resample(buf + cur_pos, len - cur_pos);
     } else {

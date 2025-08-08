@@ -17,9 +17,9 @@ option(MUSAC_ENABLE_LTO "Enable link-time optimization" OFF)
 
 # Audio backend options
 option(MUSAC_BUILD_SDL3_BACKEND "Build SDL3 backend as separate library" ON)
-option(MUSAC_BUILD_NULL_BACKEND "Include null backend in core" ON)
-set(MUSAC_DEFAULT_BACKEND "SDL3" CACHE STRING "Default audio backend to use")
-set_property(CACHE MUSAC_DEFAULT_BACKEND PROPERTY STRINGS "SDL3" "Null" "Custom")
+
+# Option to enable/disable unit tests
+option(MUSAC_BUILD_TESTS "Build unit tests" ON)
 
 # Include standard install directories
 include(GNUInstallDirs)
@@ -131,34 +131,8 @@ set (MUSAC_PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/include)
 add_subdirectory(ext)
 add_subdirectory(src/musac)
 
-# Add test data library before example (example will use it)
 add_subdirectory(test_data)
-
 add_subdirectory(example)
-
-# Add unittest directory
 add_subdirectory(unittest)
-
-# Add benchmarks directory
-option(MUSAC_BUILD_BENCHMARKS "Build benchmarks" ON)
-if(MUSAC_BUILD_BENCHMARKS)
-    add_subdirectory(benchmarks)
-endif()
-
-# Add tools directory
 add_subdirectory(tools)
 
-# Test decoder output program (temporarily disabled for SDL migration)
-# add_executable(test_decoder_output test_decoder_output.cc)
-# target_link_libraries(test_decoder_output musac SDL3::SDL3)
-# target_include_directories(test_decoder_output PRIVATE include)
-
-# Test single decoder program (temporarily disabled for SDL migration)
-# add_executable(test_single_decoder test_single_decoder.cc)
-# target_link_libraries(test_single_decoder musac SDL3::SDL3)
-# target_include_directories(test_single_decoder PRIVATE include)
-
-# Test simple open program (temporarily disabled for SDL migration)
-# add_executable(test_simple_open test_simple_open.cc)
-# target_link_libraries(test_simple_open musac_codecs musac_sdk SDL3::SDL3 thirdparty::failsafe)
-# target_include_directories(test_simple_open PRIVATE include)

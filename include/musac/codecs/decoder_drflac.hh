@@ -2,6 +2,7 @@
 #pragma once
 
 #include <musac/sdk/decoder.hh>
+#include <musac/sdk/types.hh>
 #include <musac/codecs/export_musac_codecs.h>
 namespace musac {
     /*!
@@ -13,14 +14,14 @@ namespace musac {
             ~decoder_drflac() override;
 
             void open(io_stream* rwops) override;
-            [[nodiscard]] unsigned int get_channels() const override;
-            [[nodiscard]] unsigned int get_rate() const override;
+            [[nodiscard]] channels_t get_channels() const override;
+            [[nodiscard]] sample_rate_t get_rate() const override;
             bool rewind() override;
             [[nodiscard]] auto duration() const -> std::chrono::microseconds override;
             bool seek_to_time(std::chrono::microseconds pos) override;
 
         protected:
-            unsigned int do_decode(float* buf, unsigned int len, bool& callAgain) override;
+            size_t do_decode(float* buf, size_t len, bool& callAgain) override;
 
         private:
             struct impl;

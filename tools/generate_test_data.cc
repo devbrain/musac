@@ -7,7 +7,7 @@
 #include <cstring>
 #include <algorithm>
 #include <cctype>
-#include <musac/sdk/io_stream.h>
+#include <musac/sdk/io_stream.hh>
 
 #include <musac/codecs/decoder_aiff.hh>
 #include <musac/codecs/decoder_voc.hh>

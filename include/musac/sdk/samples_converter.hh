@@ -5,8 +5,8 @@
 #ifndef  SAMPLES_CONVERTER_HH
 #define  SAMPLES_CONVERTER_HH
 
-#include <musac/sdk/audio_format.h>
-#include <musac/sdk/types.h>
+#include <musac/sdk/audio_format.hh>
+#include <musac/sdk/types.hh>
 #include <musac/sdk/export_musac_sdk.h>
 
 namespace musac {

@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 #include <musac/codecs/decoder_drwav.hh>
-#include <musac/sdk/io_stream.h>
+#include <musac/sdk/io_stream.hh>
 #include <vector>
 #include <cstring>
 #include <cmath>
@@ -86,7 +86,7 @@ TEST_SUITE("Codecs::DecoderWAV") {
         SUBCASE("Decode samples") {
             float buffer[100];
             bool call_again = true;
-            unsigned int decoded = decoder.decode(buffer, 100, call_again, 2);
+            size_t decoded = decoder.decode(buffer, 100, call_again, 2);
             
             CHECK(decoded > 0);
             CHECK(decoded <= 100);
@@ -103,7 +103,7 @@ TEST_SUITE("Codecs::DecoderWAV") {
             bool call_again = true;
             
             while (call_again) {
-                unsigned int decoded = decoder.decode(buffer, 50, call_again, 2);
+                size_t decoded = decoder.decode(buffer, 50, call_again, 2);
                 if (decoded == 0 && call_again) {
                     // Prevent infinite loop if decoder returns 0 but call_again is true
                     FAIL("Decoder returned 0 samples but call_again is true");
@@ -174,7 +174,7 @@ TEST_SUITE("Codecs::DecoderWAV") {
             // Decode and check position
             float buffer[100];
             bool call_again;
-            unsigned int decoded_samples = decoder.decode(buffer, 100, call_again, 2);
+            size_t decoded_samples = decoder.decode(buffer, 100, call_again, 2);
             CHECK(decoded_samples > 0);
             
             // Should have data remaining
@@ -216,7 +216,7 @@ TEST_SUITE("Codecs::DecoderWAV") {
         // Decode some data
         float buffer[100];
         bool call_again;
-        unsigned int decoded_count = decoder.decode(buffer, 100, call_again, 2);
+        size_t decoded_count = decoder.decode(buffer, 100, call_again, 2);
         CHECK(decoded_count > 0);
         
         // Rewind
@@ -224,7 +224,7 @@ TEST_SUITE("Codecs::DecoderWAV") {
         
         // Decode again - should get same data
         float buffer2[100];
-        unsigned int decoded_count2 = decoder.decode(buffer2, 100, call_again, 2);
+        size_t decoded_count2 = decoder.decode(buffer2, 100, call_again, 2);
         CHECK(decoded_count2 > 0);
         
         // Compare (should be identical)

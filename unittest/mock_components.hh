@@ -2,8 +2,8 @@
 #define MUSAC_MOCK_COMPONENTS_HH
 
 #include <musac/sdk/decoder.hh>
-#include <musac/sdk/io_stream.h>
-#include <musac/sdk/types.h>
+#include <musac/sdk/types.hh>
+#include <musac/sdk/io_stream.hh>
 #include <musac/audio_source.hh>
 #include <cstring>
 #include <vector>
@@ -114,11 +114,11 @@ public:
         set_is_open(true);
     }
     
-    unsigned int get_channels() const override {
+    channels_t get_channels() const override {
         return m_channels;
     }
     
-    unsigned int get_rate() const override {
+    sample_rate_t get_rate() const override {
         return m_sample_rate;
     }
     
@@ -142,30 +142,30 @@ public:
     }
     
 protected:
-    unsigned int do_decode(float* buf, unsigned int len, bool& call_again) override {
-        unsigned int frames_requested = len / m_channels;
-        unsigned int frames_to_read = std::min(frames_requested, 
-            static_cast<unsigned int>(m_total_frames - m_current_frame));
-        unsigned int samples_to_read = frames_to_read * m_channels;
+    size_t do_decode(float* buf, size_t len, bool& call_again) override {
+        size_t frames_requested = len / m_channels;
+        size_t frames_to_read = std::min(frames_requested, 
+            m_total_frames - m_current_frame);
+        size_t samples_to_read = frames_to_read * m_channels;
         
         switch (m_pattern) {
             case Pattern::SILENCE:
-                for (unsigned int i = 0; i < samples_to_read; ++i) {
+                for (size_t i = 0; i < samples_to_read; ++i) {
                     buf[i] = 0.0f;
                 }
                 break;
                 
             case Pattern::SINE_440HZ:
-                for (unsigned int i = 0; i < frames_to_read; ++i) {
+                for (size_t i = 0; i < frames_to_read; ++i) {
                     float sample = static_cast<float>(std::sin(2.0 * M_PI * 440.0 * static_cast<double>(m_current_frame + i) / static_cast<double>(m_sample_rate)) * 0.3);
-                    for (unsigned int ch = 0; ch < m_channels; ++ch) {
+                    for (channels_t ch = 0; ch < m_channels; ++ch) {
                         buf[i * m_channels + ch] = sample;
                     }
                 }
                 break;
                 
             case Pattern::WHITE_NOISE:
-                for (unsigned int i = 0; i < samples_to_read; ++i) {
+                for (size_t i = 0; i < samples_to_read; ++i) {
                     buf[i] = (static_cast<float>(rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 0.3f;
                 }
                 break;
@@ -184,8 +184,8 @@ public:
     musac::size get_current_frame() const { return m_current_frame; }
     musac::size get_rewind_count() const { return m_rewind_count; }
     
-    void set_channels(unsigned int channels) { m_channels = channels; }
-    void set_sample_rate(unsigned int rate) { m_sample_rate = rate; }
+    void set_channels(channels_t channels) { m_channels = channels; }
+    void set_sample_rate(sample_rate_t rate) { m_sample_rate = rate; }
     
 protected:
     musac::size m_current_frame;
@@ -193,8 +193,8 @@ protected:
 private:
     musac::size m_total_frames;
     Pattern m_pattern;
-    unsigned int m_channels;
-    unsigned int m_sample_rate;
+    channels_t m_channels;
+    sample_rate_t m_sample_rate;
     musac::size m_read_count = 0;
     musac::size m_rewind_count = 0;
     
@@ -207,9 +207,9 @@ struct mock_audio_state {
     std::atomic<musac::size> rewind_count{0};
     std::atomic<musac::size> read_count{0};
     std::atomic<musac::size> open_count{0};
-    std::atomic<unsigned int> rate{44100};
-    std::atomic<unsigned int> channels{2};
-    std::atomic<unsigned int> frame_size{0};
+    std::atomic<sample_rate_t> rate{44100};
+    std::atomic<channels_t> channels{2};
+    std::atomic<size_t> frame_size{0};
     std::atomic<bool> is_open{false};
     bool generate_sine = false;
     
@@ -228,7 +228,7 @@ public:
     // Factory method
     static std::unique_ptr<mock_audio_source> create(musac::size total_frames = 44100);
     
-    void open(unsigned int rate, unsigned int channels, unsigned int frame_size) override {
+    void open(sample_rate_t rate, channels_t channels, size_t frame_size) override {
         m_state->rate = rate;
         m_state->channels = channels;
         m_state->frame_size = frame_size;
@@ -255,19 +255,19 @@ public:
         return std::chrono::microseconds((m_state->total_frames * 1000000) / m_state->rate);
     }
     
-    void read_samples(float* out, unsigned int& cur_pos, unsigned int out_len, unsigned int out_channels) override {
-        unsigned int frames_requested = (out_len - cur_pos) / out_channels;
-        unsigned int frames_to_read = std::min(frames_requested, 
-            static_cast<unsigned int>(m_state->total_frames - m_state->current_frame));
+    void read_samples(float* out, size_t& cur_pos, size_t out_len, channels_t out_channels) override {
+        size_t frames_requested = (out_len - cur_pos) / out_channels;
+        size_t frames_to_read = std::min(frames_requested, 
+            m_state->total_frames - m_state->current_frame);
         
         // Generate simple sine wave or silence based on pattern
-        for (unsigned int i = 0; i < frames_to_read; ++i) {
+        for (size_t i = 0; i < frames_to_read; ++i) {
             float sample = 0.0f;
             if (m_state->generate_sine) {
                 sample = static_cast<float>(std::sin(2.0 * M_PI * 440.0 * static_cast<double>(m_state->current_frame + i) / static_cast<double>(m_state->rate)) * 0.3);
             }
             
-            for (unsigned int ch = 0; ch < out_channels; ++ch) {
+            for (channels_t ch = 0; ch < out_channels; ++ch) {
                 out[cur_pos++] = sample;
             }
         }
@@ -315,8 +315,8 @@ public:
     }
     
 protected:
-    unsigned int do_decode(float* buf, unsigned int len, bool& call_again) override {
-        unsigned int result = test_decoder::do_decode(buf, len, call_again);
+    size_t do_decode(float* buf, size_t len, bool& call_again) override {
+        size_t result = test_decoder::do_decode(buf, len, call_again);
         m_state->read_count++;
         m_state->current_frame = m_current_frame;
         return result;
@@ -355,8 +355,8 @@ inline std::unique_ptr<mock_audio_source> create_mock_source(musac::size frames 
 // Mock decoder that can simulate errors
 class mock_decoder_with_errors : public decoder {
 private:
-    unsigned int m_channels{2};
-    unsigned int m_rate{44100};
+    channels_t m_channels{2};
+    sample_rate_t m_rate{44100};
     size_t m_total_samples;
     size_t m_current_sample{0};
     bool m_is_open{false};
@@ -376,11 +376,11 @@ public:
         set_is_open(true);
     }
     
-    unsigned int get_channels() const override {
+    channels_t get_channels() const override {
         return m_channels;
     }
     
-    unsigned int get_rate() const override {
+    sample_rate_t get_rate() const override {
         return m_rate;
     }
     
@@ -412,12 +412,12 @@ public:
     }
     
 protected:
-    unsigned int do_decode(float* buf, unsigned int len, bool& call_again) override {
+    size_t do_decode(float* buf, size_t len, bool& call_again) override {
         if (fail_on_decode) {
             throw std::runtime_error("Simulated decode failure");
         }
         
-        unsigned int samples_to_generate = len;
+        size_t samples_to_generate = len;
         
         if (return_partial_data) {
             samples_to_generate /= 2; // Return only half
@@ -425,7 +425,7 @@ protected:
         
         // Don't exceed total samples
         size_t remaining = m_total_samples - m_current_sample;
-        samples_to_generate = std::min(static_cast<unsigned int>(remaining), samples_to_generate);
+        samples_to_generate = std::min(remaining, samples_to_generate);
         
         if (samples_to_generate == 0) {
             call_again = false;
@@ -436,7 +436,7 @@ protected:
         if (buf) {
             if (fail_on_decode) {
                 // Write random floats
-                for (unsigned int i = 0; i < samples_to_generate; ++i) {
+                for (size_t i = 0; i < samples_to_generate; ++i) {
                     buf[i] = (static_cast<float>(rand()) / static_cast<float>(RAND_MAX)) * 2.0f - 1.0f;
                 }
             } else {

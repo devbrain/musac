@@ -1,7 +1,7 @@
 #ifndef MUSAC_SDK_IO_STREAM_H
 #define MUSAC_SDK_IO_STREAM_H
 
-#include <musac/sdk/types.h>
+#include <musac/sdk/types.hh>
 #include <musac/sdk/export_musac_sdk.h>
 #include <memory>
 

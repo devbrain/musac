@@ -47,11 +47,11 @@ namespace musac {
         set_is_open(true);
     }
 
-    unsigned int decoder_opb::get_channels() const {
+    channels_t decoder_opb::get_channels() const {
         return 2;
     }
 
-    unsigned int decoder_opb::get_rate() const {
+    sample_rate_t decoder_opb::get_rate() const {
         return SAMPLE_RATE;
     }
 
@@ -68,7 +68,7 @@ namespace musac {
         return false;
     }
 
-    unsigned int decoder_opb::do_decode(float* const buf, unsigned int len, bool& callAgain) {
+    size_t decoder_opb::do_decode(float* const buf, size_t len, bool& callAgain) {
         auto rc = m_pimpl->m_player.render(buf, len);
         if (rc == 0) {
             return rc;

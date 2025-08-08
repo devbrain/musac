@@ -129,12 +129,12 @@ namespace musac {
             return in_use_guard(m_inUse, &m_usage_mutex, &m_usage_cv, is_valid);
         }
 
-        void decode_audio(unsigned int& cur_pos, unsigned int len) {
+        void decode_audio(size_t& cur_pos, size_t len) {
             const auto device_channels = (unsigned int)audio_mixer::m_audio_device_data.m_audio_spec.channels;
             m_audio_source.read_samples(s_mixer.m_stream_buf.data(), cur_pos, len, device_channels);
         }
 
-        void run_processors(unsigned int cur_pos, unsigned int out_offset) {
+        void run_processors(size_t cur_pos, size_t out_offset) {
             for (const auto& proc : processors) {
                 const auto len = cur_pos - out_offset;
 
@@ -306,7 +306,7 @@ namespace musac {
             bool has_finished = false;
             bool has_looped = false;
             auto out_offset = stream->m_pimpl->eval_out_offset((unsigned int)now_tick, wanted_ticks);
-            auto cur_pos = out_offset;
+            size_t cur_pos = out_offset;
 
             stream->m_pimpl->m_starting = false;
 

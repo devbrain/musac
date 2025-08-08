@@ -225,11 +225,11 @@ audio_format audio_device::get_format() const {
     return m_pimpl->spec.format;
 }
 
-int audio_device::get_channels() const {
+channels_t audio_device::get_channels() const {
     return m_pimpl->spec.channels;
 }
 
-int audio_device::get_freq() const {
+sample_rate_t audio_device::get_freq() const {
     return m_pimpl->spec.freq;
 }
 

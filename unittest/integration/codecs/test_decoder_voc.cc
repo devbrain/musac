@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 #include <musac/codecs/decoder_voc.hh>
-#include <musac/sdk/io_stream.h>
+#include <musac/sdk/io_stream.hh>
 #include <vector>
 #include <cstring>
 #include <cmath>
@@ -73,7 +73,7 @@ TEST_SUITE("Codecs::DecoderVOC") {
         SUBCASE("Decode samples") {
             float buffer[100];
             bool call_again = true;
-            unsigned int decoded = decoder.decode(buffer, 100, call_again, 2);
+            size_t decoded = decoder.decode(buffer, 100, call_again, 2);
             
             CHECK(decoded > 0);
             
@@ -89,7 +89,7 @@ TEST_SUITE("Codecs::DecoderVOC") {
             bool call_again = true;
             
             while (call_again) {
-                unsigned int decoded = decoder.decode(buffer, 50, call_again, 2);
+                size_t decoded = decoder.decode(buffer, 50, call_again, 2);
                 if (decoded == 0 && call_again) {
                     // Prevent infinite loop if decoder returns 0 but call_again is true
                     FAIL("Decoder returned 0 samples but call_again is true");
@@ -118,10 +118,10 @@ TEST_SUITE("Codecs::DecoderVOC") {
         // Decode some samples
         float buffer[1000];
         bool call_again = true;
-        unsigned int total_decoded = 0;
+        size_t total_decoded = 0;
         
         while (call_again && total_decoded < 10000) {
-            unsigned int decoded = decoder.decode(buffer, 1000, call_again, 2);
+            size_t decoded = decoder.decode(buffer, 1000, call_again, 2);
             if (decoded == 0 && call_again) {
                 FAIL("Decoder returned 0 samples but call_again is true");
                 break;
@@ -214,7 +214,7 @@ TEST_SUITE("Codecs::DecoderVOC") {
         // Decode some data
         float buffer[100];
         bool call_again;
-        unsigned int decoded_count = decoder.decode(buffer, 100, call_again, 2);
+        size_t decoded_count = decoder.decode(buffer, 100, call_again, 2);
         CHECK(decoded_count > 0);
         
         // Rewind
@@ -222,7 +222,7 @@ TEST_SUITE("Codecs::DecoderVOC") {
         
         // Decode again
         float buffer2[100];
-        unsigned int decoded_count2 = decoder.decode(buffer2, 100, call_again, 2);
+        size_t decoded_count2 = decoder.decode(buffer2, 100, call_again, 2);
         CHECK(decoded_count2 > 0);
         
         // Should get same data

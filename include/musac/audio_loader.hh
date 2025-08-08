@@ -7,7 +7,7 @@
 
 #include <filesystem>
 #include <musac/audio_source.hh>
-#include <musac/sdk/io_stream.h>
+#include <musac/sdk/io_stream.hh>
 #include <musac/sdk/resampler.hh>
 #include <musac/export_musac.h>
 

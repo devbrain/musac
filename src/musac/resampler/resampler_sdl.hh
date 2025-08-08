@@ -22,7 +22,7 @@ namespace musac {
 
         protected:
             void do_resampling(float dst[], const float src[], std::size_t& dst_len, std::size_t& src_len) override;
-            int adjust_for_output_spec(unsigned int dst_rate, unsigned int src_rate, unsigned int channels) override;
+            int adjust_for_output_spec(sample_rate_t dst_rate, sample_rate_t src_rate, channels_t channels) override;
             void do_discard_pending_samples() override;
 
         private:

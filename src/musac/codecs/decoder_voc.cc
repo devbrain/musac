@@ -4,10 +4,10 @@
 
 #include <musac/codecs/decoder_voc.hh>
 #include <musac/sdk/samples_converter.hh>
-#include <musac/sdk/audio_format.h>
+#include <musac/sdk/audio_format.hh>
 #include <musac/sdk/audio_converter_v2.hh>
-#include <musac/sdk/endian.h>
-#include <musac/sdk/memory.h>
+#include <musac/sdk/endian.hh>
+
 #include <musac/sdk/musac_sdk_config.h>
 #include <musac/error.hh>
 #include <failsafe/failsafe.hh>
@@ -323,7 +323,7 @@ struct decoder_voc::impl {
             
             // Fill in silence (limited by buffer size)
             uint32 to_fill = (v.rest < buf_size) ? v.rest : buf_size;
-            musac::memset(buf, silence, to_fill);
+            std::memset(buf, silence, to_fill);
             done = to_fill;
             v.rest -= to_fill;
         }
@@ -359,12 +359,11 @@ struct decoder_voc::impl {
             return false;
         }
         
-        voc_data v;
-        musac::zero(v);
+        voc_data v = {};
         v.rate = VOC_BAD_RATE;
         v.rest = 0;
         v.has_extended = 0;
-        musac::zero(m_spec);
+        std::memset(&m_spec, 0, sizeof(m_spec));
         
         if (!get_block(v, m_spec)) {
             return false;
@@ -445,11 +444,11 @@ void decoder_voc::open(io_stream* rwops) {
     m_pimpl->m_consumed = 0;
 }
 
-unsigned int decoder_voc::get_channels() const {
+channels_t decoder_voc::get_channels() const {
     return m_pimpl->m_spec.channels;
 }
 
-unsigned int decoder_voc::get_rate() const {
+sample_rate_t decoder_voc::get_rate() const {
     return m_pimpl->m_spec.freq;
 }
 
@@ -466,7 +465,7 @@ bool decoder_voc::seek_to_time(std::chrono::microseconds) {
     return false;
 }
 
-unsigned int decoder_voc::do_decode(float* buf, unsigned int len, bool& call_again) {
+size_t decoder_voc::do_decode(float* buf, size_t len, bool& call_again) {
     auto remains = m_pimpl->m_total_samples - m_pimpl->m_consumed;
     auto take = std::min(remains, (size_t)len);
     

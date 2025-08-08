@@ -4,6 +4,7 @@
 #include <vector>
 #include <chrono>
 #include <cstdint>
+#include <musac/sdk/types.hh>
 
 namespace musac {
 
@@ -51,8 +52,8 @@ struct mixer_snapshot {
     
     // Audio format at time of snapshot
     struct {
-        int channels;
-        int freq;
+        channels_t channels;
+        sample_rate_t freq;
         int format;  // audio_format enum value
     } audio_spec;
 };

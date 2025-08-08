@@ -3,7 +3,7 @@
 #include <musac/audio_system.hh>
 #include <musac/backends/sdl3/sdl3_backend.hh>
 #include <musac/sdk/audio_backend_v2.hh>
-#include <musac/sdk/audio_format.h>
+#include <musac/sdk/audio_format.hh>
 #include <vector>
 #include <stdexcept>
 

@@ -41,7 +41,7 @@ static std::array<data_t, mus_count> s_data = {
     S2(xmi, musac::load_midi)
 };
 
-#include <musac/sdk/io_stream.h>
+#include <musac/sdk/io_stream.hh>
 
 void loader::init() {
     // No longer need to pre-create streams

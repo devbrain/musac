@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 #include <musac/sdk/buffer.hh>
+#include <musac/sdk/types.hh>
 #include <musac/audio_device_data.hh>
 #include "mixer_snapshot.hh"
 #include "stream_container.hh"
@@ -35,13 +36,13 @@ namespace musac {
             
             void update_stream_pointer(int token, audio_stream* new_stream);
 
-            void resize(unsigned int out_len_samples);
+            void resize(size_t out_len_samples);
 
             void set_zeros();
 
-            void mix_channels(unsigned int channels,
-                              unsigned int out_offset,
-                              unsigned int cur_pos,
+            void mix_channels(channels_t channels,
+                              size_t out_offset,
+                              size_t cur_pos,
                               float volume_left,
                               float volume_right);
             /**

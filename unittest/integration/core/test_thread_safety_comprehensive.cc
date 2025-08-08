@@ -135,7 +135,7 @@ TEST_SUITE("ThreadSafety::Comprehensive::Integration") {
                     {
                         std::lock_guard<std::mutex> lock(streams_mutex);
                         if (!streams.empty()) {
-                            stream = streams[i % streams.size()];
+                            stream = streams[static_cast<size_t>(i) % streams.size()];
                         }
                     }
                     
@@ -229,7 +229,7 @@ TEST_SUITE("ThreadSafety::Comprehensive::Integration") {
         for (int i = 0; i < 2; ++i) {
             threads.emplace_back([&device, &gain_count]() {
                 for (int j = 0; j < 20; ++j) {
-                    device.set_gain(0.5f + (j % 10) * 0.05f);
+                    device.set_gain(0.5f + static_cast<float>(j % 10) * 0.05f);
                     gain_count++;
                     std::this_thread::sleep_for(std::chrono::microseconds(50));
                 }

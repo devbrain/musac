@@ -4,7 +4,8 @@
 #include <string>
 #include <memory>
 #include <vector>
-#include <musac/sdk/audio_format.h>
+#include <musac/sdk/audio_format.hh>
+#include <musac/sdk/types.hh>
 #include <musac/audio_stream_interface.hh>
 
 namespace musac {
@@ -16,8 +17,8 @@ struct device_info_v2 {
     std::string name;
     std::string id;
     bool is_default;
-    int channels;
-    int sample_rate;
+    channels_t channels;
+    sample_rate_t sample_rate;
 };
 
 /**
@@ -117,14 +118,14 @@ public:
      * @param device_handle Device handle
      * @return Sample rate in Hz
      */
-    virtual int get_device_frequency(uint32_t device_handle) = 0;
+    virtual sample_rate_t get_device_frequency(uint32_t device_handle) = 0;
     
     /**
      * Get device channel count.
      * @param device_handle Device handle
      * @return Number of channels
      */
-    virtual int get_device_channels(uint32_t device_handle) = 0;
+    virtual channels_t get_device_channels(uint32_t device_handle) = 0;
     
     /**
      * Get device gain/volume.

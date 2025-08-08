@@ -6,7 +6,7 @@
 #include <limits>
 #include <algorithm>
 #include <musac/sdk/from_float_converter.hh>
-#include <musac/sdk/endian.h>
+#include <musac/sdk/endian.hh>
 namespace musac {
     // Inline scale helper
     template<typename T>

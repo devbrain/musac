@@ -1,6 +1,5 @@
 #include <musac/sdk/audio_converter_v2.hh>
-#include <musac/sdk/memory.h>
-#include <musac/sdk/endian.h>
+#include <musac/sdk/endian.hh>
 #include <cstring>
 #include <algorithm>
 
@@ -252,7 +251,7 @@ struct audio_converter::stream_converter::impl {
           output_consumed(0),
           sample_position(0.0) {
         // Initialize last samples to silence
-        for (int i = 0; i < 8; ++i) {
+        for (size_t i = 0; i < 8; ++i) {
             last_sample_value[i] = 0.0f;
         }
     }
@@ -419,7 +418,7 @@ void audio_converter::stream_converter::reset() {
     m_pimpl->sample_position = 0.0;
     
     // Reset last sample values to silence
-    for (int i = 0; i < 8; ++i) {
+    for (size_t i = 0; i < 8; ++i) {
         m_pimpl->last_sample_value[i] = 0.0f;
     }
     

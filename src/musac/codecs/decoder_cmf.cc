@@ -73,11 +73,11 @@ namespace musac {
         set_is_open(true);
     }
 
-    unsigned int decoder_cmf::get_channels() const {
+    channels_t decoder_cmf::get_channels() const {
         return 2;
     }
 
-    unsigned int decoder_cmf::get_rate() const {
+    sample_rate_t decoder_cmf::get_rate() const {
         //int r = 44100;
         return 44100;
     }
@@ -94,11 +94,11 @@ namespace musac {
         return false;
     }
 
-    unsigned int decoder_cmf::do_decode(float buf[], unsigned int len, [[maybe_unused]] bool& call_again) {
-        unsigned int total = 0;
+    size_t decoder_cmf::do_decode(float buf[], size_t len, [[maybe_unused]] bool& call_again) {
+        size_t total = 0;
 
         float* stream = buf;
-        for (unsigned int i=0; i<len/2; i++) {
+        for (size_t i = 0; i < len/2; i++) {
             sbfm_render_stereo(m_pimpl->m_decoder, stream, stream + 1);
 
             stream += 2;

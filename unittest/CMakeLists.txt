@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-# Option to enable/disable unit tests
-option(MUSAC_BUILD_TESTS "Build unit tests" ON)
+
 
 if (NOT MUSAC_BUILD_TESTS)
     return()

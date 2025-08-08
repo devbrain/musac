@@ -125,7 +125,7 @@ std::vector<device_info_v2> sdl3_backend_v2::enumerate_devices(bool playback) {
     }
     
     if (sdl_devices) {
-        for (int i = 0; i < count; i++) {
+        for (size_t i = 0; i < static_cast<size_t>(count); i++) {
             const char* name = SDL_GetAudioDeviceName(sdl_devices[i]);
             if (!name) continue;
             
@@ -136,8 +136,8 @@ std::vector<device_info_v2> sdl3_backend_v2::enumerate_devices(bool playback) {
                 info.name = name;
                 info.id = std::to_string(sdl_devices[i]);
                 info.is_default = (i == 0); // SDL3 typically returns default first
-                info.channels = spec.channels;
-                info.sample_rate = spec.freq;
+                info.channels = static_cast<channels_t>(spec.channels);
+                info.sample_rate = static_cast<sample_rate_t>(spec.freq);
                 devices.push_back(info);
             }
         }
@@ -243,17 +243,17 @@ audio_format sdl3_backend_v2::get_device_format(uint32_t device_handle) {
     return it->second.format;
 }
 
-int sdl3_backend_v2::get_device_frequency(uint32_t device_handle) {
+sample_rate_t sdl3_backend_v2::get_device_frequency(uint32_t device_handle) {
     std::lock_guard<std::mutex> lock(m_devices_mutex);
     
     auto it = m_device_specs.find(device_handle);
     if (it == m_device_specs.end()) {
         THROW_RUNTIME("Invalid device handle");
     }
-    return static_cast<int>(it->second.freq);
+    return it->second.freq;
 }
 
-int sdl3_backend_v2::get_device_channels(uint32_t device_handle) {
+channels_t sdl3_backend_v2::get_device_channels(uint32_t device_handle) {
     std::lock_guard<std::mutex> lock(m_devices_mutex);
     
     auto it = m_device_specs.find(device_handle);

@@ -57,7 +57,7 @@ TEST_SUITE("Mixer::ThreadSafety::Internal") {
                 int end = ((t + 1) * OPERATIONS) / THREADS;
                 
                 for (int i = start; i < end; ++i) {
-                    mixer.add_stream(streams[i].get(), std::weak_ptr<void>(lifetime_tokens[i]));
+                    mixer.add_stream(streams[static_cast<size_t>(i)].get(), std::weak_ptr<void>(lifetime_tokens[static_cast<size_t>(i)]));
                     std::this_thread::yield();
                 }
             }));

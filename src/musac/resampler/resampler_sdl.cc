@@ -34,8 +34,8 @@ namespace musac {
         dst_len = static_cast <unsigned int>(bytes_resampled) / sizeof(float);
     }
 
-    int resampler_sdl::adjust_for_output_spec(unsigned int dst_rate, unsigned int src_rate,
-                                              unsigned int channels) {
+    int resampler_sdl::adjust_for_output_spec(uint32_t dst_rate, uint32_t src_rate,
+                                              uint8_t channels) {
         const SDL_AudioSpec src_spec{SDL_AUDIO_F32, (int)channels, (int)src_rate};
         const SDL_AudioSpec dst_spec{SDL_AUDIO_F32, (int)channels, (int)dst_rate};
         m_pimpl->m_resampler.reset(SDL_CreateAudioStream(&src_spec, &dst_spec));
