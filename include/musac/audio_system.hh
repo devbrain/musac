@@ -11,16 +11,16 @@
 namespace musac {
     // Forward declarations
     class audio_device;
-    class audio_backend_v2;
+    class audio_backend;
     
     struct MUSAC_EXPORT audio_system {
         // Initialize with a backend (v2 API)
-        static bool init(std::shared_ptr<audio_backend_v2> backend);
+        static bool init(std::shared_ptr<audio_backend> backend);
 
         static void done();
         
         // Get the current backend
-        static std::shared_ptr<audio_backend_v2> get_backend();
+        static std::shared_ptr<audio_backend> get_backend();
         
         // Device switching - takes a user-created device
         static bool switch_device(audio_device& new_device);

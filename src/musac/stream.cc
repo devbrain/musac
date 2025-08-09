@@ -67,7 +67,7 @@ namespace musac {
         enum class PendingAction { None, Pause, Stop };
 
         PendingAction m_pendingAction{PendingAction::None};
-        FadeEnvelope m_fade;
+        fade_envelope m_fade;
 
         bool m_starting = false;
 
@@ -352,7 +352,7 @@ namespace musac {
             float volume_right = base_right * envGain;
 
             // If a fade‐out has just finished, stop and remove
-            if (envGain == 0.f && stream->m_pimpl->m_fade.getState() == FadeEnvelope::State::None) {
+            if (envGain == 0.f && stream->m_pimpl->m_fade.getState() == fade_envelope::state::none) {
                 if (stream->m_pimpl->m_pendingAction == impl::PendingAction::Stop) {
                     stream->m_pimpl->m_is_playing = false;
                     stream->m_pimpl->stop_no_mixer();
@@ -744,7 +744,7 @@ namespace musac {
 
         // 1) If we're already playing (and no fade is active), do nothing
         if (m_pimpl->m_is_playing &&
-            m_pimpl->m_fade.getState() == FadeEnvelope::State::None &&
+            m_pimpl->m_fade.getState() == fade_envelope::state::none &&
             !m_pimpl->m_is_paused) {
             return;
         }

@@ -24,7 +24,7 @@
 namespace musac {
 
 // Forward declaration
-class audio_backend_v2;
+class audio_backend;
 
 /**
  * Create an SDL3 audio backend instance.
@@ -47,7 +47,7 @@ class audio_backend_v2;
  * auto devices = backend->enumerate_playback_devices();
  * @endcode
  */
-MUSAC_BACKEND_SDL3_EXPORT std::unique_ptr<audio_backend_v2> create_sdl3_backend_v2();
+MUSAC_BACKEND_SDL3_EXPORT std::unique_ptr<audio_backend> create_sdl3_backend();
 
 } // namespace musac
 

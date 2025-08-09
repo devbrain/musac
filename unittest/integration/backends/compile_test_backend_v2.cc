@@ -1,10 +1,10 @@
 // Simple compile test for audio_backend_v2 interface
 // This file just verifies that the interface compiles without errors
 
-#include <musac/sdk/audio_backend_v2.hh>
+#include <musac/sdk/audio_backend.hh>
 
 // Minimal mock to verify compilation
-class test_backend : public musac::audio_backend_v2 {
+class test_backend : public musac::audio_backend {
 public:
     void init() override {}
     void shutdown() override {}

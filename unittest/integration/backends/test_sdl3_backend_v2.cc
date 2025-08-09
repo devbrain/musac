@@ -1,20 +1,20 @@
 #include <doctest/doctest.h>
 #include <musac/backends/sdl3/sdl3_backend.hh>
-#include <musac/sdk/audio_backend_v2.hh>
+#include <musac/sdk/audio_backend.hh>
 #include <iostream>
 #include <thread>
 #include <chrono>
 
 TEST_SUITE("Backend::SDL3::Integration") {
     TEST_CASE("SDL3 backend v2 creation") {
-        auto backend = musac::create_sdl3_backend_v2();
+        auto backend = musac::create_sdl3_backend();
         CHECK(backend != nullptr);
         CHECK_FALSE(backend->is_initialized());
         CHECK(backend->get_name() == "SDL3");
     }
     
     TEST_CASE("SDL3 backend v2 initialization") {
-        auto backend = musac::create_sdl3_backend_v2();
+        auto backend = musac::create_sdl3_backend();
         REQUIRE(backend != nullptr);
         
         // Should not be initialized initially
@@ -36,7 +36,7 @@ TEST_SUITE("Backend::SDL3::Integration") {
     }
     
     TEST_CASE("SDL3 backend v2 device enumeration") {
-        auto backend = musac::create_sdl3_backend_v2();
+        auto backend = musac::create_sdl3_backend();
         REQUIRE(backend != nullptr);
         
         // Should throw before init
@@ -61,7 +61,7 @@ TEST_SUITE("Backend::SDL3::Integration") {
     }
     
     TEST_CASE("SDL3 backend v2 device open/close") {
-        auto backend = musac::create_sdl3_backend_v2();
+        auto backend = musac::create_sdl3_backend();
         REQUIRE(backend != nullptr);
         
         backend->init();
@@ -98,7 +98,7 @@ TEST_SUITE("Backend::SDL3::Integration") {
     }
     
     TEST_CASE("SDL3 backend v2 device control") {
-        auto backend = musac::create_sdl3_backend_v2();
+        auto backend = musac::create_sdl3_backend();
         REQUIRE(backend != nullptr);
         
         backend->init();
@@ -134,7 +134,7 @@ TEST_SUITE("Backend::SDL3::Integration") {
     }
     
     TEST_CASE("SDL3 backend v2 capabilities") {
-        auto backend = musac::create_sdl3_backend_v2();
+        auto backend = musac::create_sdl3_backend();
         REQUIRE(backend != nullptr);
         
         // SDL3 backend capabilities
@@ -143,7 +143,7 @@ TEST_SUITE("Backend::SDL3::Integration") {
     }
     
     TEST_CASE("SDL3 backend v2 multiple devices") {
-        auto backend = musac::create_sdl3_backend_v2();
+        auto backend = musac::create_sdl3_backend();
         REQUIRE(backend != nullptr);
         
         backend->init();
@@ -186,7 +186,7 @@ TEST_SUITE("Backend::SDL3::Integration") {
     }
     
     TEST_CASE("SDL3 backend v2 stream creation") {
-        auto backend = musac::create_sdl3_backend_v2();
+        auto backend = musac::create_sdl3_backend();
         REQUIRE(backend != nullptr);
         
         backend->init();

@@ -3,7 +3,7 @@
 #include <musac/audio_device.hh>
 #include <musac/test_data/loader.hh>
 #include <musac/stream.hh>
-#include <musac/sdk/audio_backend_v2.hh>
+#include <musac/sdk/audio_backend.hh>
 #include <musac/backends/sdl3/sdl3_backend.hh>
 #include <musac/backends/null/null_backend.hh>
 #include <musac/codecs/decoder_mml.hh>
@@ -19,10 +19,10 @@ int main(int argc, char* argv[]) {
     
     try {
         // Create backend
-        std::shared_ptr<audio_backend_v2> backend;
+        std::shared_ptr<audio_backend> backend;
         
 #ifdef MUSAC_HAS_SDL3_BACKEND
-        backend = create_sdl3_backend_v2();
+        backend = create_sdl3_backend();
         std::cout << "Using SDL3 backend for audio output\n";
 #else
         backend = create_null_backend_v2();

@@ -5,7 +5,7 @@
 #include <musac/codecs/decoder_aiff.hh>
 #include <musac/sdk/samples_converter.hh>
 #include <musac/sdk/audio_format.hh>
-#include <musac/sdk/audio_converter_v2.hh>
+#include <musac/sdk/audio_converter.hh>
 #include <musac/error.hh>
 #include <failsafe/failsafe.hh>
 #include <algorithm>

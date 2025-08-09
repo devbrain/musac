@@ -10,7 +10,7 @@
 namespace musac {
 
 // Forward declaration
-class audio_backend_v2;
+class audio_backend;
 
 /**
  * Create a Null audio backend instance.
@@ -33,7 +33,7 @@ class audio_backend_v2;
  * // Use for testing without actual audio
  * @endcode
  */
-MUSAC_EXPORT std::unique_ptr<audio_backend_v2> create_null_backend_v2();
+MUSAC_EXPORT std::unique_ptr<audio_backend> create_null_backend_v2();
 
 } // namespace musac
 

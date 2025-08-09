@@ -3,7 +3,7 @@
 //
 
 #include <musac/audio_system.hh>
-#include <musac/sdk/audio_backend_v2.hh>
+#include <musac/sdk/audio_backend.hh>
 #include <musac/backends/sdl3/sdl3_backend.hh>
 #include <musac/backends/null/null_backend.hh>
 #include <musac/audio_device.hh>
@@ -24,7 +24,7 @@ namespace musac {
     extern audio_device* get_active_audio_device();
     
     // v2 backend
-    static std::shared_ptr<audio_backend_v2> s_backend_v2;
+    static std::shared_ptr<audio_backend> s_backend_v2;
     static std::mutex s_system_mutex;
     
     
@@ -37,7 +37,7 @@ namespace musac {
     
 
     // New v2 API init method
-    bool audio_system::init(std::shared_ptr<audio_backend_v2> backend) {
+    bool audio_system::init(std::shared_ptr<audio_backend> backend) {
         std::lock_guard<std::mutex> lock(s_system_mutex);
         
         if (!backend) {
@@ -61,7 +61,7 @@ namespace musac {
     }
     
 
-    std::shared_ptr<audio_backend_v2> audio_system::get_backend() {
+    std::shared_ptr<audio_backend> audio_system::get_backend() {
         std::lock_guard<std::mutex> lock(s_system_mutex);
         return s_backend_v2;
     }

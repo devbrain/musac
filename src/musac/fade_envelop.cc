@@ -7,21 +7,21 @@
 
 namespace musac {
 
-    void FadeEnvelope::startFadeIn(std::chrono::milliseconds duration) noexcept {
+    void fade_envelope::startFadeIn(std::chrono::milliseconds duration) noexcept {
         m_duration = duration;
         m_startTime = std::chrono::steady_clock::now();
-        m_state = State::FadeIn;
+        m_state = state::fade_in;
     }
 
-    void FadeEnvelope::startFadeOut(std::chrono::milliseconds duration) noexcept {
+    void fade_envelope::startFadeOut(std::chrono::milliseconds duration) noexcept {
         m_duration = duration;
         m_startTime = std::chrono::steady_clock::now();
-        m_state = State::FadeOut;
+        m_state = state::fade_out;
     }
 
-    float FadeEnvelope::getGain() noexcept {
+    float fade_envelope::getGain() noexcept {
         using namespace std::chrono;
-        if (m_state == State::None) {
+        if (m_state == state::none) {
             return 1.0f;
         }
 
@@ -29,17 +29,17 @@ namespace musac {
         auto elapsed = duration_cast<milliseconds>(now - m_startTime);
         if (elapsed >= m_duration) {
             // Fade complete
-            if (m_state == State::FadeIn) {
-                m_state = State::None;
+            if (m_state == state::fade_in) {
+                m_state = state::none;
                 return 1.0f;
             } else {
-                m_state = State::None;
+                m_state = state::none;
                 return 0.0f;
             }
         }
 
         float frac = static_cast<float>(elapsed.count()) / static_cast<float>(m_duration.count());
-        if (m_state == State::FadeIn) {
+        if (m_state == state::fade_in) {
             return frac * frac * frac;
         } else {
             float inv = 1.0f - frac;

@@ -1,4 +1,4 @@
-#include <musac/sdk/audio_converter_v2.hh>
+#include <musac/sdk/audio_converter.hh>
 #include <musac/sdk/endian.hh>
 #include <cstring>
 #include <algorithm>
