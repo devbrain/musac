@@ -20,7 +20,8 @@ enum class music_type {
     opb,
     s3m,
     voc,
-    xmi
+    xmi,
+    vorbis
 };
 
 struct loader {

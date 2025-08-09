@@ -55,6 +55,7 @@ namespace musac {
     d_MUSAC_LOAD_DECLARE(opb);
     d_MUSAC_LOAD_DECLARE(vgm);
     d_MUSAC_LOAD_DECLARE(mml);
+    d_MUSAC_LOAD_DECLARE(vorbis);
 
 }
 

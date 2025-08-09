@@ -72,7 +72,7 @@ int main(int argc, char* argv[]) {
         // 12 - tick
 
 
-        auto strm = device.create_stream(musac::test_data::loader::load(musac::test_data::music_type::opb));
+        auto strm = device.create_stream(musac::test_data::loader::load(musac::test_data::music_type::vorbis));
         audio_stream stream(std::move(strm));
 
         // Set gain to ensure audio is audible

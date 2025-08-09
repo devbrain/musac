@@ -19,6 +19,7 @@
 #include "../data/s3m_example.h"
 #include "../data/voc_example.h"
 #include "../data/xmi_example.h"
+#include "../data/ogg_example.h"
 
 #include <musac/audio_loader.hh>
 
@@ -43,7 +44,8 @@ static std::array<data_t, mus_count> s_data = {
     S(opb),
     S2(s3m, musac::load_mod),
     S(voc),
-    S2(xmi, musac::load_midi)
+    S2(xmi, musac::load_midi),
+    data_t{music_type::vorbis, punch_ogg_input, sizeof(punch_ogg_input), musac::load_vorbis}
 };
 
 #include <musac/sdk/io_stream.hh>

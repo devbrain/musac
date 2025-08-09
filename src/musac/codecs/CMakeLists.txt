@@ -38,6 +38,7 @@ set(thirdparty
         libmodplug/tables.h
         opb_lib/opblib.c
         opb_lib/opblib.h
+        vorbis/stb_vorbis.c
 )
 
 set(CODECS_INCLUDE ${MUSAC_PROJECT_ROOT}/musac/codecs/)
@@ -63,6 +64,8 @@ set(codecs_sources
         ${CODECS_INCLUDE}decoder_vgm.hh
         decoder_voc.cc
         ${CODECS_INCLUDE}decoder_voc.hh
+        decoder_vorbis.cc
+        ${CODECS_INCLUDE}decoder_vorbis.hh
         decoder_mml.cc
         ${CODECS_INCLUDE}decoder_mml.hh
 

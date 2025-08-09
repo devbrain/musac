@@ -8,12 +8,12 @@
 #include <iostream>
 
 // Include generated test data headers
-#include "test_cmf_data.h"
-#include "test_mid_data.h"
-#include "test_mus_data.h"
-#include "test_opb_data.h"
-#include "test_vgz_data.h"
-#include "test_xmi_data.h"
+#include "golden_data/test_cmf_data.h"
+#include "golden_data/test_mid_data.h"
+#include "golden_data/test_mus_data.h"
+#include "golden_data/test_opb_data.h"
+#include "golden_data/test_vgz_data.h"
+#include "golden_data/test_xmi_data.h"
 
 TEST_SUITE("Decoders::Synthesizer") {
     TEST_CASE("Synthesizer Decoders - Basic Functionality") {
