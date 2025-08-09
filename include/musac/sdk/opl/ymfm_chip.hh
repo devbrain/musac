@@ -1,105 +1,101 @@
 //
-// Created by igor on 3/23/25.
+// Legacy compatibility header - use chip_emulator.hh instead
 //
 
-#ifndef  YMFM_CHIP_HH
-#define  YMFM_CHIP_HH
+#ifndef YMFM_CHIP_HH
+#define YMFM_CHIP_HH
 
-#include <cstdint>
-#include <string>
+#include <musac/sdk/opl/chip_emulator.hh>
+#include <memory>
 #include <vector>
-
-#include <musac/sdk/opl/ymfm/ymfm.h>
-#include <musac/sdk/export_musac_sdk.h>
+#include <utility>
+#include <stdexcept>
 
 namespace musac {
-    // we use an int64_t as emulated time, as a 32.32 fixed point value
+    // Legacy type alias for compatibility
     using emulated_time = int64_t;
-
-    // enumeration of the different types of chips we support
+    
+    // Map old chip_type enum to new chip_type_id
     enum chip_type {
-        CHIP_YM2149,
-        CHIP_YM2151,
-        CHIP_YM2203,
-        CHIP_YM2413,
-        CHIP_YM2608,
-        CHIP_YM2610,
-        CHIP_YM2612,
-        CHIP_YM3526,
-        CHIP_Y8950,
-        CHIP_YM3812,
-        CHIP_YMF262,
-        CHIP_YMF278B,
-        CHIP_TYPES
+        CHIP_YM2149  = static_cast<int>(chip_type_id::YM2149),
+        CHIP_YM2151  = static_cast<int>(chip_type_id::YM2151),
+        CHIP_YM2203  = static_cast<int>(chip_type_id::YM2203),
+        CHIP_YM2413  = static_cast<int>(chip_type_id::YM2413),
+        CHIP_YM2608  = static_cast<int>(chip_type_id::YM2608),
+        CHIP_YM2610  = static_cast<int>(chip_type_id::YM2610),
+        CHIP_YM2612  = static_cast<int>(chip_type_id::YM2612),
+        CHIP_YM3526  = static_cast<int>(chip_type_id::YM3526),
+        CHIP_Y8950   = static_cast<int>(chip_type_id::Y8950),
+        CHIP_YM3812  = static_cast<int>(chip_type_id::YM3812),
+        CHIP_YMF262  = static_cast<int>(chip_type_id::YMF262),
+        CHIP_YMF278B = static_cast<int>(chip_type_id::YMF278B),
+        CHIP_TYPES   = static_cast<int>(chip_type_id::CHIP_TYPES_COUNT)
     };
-
-    // abstract base class for a Yamaha chip; we keep a list of these for processing
-    // as new commands come in
-    class MUSAC_SDK_EXPORT ymfm_chip_base {
-        public:
-            // construction
-            ymfm_chip_base(uint32_t clock, chip_type type, char const* name);
-
-            // destruction
-            virtual ~ymfm_chip_base();
-
-            // simple getters
-            [[nodiscard]] chip_type type() const;
-            [[nodiscard]] virtual uint32_t sample_rate() const = 0;
-
-            // required methods for derived classes to implement
-            virtual void write(uint32_t reg, uint8_t data) = 0;
-            virtual void generate(emulated_time output_start, emulated_time output_step, int32_t* buffer) = 0;
-
-            // write data to the ADPCM-A buffer
-            void write_data(ymfm::access_class type, uint32_t base, uint32_t length, uint8_t const* src);
-
-            // seek within the PCM stream
-            void seek_pcm(uint32_t pos);
-            uint8_t read_pcm();
-
-        protected:
-            // internal state
-            chip_type m_type;
-            std::string m_name;
-            std::vector <uint8_t> m_data[ymfm::ACCESS_CLASSES];
-            uint32_t m_pcm_offset;
-    };
-
-    // actual chip-specific implementation class; includes implementatino of the
-    // ymfm_interface as needed for vgmplay purposes
-    template<typename ChipType>
-    class ymfm_chip : public ymfm_chip_base, public ymfm::ymfm_interface {
-        public:
-            // construction
-            ymfm_chip(uint32_t clock_, chip_type type, char const* name)
-                : ymfm_chip_base(clock_, type, name),
-                  m_chip(*this),
-                  m_clock(clock_),
-                  m_clocks(0),
-                  m_step(0x100000000ull / m_chip.sample_rate(clock_)),
-                  m_pos(0) {
-                m_chip.reset();
-#define EXTRA_CLOCKS (0)
-                for (int clock = 0; clock < EXTRA_CLOCKS; clock++)
-                    m_chip.generate(&m_output);
+    
+    // Legacy base class for compatibility
+    // New code should use chip_emulator directly
+    class ymfm_chip_base {
+    public:
+        ymfm_chip_base(uint32_t clock, chip_type type, const char* name)
+            : m_clock(clock)
+            , m_type(type)
+            , m_name(name ? name : "")
+            , m_emulator(create_chip_emulator(static_cast<chip_type_id>(type), clock))
+            , m_pos(0)
+            , m_queue()
+            , m_output{0} {
+            if (!m_emulator) {
+                // Failed to create emulator
+                throw std::runtime_error("Failed to create chip emulator");
             }
-
-            [[nodiscard]] uint32_t sample_rate() const override {
-                return m_chip.sample_rate(m_clock);
+            // Reset the chip to ensure it's in a known state
+            m_emulator->reset();
+            
+            // Calculate the step size for timing
+            uint32_t sample_rate = m_emulator->sample_rate();
+            if (sample_rate > 0) {
+                m_step = 0x100000000ull / sample_rate;
+            } else {
+                m_step = 0x100000000ull / 44100; // Default to 44.1kHz
             }
-
-            // handle a register write: just queue for now
-            void write(uint32_t reg, uint8_t data) override {
-                m_queue.emplace_back(reg, data);
+        }
+        
+        virtual ~ymfm_chip_base() = default;
+        
+        [[nodiscard]] chip_type type() const { 
+            return m_type; 
+        }
+        
+        [[nodiscard]] virtual uint32_t sample_rate() const {
+            return m_emulator ? m_emulator->sample_rate() : 0;
+        }
+        
+        virtual void reset() {
+            if (m_emulator) {
+                m_emulator->reset();
             }
-
-            // generate one output sample of output
-            void generate(emulated_time output_start, emulated_time output_step, int32_t* buffer) override {
+        }
+        
+        virtual void write(uint32_t reg, uint8_t data) {
+            // Queue the write for processing during generate
+            // This ensures proper synchronization with sample generation
+            m_queue.emplace_back(reg, data);
+        }
+        
+        virtual void generate(int32_t* buffer, uint32_t count) {
+            if (m_emulator) {
+                m_emulator->generate(buffer, count);
+            }
+        }
+        
+        // Legacy generate method for VGM player compatibility
+        // This generates samples with proper timing to match the original implementation
+        virtual void generate(emulated_time output_start, emulated_time output_step, int32_t* buffer) {
+            if (m_emulator) {
                 uint32_t addr1 = 0xffff, addr2 = 0xffff;
                 uint8_t data1 = 0, data2 = 0;
-
-                // see if there is data to be written; if so, extract it and dequeue
+                
+                // Process one queued write if available
                 if (!m_queue.empty()) {
                     auto front = m_queue.front();
                     addr1 = 0 + 2 * ((front.first >> 8) & 3);
@@ -108,62 +104,96 @@ namespace musac {
                     data2 = front.second;
                     m_queue.erase(m_queue.begin());
                 }
-
-                // write to the chip
+                
+                // Write to the chip
                 if (addr1 != 0xffff) {
-                    m_chip.write(addr1, data1);
-                    m_chip.write(addr2, data2);
+                    m_emulator->write(addr1, data1);
+                    m_emulator->write(addr2, data2);
                 }
-
-                // generate at the appropriate sample rate
-                //		nuked::s_log_envelopes = (output_start >= (22ll << 32) && output_start < (24ll << 32));
+                
+                // Generate samples until we catch up to the requested output position
+                uint32_t num_channels = m_emulator->num_outputs();
                 for (; m_pos <= output_start; m_pos += m_step) {
-                    m_chip.generate(&m_output);
+                    m_emulator->generate(m_output, num_channels);
                 }
-
-                // add the final result to the buffer
+                
+                // Add the final result to the buffer using pointer increment
                 if (m_type == CHIP_YM2203) {
-                    int32_t out0 = m_output.data[0];
-                    int32_t out1 = m_output.data[1 % ChipType::OUTPUTS];
-                    int32_t out2 = m_output.data[2 % ChipType::OUTPUTS];
-                    int32_t out3 = m_output.data[3 % ChipType::OUTPUTS];
+                    // YM2203 has special mixing
+                    int32_t out0 = m_output[0];
+                    int32_t out1 = (num_channels > 1) ? m_output[1] : 0;
+                    int32_t out2 = (num_channels > 2) ? m_output[2] : 0;
+                    int32_t out3 = (num_channels > 3) ? m_output[3] : 0;
                     *buffer++ += out0 + out1 + out2 + out3;
                     *buffer++ += out0 + out1 + out2 + out3;
                 } else if (m_type == CHIP_YM2608 || m_type == CHIP_YM2610) {
-                    int32_t out0 = m_output.data[0];
-                    int32_t out1 = m_output.data[1 % ChipType::OUTPUTS];
-                    int32_t out2 = m_output.data[2 % ChipType::OUTPUTS];
+                    // YM2608/YM2610 have special mixing
+                    int32_t out0 = m_output[0];
+                    int32_t out1 = (num_channels > 1) ? m_output[1] : 0;
+                    int32_t out2 = (num_channels > 2) ? m_output[2] : 0;
                     *buffer++ += out0 + out2;
                     *buffer++ += out1 + out2;
                 } else if (m_type == CHIP_YMF278B) {
-                    *buffer++ += m_output.data[4 % ChipType::OUTPUTS];
-                    *buffer++ += m_output.data[5 % ChipType::OUTPUTS];
-                } else if (ChipType::OUTPUTS == 1) {
-                    *buffer++ += m_output.data[0];
-                    *buffer++ += m_output.data[0];
+                    // YMF278B uses channels 4 and 5 for output
+                    *buffer++ += (num_channels > 4) ? m_output[4] : 0;
+                    *buffer++ += (num_channels > 5) ? m_output[5] : 0;
+                } else if (num_channels == 1) {
+                    // Mono output - duplicate to both channels
+                    *buffer++ += m_output[0];
+                    *buffer++ += m_output[0];
                 } else {
-                    *buffer++ += m_output.data[0];
-                    *buffer++ += m_output.data[1 % ChipType::OUTPUTS];
+                    // Stereo output
+                    *buffer++ += m_output[0];
+                    *buffer++ += (num_channels > 1) ? m_output[1] : m_output[0];
                 }
-                m_clocks++;
             }
-
-        protected:
-            // handle a read from the buffer
-            uint8_t ymfm_external_read(ymfm::access_class type, uint32_t offset) override {
-                auto& data = m_data[type];
-                return (offset < data.size()) ? data[offset] : 0;
+        }
+        
+        // Stub methods for PCM support (not all chips support these)
+        virtual void write_data(int access, uint32_t start, uint32_t size, const uint8_t* data) {
+            // Not implemented for most chips
+            (void)access; (void)start; (void)size; (void)data;
+        }
+        
+        virtual uint8_t read_pcm() {
+            // Not implemented for most chips
+            return 0;
+        }
+        
+        virtual void seek_pcm(uint32_t pos) {
+            // Not implemented for most chips
+            (void)pos;
+        }
+        
+    protected:
+        uint32_t m_clock;
+        chip_type m_type;
+        std::string m_name;
+        std::unique_ptr<chip_emulator> m_emulator;
+        emulated_time m_pos;  // Current position for timing
+        emulated_time m_step; // Step size based on sample rate
+        std::vector<std::pair<uint32_t, uint8_t>> m_queue; // Write queue
+        int32_t m_output[16]; // Output buffer for chip samples
+    };
+    
+    // Template for compatibility with existing code
+    // This is a facade that delegates to chip_emulator
+    template<typename ChipType>
+    class ymfm_chip : public ymfm_chip_base {
+    public:
+        ymfm_chip(uint32_t clock, chip_type type, const char* name)
+            : ymfm_chip_base(clock, type, name) {
+        }
+        
+        // Expose the inherited generate method from base class
+        using ymfm_chip_base::generate;
+        
+        void generate(int32_t* buffer) {
+            if (m_emulator) {
+                m_emulator->generate(buffer, m_emulator->num_outputs());
             }
-
-            // internal state
-            ChipType m_chip;
-            uint32_t m_clock;
-            uint64_t m_clocks;
-            typename ChipType::output_data m_output;
-            emulated_time m_step;
-            emulated_time m_pos;
-            std::vector <std::pair <uint32_t, uint8_t>> m_queue;
+        }
     };
 }
 
-#endif
+#endif // YMFM_CHIP_HH

@@ -5,25 +5,26 @@
 #include <musac/codecs/decoder_seq.hh>
 #include <musac/error.hh>
 #include <failsafe/failsafe.hh>
-#include "musac/codecs/seq/player.h"
-#include "musac/codecs/seq/midi_opl.h"
+#include <musac/sdk/midi/opl_midi_synth.hh>
+#include <musac/sdk/midi/opl_patches.hh>
+#include <musac/sdk/midi/midi_opl_data.h>
 #include <memory>
 
 namespace musac {
     struct decoder_seq::impl {
-        impl() : m_player(std::make_unique<ymfmidi::OPLPlayer>()) {
-            m_player->loadPatches(GENMIDI_wopl, GENMIDI_wopl_size);
-            m_player->setLoop(false);
+        impl() : m_player(std::make_unique<opl_midi_synth>()) {
+            m_player->load_patches(GENMIDI_wopl, GENMIDI_wopl_size);
+            m_player->set_loop(false);
             unsigned int sampleRate = 44100;
             double gain = 1.0;
             double filter = 5.0;
-	        m_player->setSampleRate(sampleRate);
-	        m_player->setGain(gain);
-	        m_player->setFilter(filter);
-	        m_player->setStereo(true);
+	        m_player->set_sample_rate(sampleRate);
+	        m_player->set_gain(gain);
+	        m_player->set_filter(filter);
+	        m_player->set_stereo(true);
         }
         ~impl() = default;
-        std::unique_ptr<ymfmidi::OPLPlayer> m_player;
+        std::unique_ptr<opl_midi_synth> m_player;
     };
 
     decoder_seq::decoder_seq()
@@ -33,7 +34,7 @@ namespace musac {
     decoder_seq::~decoder_seq() = default;
 
     void decoder_seq::open(io_stream* rwops) {
-        bool result = m_pimpl->m_player->loadSequence(rwops);
+        bool result = m_pimpl->m_player->load_sequence(rwops);
         if (!result) {
             THROW_RUNTIME("Failed to load SEQ file");
         }
@@ -45,7 +46,7 @@ namespace musac {
     }
 
     sample_rate_t decoder_seq::get_rate() const {
-        return m_pimpl->m_player->sampleRate();
+        return m_pimpl->m_player->sample_rate();
     }
 
     bool decoder_seq::rewind() {
@@ -62,7 +63,7 @@ namespace musac {
     }
 
     size_t decoder_seq::do_decode(float buf[], size_t len, [[maybe_unused]] bool& call_again) {
-        if (m_pimpl->m_player->atEnd()) {
+        if (m_pimpl->m_player->at_end()) {
             return 0;
         }
         m_pimpl->m_player->generate(buf, len/2);

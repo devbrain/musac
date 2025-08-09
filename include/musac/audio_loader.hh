@@ -54,6 +54,7 @@ namespace musac {
     d_MUSAC_LOAD_DECLARE(midi);
     d_MUSAC_LOAD_DECLARE(opb);
     d_MUSAC_LOAD_DECLARE(vgm);
+    d_MUSAC_LOAD_DECLARE(mml);
 
 }
 

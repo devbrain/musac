@@ -5,6 +5,7 @@
 #include <thread>
 #include <chrono>
 #include <condition_variable>
+#include <iostream>
 
 #include <musac/stream.hh>
 #include <musac/sdk/processor.hh>

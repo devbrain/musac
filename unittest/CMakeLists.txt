@@ -84,6 +84,9 @@ add_executable(musac_unittest
         
         # SDK unit tests
         unit/sdk/test_audio_converter_v2.cc
+        
+        # PC Speaker and MML tests
+        unit/core/test_mml_parser.cc
 
         # Backend integration tests
         integration/backends/test_backend_v2_interface.cc

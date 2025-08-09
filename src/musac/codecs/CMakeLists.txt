@@ -63,30 +63,14 @@ set(codecs_sources
         ${CODECS_INCLUDE}decoder_vgm.hh
         decoder_voc.cc
         ${CODECS_INCLUDE}decoder_voc.hh
+        decoder_mml.cc
+        ${CODECS_INCLUDE}decoder_mml.hh
 
 
         cmf/fmdrv.c
         cmf/fmdrv.h
 
 
-        seq/midi_opl.h
-        seq/patches.cpp
-        seq/patches.h
-        seq/patchnames.cpp
-        seq/player.cpp
-        seq/player.h
-        seq/sequence.cpp
-        seq/sequence.h
-        seq/sequence_hmi.cpp
-        seq/sequence_hmi.h
-        seq/sequence_hmp.cpp
-        seq/sequence_hmp.h
-        seq/sequence_mid.cpp
-        seq/sequence_mid.h
-        seq/sequence_mus.cpp
-        seq/sequence_mus.h
-        seq/sequence_xmi.cpp
-        seq/sequence_xmi.h
 
         vgm/em_inflate.cpp
         vgm/em_inflate.h

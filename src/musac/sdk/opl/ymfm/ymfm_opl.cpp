@@ -29,8 +29,8 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-#include <musac/sdk/opl/ymfm/ymfm_opl.h>
-#include "musac/sdk/opl/ymfm/ymfm_fm.ipp"
+#include "../internal/ymfm/ymfm_opl.h"
+#include "../internal/ymfm/ymfm_fm.ipp"
 
 namespace ymfm
 {

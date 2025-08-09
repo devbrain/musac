@@ -21,6 +21,8 @@ add_library(musac_test_data STATIC
     data/cmf_example.h
     data/hmp_example.h
     data/mid_example.h
+    data/mml_bouree.h
+    data/mml_complex.h
     data/mp3_example.h
     data/opb_example.h
     data/s3m_example.h

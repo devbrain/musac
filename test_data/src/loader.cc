@@ -12,6 +12,8 @@
 #include "../data/cmf_example.h"
 #include "../data/hmp_example.h"
 #include "../data/mid_example.h"
+#include "../data/mml_bouree.h"
+#include "../data/mml_complex.h"
 #include "../data/mp3_example.h"
 #include "../data/opb_example.h"
 #include "../data/s3m_example.h"
@@ -26,14 +28,17 @@ namespace musac::test_data {
 using loader_func_t = musac::audio_source (*)(std::unique_ptr<musac::io_stream>);
 using data_t = std::tuple<music_type, const unsigned char*, std::size_t, loader_func_t>;
 
-#define S(TYPE) data_t{music_type::TYPE, TYPE ## _example_ ## TYPE, TYPE ## _example_ ## TYPE ## _size, musac::load_ ## TYPE}
-#define S2(TYPE, FN) data_t{music_type::TYPE, TYPE ## _example_ ## TYPE, TYPE ## _example_ ## TYPE ## _size, FN}
+#define S(TYPE) data_t{music_type::TYPE, TYPE ## _example_ ## TYPE, sizeof(TYPE ## _example_ ## TYPE), musac::load_ ## TYPE}
+#define S2(TYPE, FN) data_t{music_type::TYPE, TYPE ## _example_ ## TYPE, sizeof(TYPE ## _example_ ## TYPE), FN}
+#define S3(TYPE, VAR, FN) data_t{music_type::TYPE, VAR ## _mml, sizeof(VAR ## _mml), FN}
 
 static constexpr auto mus_count = magic_enum::enum_count<music_type>();
 static std::array<data_t, mus_count> s_data = {
     S(cmf),
     S2(hmp, musac::load_midi),
     S2(mid, musac::load_midi),
+    S3(mml_bouree, mml_bouree, musac::load_mml),
+    S3(mml_complex, mml_complex, musac::load_mml),
     S(mp3),
     S(opb),
     S2(s3m, musac::load_mod),
