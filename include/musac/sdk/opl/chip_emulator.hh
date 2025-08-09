@@ -52,6 +52,12 @@ public:
     
     // Get chip name for debugging
     [[nodiscard]] virtual std::string name() const = 0;
+    
+    // Set silent mode (for fast-forward operations)
+    virtual void set_silent_mode(bool enable) = 0;
+    
+    // Get silent mode status
+    [[nodiscard]] virtual bool get_silent_mode() const = 0;
 };
 
 // Factory function to create chip emulators

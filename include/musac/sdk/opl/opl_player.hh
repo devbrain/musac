@@ -22,6 +22,8 @@ namespace musac {
 
             unsigned int render(float* buffer, unsigned int len); // decoder interface
             void rewind();
+            double get_duration() const;  // Get duration in seconds
+            bool seek(double time_seconds);  // Seek to position in seconds
         private:
             std::size_t do_render(int16_t* buffer, std::size_t sample_pairs);
 
@@ -34,6 +36,8 @@ namespace musac {
                     [[nodiscard]] const opl_command& top() const;
                     void pop();
                     void rewind();
+                    [[nodiscard]] double get_duration() const;
+                    bool seek(double time_seconds, std::size_t& index);
                 private:
                     std::vector <opl_command> m_commands;
                     std::size_t m_top;

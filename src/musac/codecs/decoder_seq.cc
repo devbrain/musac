@@ -55,11 +55,37 @@ namespace musac {
     }
 
     std::chrono::microseconds decoder_seq::duration() const {
-        return {};
+        if (!is_open()) {
+            return std::chrono::microseconds(0);
+        }
+        
+        // Calculate duration using the MIDI synth's fast-forward capability
+        uint64_t total_samples = m_pimpl->m_player->calculate_duration_samples();
+        if (total_samples == 0) {
+            return std::chrono::microseconds(0);
+        }
+        
+        // Convert samples to microseconds
+        double sample_rate = m_pimpl->m_player->sample_rate();
+        double duration_seconds = static_cast<double>(total_samples) / sample_rate;
+        
+        return std::chrono::microseconds(
+            static_cast<int64_t>(duration_seconds * 1'000'000)
+        );
     }
 
     bool decoder_seq::seek_to_time([[maybe_unused]] std::chrono::microseconds pos) {
-        return false;
+        if (!is_open()) {
+            return false;
+        }
+        
+        // Convert time to sample position
+        double sample_rate = m_pimpl->m_player->sample_rate();
+        double seconds = pos.count() / 1'000'000.0;
+        uint64_t target_sample = static_cast<uint64_t>(seconds * sample_rate);
+        
+        // Use the MIDI synth's seeking capability
+        return m_pimpl->m_player->seek_to_sample(target_sample);
     }
 
     size_t decoder_seq::do_decode(float buf[], size_t len, [[maybe_unused]] bool& call_again) {

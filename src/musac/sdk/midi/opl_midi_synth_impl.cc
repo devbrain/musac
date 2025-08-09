@@ -998,4 +998,80 @@ namespace musac {
 	{
 		return pow(2, semitones / 12.0);
 	}
+	
+	// ----------------------------------------------------------------------------
+	uint64_t opl_midi_synth::impl::calculate_duration_samples()
+	{
+		if (!m_sequence) {
+			return 0;
+		}
+		
+		// Save current state
+		auto saved_sequence = m_sequence;
+		uint32_t saved_samples_left = m_samples_left;
+		bool saved_at_end = at_end();
+		
+		// Reset and fast-forward through entire sequence
+		m_sequence->reset();
+		uint64_t total_samples = 0;
+		
+		// Create a dummy synth for fast-forward (no audio generation)
+		// We just need to accumulate sample counts
+		while (!m_sequence->at_end()) {
+			uint32_t samples = m_sequence->update(*m_parent);
+			if (samples == 0 && m_sequence->at_end()) {
+				break;
+			}
+			total_samples += samples;
+			
+			// Safety check to prevent infinite loops
+			if (total_samples > 44100ULL * 60 * 60) { // 1 hour max
+				break;
+			}
+		}
+		
+		// Restore state
+		m_sequence->reset();
+		if (saved_at_end) {
+			// If we were at the end, stay there
+			while (!m_sequence->at_end()) {
+				m_sequence->update(*m_parent);
+			}
+		}
+		m_samples_left = saved_samples_left;
+		
+		return total_samples;
+	}
+	
+	// ----------------------------------------------------------------------------
+	bool opl_midi_synth::impl::seek_to_sample(uint64_t sample_pos)
+	{
+		if (!m_sequence) {
+			return false;
+		}
+		
+		// Reset to beginning
+		reset();
+		
+		// Fast-forward to target position
+		uint64_t current_pos = 0;
+		
+		while (current_pos < sample_pos && !m_sequence->at_end()) {
+			uint32_t samples = m_sequence->update(*m_parent);
+			if (samples == 0 && m_sequence->at_end()) {
+				break;
+			}
+			
+			if (current_pos + samples > sample_pos) {
+				// We've reached the target position
+				// Set remaining samples in current event
+				m_samples_left = samples - (sample_pos - current_pos);
+				break;
+			}
+			
+			current_pos += samples;
+		}
+		
+		return true;
+	}
 }

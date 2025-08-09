@@ -192,7 +192,7 @@ namespace musac {
         uint32_t dummy = parse_uint32(buffer, offset);
 
         // +18: Total # samples
-        dummy = parse_uint32(buffer, offset);
+        m_total_samples = parse_uint32(buffer, offset);
 
         // +1C: Loop offset
         dummy = parse_uint32(buffer, offset);
@@ -953,5 +953,162 @@ namespace musac {
                 break;
         }
         return delay;
+    }
+    
+    uint32_t vgm_player::calculate_duration_samples() {
+        if (m_active_chips.empty()) {
+            return m_total_samples; // Return header value if no chips
+        }
+        
+        // Save current state
+        uint32_t saved_offset = m_cmds_offset;
+        int saved_delays = m_remainig_delays;
+        bool saved_done = m_done;
+        emulated_time saved_pos = m_output_pos;
+        
+        // Reset to beginning
+        m_cmds_offset = m_data_start;
+        m_remainig_delays = 0;
+        m_done = false;
+        m_output_pos = 0;
+        
+        // Enable silent mode on all chips
+        for (auto& chip : m_active_chips) {
+            chip->set_silent_mode(true);
+        }
+        
+        // Fast-forward through the file
+        uint32_t total_samples = 0;
+        constexpr auto output_rate = 44100;
+        constexpr emulated_time output_step = 0x100000000ull / output_rate;
+        
+        while (!m_done && m_cmds_offset < m_input.size()) {
+            int delay = -1;
+            do {
+                delay = apply_cmd(m_input, m_cmds_offset, m_done);
+                if (m_done) {
+                    break;
+                }
+            } while (delay < 0);
+            
+            if (delay > 0) {
+                // Advance timing for all chips
+                for (auto& chip : m_active_chips) {
+                    int32_t dummy[2] = {0};
+                    for (int i = 0; i < delay; i++) {
+                        chip->generate(m_output_pos, output_step, dummy);
+                        m_output_pos += output_step;
+                    }
+                }
+                total_samples += delay;
+            }
+            
+            // Safety check to prevent infinite loops
+            if (total_samples > 44100U * 60 * 30) { // 30 minutes max
+                break;
+            }
+        }
+        
+        // Restore state
+        for (auto& chip : m_active_chips) {
+            chip->set_silent_mode(false);
+            chip->reset();
+        }
+        m_cmds_offset = saved_offset;
+        m_remainig_delays = saved_delays;
+        m_done = saved_done;
+        m_output_pos = saved_pos;
+        
+        // Re-apply commands up to saved position to restore chip state
+        uint32_t temp_offset = m_data_start;
+        bool temp_done = false;
+        while (temp_offset < saved_offset && !temp_done) {
+            apply_cmd(m_input, temp_offset, temp_done);
+        }
+        
+        return total_samples;
+    }
+    
+    bool vgm_player::seek_to_sample(uint32_t sample_pos) {
+        if (m_active_chips.empty()) {
+            return false;
+        }
+        
+        // Reset to beginning
+        m_cmds_offset = m_data_start;
+        m_remainig_delays = 0;
+        m_done = false;
+        m_output_pos = 0;
+        
+        // Reset all chips
+        for (auto& chip : m_active_chips) {
+            chip->reset();
+        }
+        
+        // Enable silent mode
+        for (auto& chip : m_active_chips) {
+            chip->set_silent_mode(true);
+        }
+        
+        // Fast-forward to target position
+        uint32_t current_samples = 0;
+        constexpr auto output_rate = 44100;
+        constexpr emulated_time output_step = 0x100000000ull / output_rate;
+        
+        while (current_samples < sample_pos && !m_done && m_cmds_offset < m_input.size()) {
+            int delay = -1;
+            do {
+                delay = apply_cmd(m_input, m_cmds_offset, m_done);
+                if (m_done) {
+                    break;
+                }
+            } while (delay < 0);
+            
+            if (delay > 0) {
+                int samples_to_advance = std::min(delay, static_cast<int>(sample_pos - current_samples));
+                
+                // Advance timing for all chips
+                for (auto& chip : m_active_chips) {
+                    int32_t dummy[2] = {0};
+                    for (int i = 0; i < samples_to_advance; i++) {
+                        chip->generate(m_output_pos, output_step, dummy);
+                        m_output_pos += output_step;
+                    }
+                }
+                
+                current_samples += samples_to_advance;
+                m_remainig_delays = delay - samples_to_advance;
+                
+                if (current_samples >= sample_pos) {
+                    break;
+                }
+            }
+        }
+        
+        // Disable silent mode
+        for (auto& chip : m_active_chips) {
+            chip->set_silent_mode(false);
+        }
+        
+        return true;
+    }
+    
+    bool vgm_player::rewind() {
+        if (m_active_chips.empty()) {
+            return false;
+        }
+        
+        // Reset to beginning
+        m_cmds_offset = m_data_start;
+        m_remainig_delays = 0;
+        m_done = false;
+        m_output_pos = 0;
+        
+        // Reset all chips
+        for (auto& chip : m_active_chips) {
+            chip->reset();
+        }
+        
+        return true;
     }
 }

@@ -88,6 +88,16 @@ namespace musac {
             }
         }
         
+        void set_silent_mode(bool enable) {
+            if (m_emulator) {
+                m_emulator->set_silent_mode(enable);
+            }
+        }
+        
+        bool get_silent_mode() const {
+            return m_emulator ? m_emulator->get_silent_mode() : false;
+        }
+        
         // Legacy generate method for VGM player compatibility
         // This generates samples with proper timing to match the original implementation
         virtual void generate(emulated_time output_start, emulated_time output_step, int32_t* buffer) {

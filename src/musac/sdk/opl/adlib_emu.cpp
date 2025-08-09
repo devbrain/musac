@@ -10,13 +10,15 @@ namespace musac::impl {
     struct adlib {
         adlib()
             : m_chip(14318181, CHIP_YM3812, "YM3812"),
-              m_step(0) {
+              m_step(0),
+              m_silent_mode(false) {
         }
         ~adlib() = default;
 
         ymfm_chip<ymfm::ym3812> m_chip;
         static constexpr emulated_time output_step = 0x100000000ull / 44100;
         emulated_time m_step;
+        bool m_silent_mode;
     };
 }
 
@@ -39,6 +41,15 @@ void adlib_write_data(void* sb, uint16_t reg, uint8_t val) {
 
 void adlib_get_sample_stereo(void* sb, float* first, float* second) {
     auto* self = (musac::impl::adlib*)sb;
+    
+    if (self->m_silent_mode) {
+        // In silent mode, advance timing but don't generate audio
+        self->m_step += musac::impl::adlib::output_step;
+        *first = 0.0f;
+        *second = 0.0f;
+        return;
+    }
+    
     int32_t outputs[2] = {0};
     self->m_chip.generate(self->m_step, musac::impl::adlib::output_step, outputs);
     
@@ -51,6 +62,16 @@ void adlib_get_sample_stereo(void* sb, float* first, float* second) {
     
     *first = static_cast<float>(clamp(outputs[0])) / 32768.0f;
     *second = static_cast<float>(clamp(outputs[1])) / 32768.0f;
+}
+
+void adlib_set_silent_mode(void* sb, int enable) {
+    auto* self = (musac::impl::adlib*)sb;
+    self->m_silent_mode = (enable != 0);
+}
+
+int adlib_get_silent_mode(void* sb) {
+    auto* self = (musac::impl::adlib*)sb;
+    return self->m_silent_mode ? 1 : 0;
 }
 
 float adlib_get_sample(void* sb) {
