@@ -14,7 +14,7 @@
 #include <musac/codecs/decoder_vgm.hh>
 #include <musac/codecs/decoder_voc.hh>
 #include <musac/codecs/decoder_mml.hh>
-
+#include <musac/codecs/decoder_vorbis.hh>
 
 namespace musac {
     using decoder_flac = decoder_drflac;
@@ -23,8 +23,7 @@ namespace musac {
     using decoder_mod = decoder_modplug;
     using decoder_midi = decoder_seq;
 
-
-// Note: This macro defines the implementations inside the namespace where it's expanded
+    // Note: This macro defines the implementations inside the namespace where it's expanded
 #define d_MUSAC_LOAD_IMPLEMENT(TYPE)                                                                                   \
 audio_source load_ ## TYPE (std::unique_ptr<io_stream> stream) {                                                        \
     return load_audio_source<decoder_ ## TYPE>(std::move(stream));                                                      \
@@ -39,17 +38,17 @@ audio_source load_ ## TYPE (const std::filesystem::path& path, std::unique_ptr<r
     return load_audio_source<decoder_ ## TYPE>(path, std::move(resampler_obj));                                        \
 }
 
-// Expand all the loader implementations
-d_MUSAC_LOAD_IMPLEMENT(wav);
-d_MUSAC_LOAD_IMPLEMENT(mp3);
-d_MUSAC_LOAD_IMPLEMENT(flac);
-d_MUSAC_LOAD_IMPLEMENT(voc);
-d_MUSAC_LOAD_IMPLEMENT(aiff);
-d_MUSAC_LOAD_IMPLEMENT(cmf);
-d_MUSAC_LOAD_IMPLEMENT(mod);
-d_MUSAC_LOAD_IMPLEMENT(midi);
-d_MUSAC_LOAD_IMPLEMENT(opb);
-d_MUSAC_LOAD_IMPLEMENT(vgm);
-d_MUSAC_LOAD_IMPLEMENT(mml);
-
+    // Expand all the loader implementations
+    d_MUSAC_LOAD_IMPLEMENT(wav);
+    d_MUSAC_LOAD_IMPLEMENT(mp3);
+    d_MUSAC_LOAD_IMPLEMENT(flac);
+    d_MUSAC_LOAD_IMPLEMENT(voc);
+    d_MUSAC_LOAD_IMPLEMENT(aiff);
+    d_MUSAC_LOAD_IMPLEMENT(cmf);
+    d_MUSAC_LOAD_IMPLEMENT(mod);
+    d_MUSAC_LOAD_IMPLEMENT(midi);
+    d_MUSAC_LOAD_IMPLEMENT(opb);
+    d_MUSAC_LOAD_IMPLEMENT(vgm);
+    d_MUSAC_LOAD_IMPLEMENT(mml);
+    d_MUSAC_LOAD_IMPLEMENT(vorbis);
 } // namespace musac

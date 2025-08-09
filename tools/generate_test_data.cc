@@ -18,6 +18,9 @@
 #include <musac/codecs/decoder_opb.hh>
 #include <musac/codecs/decoder_vgm.hh>
 
+// For Vorbis, we use stb_vorbis directly as the source of truth
+#include "../src/musac/codecs/vorbis/stb_vorbis.c"
+
 using namespace musac;
 
 struct TestData {
@@ -95,15 +98,88 @@ std::unique_ptr<decoder> create_decoder(const std::string& filename) {
         return std::make_unique<decoder_opb>();
     } else if (ext == "vgz") {
         return std::make_unique<decoder_vgm>();
+    } else if (ext == "ogg") {
+        // Return nullptr for ogg - we'll handle it specially
+        return nullptr;
     }
     
     return nullptr;
+}
+
+bool process_vorbis_file(const std::string& filename, TestData& test_data) {
+    // Read input file
+    std::ifstream input_file(filename, std::ios::binary);
+    if (!input_file) {
+        std::cerr << "Failed to open input file: " << filename << std::endl;
+        return false;
+    }
+    
+    input_file.seekg(0, std::ios::end);
+    size_t file_size = input_file.tellg();
+    input_file.seekg(0, std::ios::beg);
+    
+    test_data.input.resize(file_size);
+    input_file.read(reinterpret_cast<char*>(test_data.input.data()), file_size);
+    input_file.close();
+    
+    // Use stb_vorbis directly as source of truth (like sample.c)
+    int error = 0;
+    stb_vorbis* vorbis = stb_vorbis_open_memory(test_data.input.data(), 
+                                                 static_cast<int>(test_data.input.size()), 
+                                                 &error, nullptr);
+    if (!vorbis) {
+        std::cerr << "stb_vorbis failed to open file, error: " << error << std::endl;
+        return false;
+    }
+    
+    stb_vorbis_info info = stb_vorbis_get_info(vorbis);
+    test_data.channels = info.channels;
+    test_data.rate = info.sample_rate;
+    
+    // Decode using stb_vorbis_get_samples_float_interleaved (like sample.c test_get_samples_short_interleaved)
+    const size_t max_samples = 44100 * 2; // Limit to 2 seconds
+    const int chunk_size = 4096;
+    float buffer[chunk_size];
+    
+    while (test_data.output.size() < max_samples) {
+        int samples_per_channel = stb_vorbis_get_samples_float_interleaved(
+            vorbis, info.channels, buffer, chunk_size);
+        
+        if (samples_per_channel == 0) break;
+        
+        int total_samples = samples_per_channel * info.channels;
+        size_t samples_to_add = std::min(static_cast<size_t>(total_samples), 
+                                        max_samples - test_data.output.size());
+        test_data.output.insert(test_data.output.end(), 
+                              buffer, buffer + samples_to_add);
+        
+        if (test_data.output.size() >= max_samples) break;
+    }
+    
+    stb_vorbis_close(vorbis);
+    
+    test_data.output_limited = (test_data.output.size() >= max_samples);
+    test_data.limit_samples = max_samples;
+    
+    if (test_data.output_limited) {
+        std::cout << "Note: Output limited to " << max_samples << " samples (2 seconds)" << std::endl;
+    }
+    
+    return true;
 }
 
 bool process_file(const std::string& filename, TestData& test_data) {
     // Initialize test data
     test_data.output_limited = false;
     test_data.limit_samples = 0;
+    
+    // Check if this is a Vorbis file
+    std::string ext = filename.substr(filename.find_last_of('.') + 1);
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+    if (ext == "ogg") {
+        return process_vorbis_file(filename, test_data);
+    }
+    
     // Read input file
     std::ifstream input_file(filename, std::ios::binary);
     if (!input_file) {

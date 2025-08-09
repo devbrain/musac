@@ -4,7 +4,7 @@
 #include <vector>
 #include <cstring>
 #include <cmath>
-#include "voc_test_data_full.h"
+#include "golden_data/voc_test_data_full.h"
 
 // Helper to create a minimal VOC file in memory
 std::vector<uint8_t> createTestVOC(uint8_t sampleRate = 256 - 45, // ~22050 Hz
