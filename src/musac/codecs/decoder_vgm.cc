@@ -30,6 +30,14 @@ namespace musac {
         if (!result) {
             THROW_RUNTIME("Failed to load VGM file");
         }
+        
+        // Calculate actual duration using silent mode if header value is not reliable
+        uint32_t header_samples = m_pimpl->m_player.get_total_samples();
+        if (header_samples == 0) {
+            // No duration in header, calculate it
+            m_pimpl->m_player.calculate_duration_samples();
+        }
+        
         set_is_open(true);
     }
 
@@ -42,15 +50,48 @@ namespace musac {
     }
 
     bool decoder_vgm::rewind() {
-        return false;
+        if (!is_open()) {
+            return false;
+        }
+        return m_pimpl->m_player.rewind();
     }
 
     std::chrono::microseconds decoder_vgm::duration() const {
-        return {};
+        if (!is_open()) {
+            return std::chrono::microseconds(0);
+        }
+        
+        // Get total samples - either from header or calculated
+        uint32_t total_samples = m_pimpl->m_player.get_total_samples();
+        if (total_samples == 0) {
+            // If header didn't have duration, calculate it dynamically
+            // Note: This is const method so we can't cache the result
+            const_cast<vgm_player&>(m_pimpl->m_player).calculate_duration_samples();
+            total_samples = m_pimpl->m_player.get_total_samples();
+        }
+        
+        if (total_samples == 0) {
+            return std::chrono::microseconds(0);
+        }
+        
+        // VGM files are always 44100 Hz
+        double duration_seconds = static_cast<double>(total_samples) / 44100.0;
+        
+        return std::chrono::microseconds(
+            static_cast<int64_t>(duration_seconds * 1'000'000)
+        );
     }
 
     bool decoder_vgm::seek_to_time([[maybe_unused]] std::chrono::microseconds pos) {
-        return false;
+        if (!is_open()) {
+            return false;
+        }
+        
+        // Convert time to sample position
+        double seconds = static_cast<double>(pos.count()) / 1'000'000.0;
+        uint32_t target_sample = static_cast<uint32_t>(seconds * 44100);
+        
+        return m_pimpl->m_player.seek_to_sample(target_sample);
     }
 
     size_t decoder_vgm::do_decode(float buf[], size_t len, bool& callAgain) {

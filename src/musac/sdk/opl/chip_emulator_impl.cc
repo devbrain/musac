@@ -43,13 +43,15 @@ private:
     std::string m_name;
     ymfm_interface m_interface;
     ChipType m_chip;
+    bool m_silent_mode;
     
 public:
     ymfm_chip_emulator(chip_type_id type, uint32_t clock_rate, const char* name)
         : m_type(type)
         , m_clock_rate(clock_rate)
         , m_name(name)
-        , m_chip(m_interface) {
+        , m_chip(m_interface)
+        , m_silent_mode(false) {
         m_chip.reset();
     }
     
@@ -74,6 +76,12 @@ public:
     }
     
     uint32_t generate(int32_t* buffer, uint32_t num_samples) override {
+        if (m_silent_mode) {
+            // In silent mode, just fill with zeros
+            std::memset(buffer, 0, num_samples * sizeof(int32_t));
+            return num_samples;
+        }
+        
         typename ChipType::output_data output;
         uint32_t generated = 0;
         
@@ -92,6 +100,14 @@ public:
     
     std::string name() const override {
         return m_name;
+    }
+    
+    void set_silent_mode(bool enable) override {
+        m_silent_mode = enable;
+    }
+    
+    bool get_silent_mode() const override {
+        return m_silent_mode;
     }
 };
 

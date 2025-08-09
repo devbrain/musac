@@ -92,6 +92,10 @@ public:
     opl_midi_synth::chip_type chip_type() const { return m_chip_type; }
     bool stereo() const { return m_stereo; }
     const std::string& patch_name(uint8_t num) { return m_patches[num].name; }
+    
+    // Duration and seeking support
+    uint64_t calculate_duration_samples();
+    bool seek_to_sample(uint64_t sample_pos);
 
 private:
     static const unsigned master_clock = 14318181;

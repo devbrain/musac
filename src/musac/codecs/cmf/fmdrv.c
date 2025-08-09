@@ -795,3 +795,118 @@ void sbfm_reset(struct fmdrv_s* obj) {
     obj->g_transp = 0;
 }
 
+uint32_t sbfm_calculate_duration_samples(struct fmdrv_s* obj) {
+    if (!obj || !obj->g_music_pos) {
+        return 0;
+    }
+    
+    // This function should be called on a temporary decoder instance
+    // that was just initialized, so we can freely modify its state
+    // without worrying about restoration
+    
+    // Enable silent mode
+    adlib_set_silent_mode(obj->m_chip, 1);
+    
+    // Fast-forward through the song
+    uint32_t total_samples = 0;
+    float dummy_a, dummy_b;
+    
+    // Track music position for loop detection
+    uint8_t* initial_music_pos = obj->g_music_pos;
+    uint8_t* highest_pos_reached = obj->g_music_pos;
+    uint32_t samples_at_loop_start = 0;
+    int loop_detected = 0;
+    
+    while (obj->g_status != 0) {
+        // Track the highest position we've reached in the music data
+        if (obj->g_music_blk > highest_pos_reached) {
+            highest_pos_reached = obj->g_music_blk;
+        }
+        
+        // Check if we've jumped backwards (potential loop)
+        if (obj->g_music_blk < highest_pos_reached - 10) {
+            // We've jumped back significantly
+            if (obj->g_music_blk <= initial_music_pos + 10) {
+                // We've looped back near the beginning
+                if (!loop_detected) {
+                    // First time detecting the loop, record where we are
+                    loop_detected = 1;
+                    samples_at_loop_start = total_samples;
+                } else {
+                    // We've completed one full loop, stop here
+                    break;
+                }
+            }
+        }
+        
+        // Process one sample
+        if (obj->g_song_timer_cnt-- == 0) {
+            obj->g_song_timer_cnt = obj->g_song_timer_rate;
+            sbfm_tick(obj);
+        }
+        adlib_get_sample_stereo(obj->m_chip, &dummy_a, &dummy_b);
+        total_samples++;
+        
+        // Safety check to prevent infinite loops
+        // If we've been looping for too long, assume it's an infinite loop
+        if (loop_detected && (total_samples - samples_at_loop_start) > 44100U * 30) {
+            // We've been in a loop for 30 seconds, that's one loop iteration
+            break;
+        }
+        
+        // Absolute safety check - reduce to 1 minute max for faster calculation
+        if (total_samples > 44100U * 60) { // 1 minute max
+            break;
+        }
+    }
+    
+    // Disable silent mode (not really needed since this decoder will be destroyed)
+    adlib_set_silent_mode(obj->m_chip, 0);
+    
+    return total_samples;
+}
+
+int sbfm_seek_to_sample(struct fmdrv_s* obj, uint32_t sample_pos) {
+    if (!obj || !obj->g_music_pos) {
+        return 0;
+    }
+    
+    // Save the music pointer start (the original music data position)
+    uint8_t* music_start = obj->g_music_pos;
+    
+    // Reset to beginning
+    obj->g_music_blk = music_start;
+    obj->g_delay = read_vlq(obj);
+    obj->g_status = 1;
+    obj->g_song_timer_cnt = obj->g_song_timer_rate;
+    
+    // Initialize MIDI state if not set (prevents crash)
+    if ((obj->g_music_blk[0] & 0x80) == 0) {
+        // No initial status byte, need to initialize
+        obj->g_midi_cmd = 0;
+        obj->g_midi_chn = 0;
+    }
+    
+    // Enable silent mode
+    adlib_set_silent_mode(obj->m_chip, 1);
+    
+    // Fast-forward to target position
+    uint32_t current_pos = 0;
+    float dummy_a, dummy_b;
+    
+    while (current_pos < sample_pos && obj->g_status != 0) {
+        // Process one sample
+        if (obj->g_song_timer_cnt-- == 0) {
+            obj->g_song_timer_cnt = obj->g_song_timer_rate;
+            sbfm_tick(obj);
+        }
+        adlib_get_sample_stereo(obj->m_chip, &dummy_a, &dummy_b);
+        current_pos++;
+    }
+    
+    // Disable silent mode
+    adlib_set_silent_mode(obj->m_chip, 0);
+    
+    return 1;
+}
+

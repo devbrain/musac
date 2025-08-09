@@ -61,11 +61,23 @@ namespace musac {
     }
 
     std::chrono::microseconds decoder_opb::duration() const {
-        return {};
+        if (!is_open()) {
+            return std::chrono::microseconds(0);
+        }
+        
+        double duration_seconds = m_pimpl->m_player.get_duration();
+        return std::chrono::microseconds(
+            static_cast<int64_t>(duration_seconds * 1'000'000)
+        );
     }
 
     bool decoder_opb::seek_to_time([[maybe_unused]] std::chrono::microseconds pos) {
-        return false;
+        if (!is_open()) {
+            return false;
+        }
+        
+        double seconds = static_cast<double>(pos.count()) / 1'000'000.0;
+        return m_pimpl->m_player.seek(seconds);
     }
 
     size_t decoder_opb::do_decode(float* const buf, size_t len, bool& callAgain) {

@@ -47,6 +47,10 @@ void sbfm_render_stereo(struct fmdrv_s* obj, float* a, float* b);
 void sbfm_reset(struct fmdrv_s* obj);
 int sbfm_get_chip_rate(struct fmdrv_s* obj);
 
+// Fast-forward support for duration and seeking
+uint32_t sbfm_calculate_duration_samples(struct fmdrv_s* obj);
+int sbfm_seek_to_sample(struct fmdrv_s* obj, uint32_t sample_pos);
+
 #if defined(__cplusplus)
     }
 #endif

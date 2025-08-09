@@ -53,6 +53,10 @@ public:
     void set_song_num(unsigned num);
     unsigned num_songs() const;
     unsigned song_num() const;
+    
+    // Duration and seeking support
+    uint64_t calculate_duration_samples();
+    bool seek_to_sample(uint64_t sample_pos);
 
     void midi_event(uint8_t status, uint8_t data0, uint8_t data1 = 0);
     void midi_note_on(uint8_t channel, uint8_t note, uint8_t velocity);

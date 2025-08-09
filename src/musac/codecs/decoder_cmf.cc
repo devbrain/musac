@@ -12,7 +12,9 @@
 namespace musac {
     struct decoder_cmf::impl {
         impl ()
-            : m_status(0){
+            : m_status(0),
+              m_total_samples(0),
+              m_current_sample(0) {
             m_decoder = sbfm_init(44100);
             sbfm_reset(m_decoder);
             sbfm_status_addx(m_decoder, &m_status);
@@ -24,6 +26,8 @@ namespace musac {
         fmdrv_s* m_decoder;
         std::vector<uint8_t> m_song;
         uint8_t m_status;
+        uint32_t m_total_samples;
+        uint32_t m_current_sample;
 
     };
 
@@ -67,9 +71,25 @@ namespace musac {
             THROW_RUNTIME("CMF file has invalid offsets");
         }
         
+        // Create a temporary decoder just for duration calculation
+        fmdrv_s* temp_decoder = sbfm_init(44100);
+        sbfm_reset(temp_decoder);
+        sbfm_instrument(temp_decoder, &data[instr_offset], instr_count);
+        sbfm_song_speed(temp_decoder, (uint16_t)(0x1234dc / speed_value));
+        sbfm_play_music(temp_decoder, &data[music_offset]);
+        
+        // Calculate total duration using the temporary decoder
+        m_pimpl->m_total_samples = sbfm_calculate_duration_samples(temp_decoder);
+        m_pimpl->m_current_sample = 0;
+        
+        // Destroy the temporary decoder
+        sbfm_destroy(temp_decoder);
+        
+        // Now set up the real decoder for playback
         sbfm_instrument(m_pimpl->m_decoder, &data[instr_offset], instr_count);
         sbfm_song_speed(m_pimpl->m_decoder, (uint16_t)(0x1234dc / speed_value));
         sbfm_play_music(m_pimpl->m_decoder, &data[music_offset]);
+        
         set_is_open(true);
     }
 
@@ -83,15 +103,76 @@ namespace musac {
     }
 
     bool decoder_cmf::rewind() {
-        return false;
+        if (!is_open()) {
+            return false;
+        }
+        
+        m_pimpl->m_current_sample = 0;
+        auto* data = m_pimpl->m_song.data();
+        
+        // Extract required values from the CMF header
+        uint16_t instr_offset = READ_16LE(&data[0x06]);
+        uint16_t music_offset = READ_16LE(&data[0x08]);
+        uint16_t instr_count = READ_16LE(&data[0x24]);
+        uint16_t speed_value = READ_16LE(&data[0x0c]);
+        
+        // Reset and reinitialize the decoder
+        sbfm_reset(m_pimpl->m_decoder);
+        sbfm_instrument(m_pimpl->m_decoder, &data[instr_offset], instr_count);
+        sbfm_song_speed(m_pimpl->m_decoder, (uint16_t)(0x1234dc / speed_value));
+        sbfm_play_music(m_pimpl->m_decoder, &data[music_offset]);
+        
+        return true;
     }
 
     std::chrono::microseconds decoder_cmf::duration() const {
-        return {};
+        if (!is_open() || m_pimpl->m_total_samples == 0) {
+            return std::chrono::microseconds(0);
+        }
+        
+        // Calculate duration based on 44100 Hz sample rate
+        double duration_seconds = static_cast<double>(m_pimpl->m_total_samples) / 44100.0;
+        return std::chrono::microseconds(
+            static_cast<int64_t>(duration_seconds * 1'000'000)
+        );
     }
 
     bool decoder_cmf::seek_to_time([[maybe_unused]] std::chrono::microseconds pos) {
-        return false;
+        if (!is_open()) {
+            return false;
+        }
+        
+        // Convert time to sample position
+        double seconds = static_cast<double>(pos.count()) / 1'000'000.0;
+        uint32_t target_sample = static_cast<uint32_t>(seconds * 44100);
+        
+        // Clamp to valid range
+        if (target_sample > m_pimpl->m_total_samples) {
+            target_sample = m_pimpl->m_total_samples;
+        }
+        
+        auto* data = m_pimpl->m_song.data();
+        
+        // Extract required values from the CMF header
+        uint16_t instr_offset = READ_16LE(&data[0x06]);
+        uint16_t music_offset = READ_16LE(&data[0x08]);
+        uint16_t instr_count = READ_16LE(&data[0x24]);
+        uint16_t speed_value = READ_16LE(&data[0x0c]);
+        
+        // Use the seek function to jump to the target position
+        if (sbfm_seek_to_sample(m_pimpl->m_decoder, target_sample) != 0) {
+            // If seek fails, reset and reinitialize
+            sbfm_reset(m_pimpl->m_decoder);
+            sbfm_instrument(m_pimpl->m_decoder, &data[instr_offset], instr_count);
+            sbfm_song_speed(m_pimpl->m_decoder, (uint16_t)(0x1234dc / speed_value));
+            sbfm_play_music(m_pimpl->m_decoder, &data[music_offset]);
+            
+            // Fast-forward to the target position
+            sbfm_seek_to_sample(m_pimpl->m_decoder, target_sample);
+        }
+        
+        m_pimpl->m_current_sample = target_sample;
+        return true;
     }
 
     size_t decoder_cmf::do_decode(float buf[], size_t len, [[maybe_unused]] bool& call_again) {
@@ -103,6 +184,8 @@ namespace musac {
 
             stream += 2;
             total++;
+            m_pimpl->m_current_sample++;
+            
             if (!m_pimpl->m_status) {
                 break;
             }

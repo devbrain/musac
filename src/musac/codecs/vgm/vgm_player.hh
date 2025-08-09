@@ -29,6 +29,19 @@ namespace musac {
             bool done() const {
                 return m_done;
             }
+            
+            uint32_t get_total_samples() const {
+                return m_total_samples;
+            }
+            
+            // Calculate actual duration by fast-forwarding through the file
+            uint32_t calculate_duration_samples();
+            
+            // Seek to a specific sample position
+            bool seek_to_sample(uint32_t sample_pos);
+            
+            // Rewind to beginning
+            bool rewind();
         private:
             void add_chips(uint32_t clock, chip_type type, char const* chipname) {
                 uint32_t clockval = clock & 0x3fffffff;
@@ -69,6 +82,7 @@ namespace musac {
             int m_remainig_delays;
             bool m_done;
             emulated_time m_output_pos;
+            uint32_t m_total_samples = 0;
     };
 }
 

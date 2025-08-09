@@ -133,4 +133,12 @@ const std::string& opl_midi_synth::patch_name(uint8_t num) const {
     return m_impl->patch_name(num);
 }
 
+uint64_t opl_midi_synth::calculate_duration_samples() {
+    return m_impl->calculate_duration_samples();
+}
+
+bool opl_midi_synth::seek_to_sample(uint64_t sample_pos) {
+    return m_impl->seek_to_sample(sample_pos);
+}
+
 } // namespace musac

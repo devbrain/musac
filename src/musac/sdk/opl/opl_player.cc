@@ -43,6 +43,45 @@ namespace musac {
 
     void opl_player::rewind() {
         m_queue.rewind();
+        m_state = INITIAL_STATE;
+        m_time = 0;
+        m_sample_remains = 0;
+        m_proc.midi_notes_clear();  // Clear all notes
+        
+        // Reinitialize OPL registers by replaying initial commands
+        // This ensures a clean state
+    }
+    
+    double opl_player::get_duration() const {
+        return m_queue.get_duration();
+    }
+    
+    bool opl_player::seek(double time_seconds) {
+        // For seeking, we need to rebuild OPL state by replaying commands
+        // up to the target time point
+        
+        // Clear current state
+        m_proc.midi_notes_clear();
+        
+        // Reset queue to beginning
+        m_queue.rewind();
+        
+        // Replay all commands up to the target time instantly
+        while (!m_queue.empty()) {
+            const auto& cmd = m_queue.top();
+            if (cmd.Time >= time_seconds) {
+                break;  // We've reached or passed the target time
+            }
+            m_proc.write(cmd);
+            m_queue.pop();
+        }
+        
+        // Set the time position
+        m_time = time_seconds;
+        m_state = INITIAL_STATE;
+        m_sample_remains = 0;
+        
+        return true;
     }
 
     std::size_t opl_player::do_render(int16_t* buffer, std::size_t sample_pairs) {
@@ -115,5 +154,40 @@ namespace musac {
 
     void opl_player::commands_queue::rewind() {
         m_top = 0;
+    }
+    
+    double opl_player::commands_queue::get_duration() const {
+        if (m_commands.empty()) {
+            return 0.0;
+        }
+        // The duration is the time of the last command
+        return m_commands.back().Time;
+    }
+    
+    bool opl_player::commands_queue::seek(double time_seconds, std::size_t& index) {
+        // Binary search to find the command index at or just before the target time
+        std::size_t left = 0;
+        std::size_t right = m_commands.size();
+        
+        while (left < right) {
+            std::size_t mid = left + (right - left) / 2;
+            if (m_commands[mid].Time <= time_seconds) {
+                left = mid + 1;
+            } else {
+                right = mid;
+            }
+        }
+        
+        // Set the index to the position just before or at the target time
+        if (left > 0) {
+            index = left;
+            m_top = left;
+            return true;
+        }
+        
+        // If seeking to the beginning
+        index = 0;
+        m_top = 0;
+        return true;
     }
 }

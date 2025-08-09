@@ -458,11 +458,40 @@ bool decoder_voc::rewind() {
 }
 
 std::chrono::microseconds decoder_voc::duration() const {
-    return std::chrono::microseconds(0);
+    if (!is_open() || m_pimpl->m_spec.freq == 0) {
+        return std::chrono::microseconds(0);
+    }
+    
+    // Calculate duration from total samples and sample rate
+    // total_samples is already adjusted for number of channels
+    double duration_seconds = static_cast<double>(m_pimpl->m_total_samples) / 
+                             static_cast<double>(m_pimpl->m_spec.freq);
+    
+    return std::chrono::microseconds(
+        static_cast<int64_t>(duration_seconds * 1'000'000)
+    );
 }
 
-bool decoder_voc::seek_to_time(std::chrono::microseconds) {
-    return false;
+bool decoder_voc::seek_to_time(std::chrono::microseconds pos) {
+    if (!is_open() || m_pimpl->m_spec.freq == 0) {
+        return false;
+    }
+    
+    // Convert time position to sample position
+    double seconds = pos.count() / 1'000'000.0;
+    size_t target_sample = static_cast<size_t>(
+        seconds * static_cast<double>(m_pimpl->m_spec.freq)
+    );
+    
+    // Clamp to valid range
+    if (target_sample >= m_pimpl->m_total_samples) {
+        target_sample = m_pimpl->m_total_samples;
+    }
+    
+    // Set the new position
+    m_pimpl->m_consumed = target_sample;
+    
+    return true;
 }
 
 size_t decoder_voc::do_decode(float* buf, size_t len, bool& call_again) {

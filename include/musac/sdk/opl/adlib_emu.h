@@ -22,6 +22,10 @@ MUSAC_SDK_EXPORT  void adlib_write_data(void* sb, uint16_t reg, uint8_t val);
 MUSAC_SDK_EXPORT  void adlib_get_sample_stereo(void* sb, float* first, float* second);
 MUSAC_SDK_EXPORT  float adlib_get_sample(void* sb);
 
+// silent mode for fast-forward operations
+MUSAC_SDK_EXPORT  void adlib_set_silent_mode(void* sb, int enable);
+MUSAC_SDK_EXPORT  int adlib_get_silent_mode(void* sb);
+
 #if defined(__cplusplus)
 }
 #endif
