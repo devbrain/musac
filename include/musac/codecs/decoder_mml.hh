@@ -32,6 +32,8 @@ public:
     ~decoder_mml() override;
     
     // Decoder interface
+    [[nodiscard]] const char* get_name() const override;
+    
     void open(io_stream* stream) override;
     [[nodiscard]] channels_t get_channels() const override;
     [[nodiscard]] sample_rate_t get_rate() const override;
@@ -43,6 +45,7 @@ public:
     [[nodiscard]] std::vector<std::string> get_warnings() const;
     
 protected:
+    [[nodiscard]] bool do_accept(io_stream* stream) override;
     size_t do_decode(float buf[], size_t len, bool& call_again) override;
     
 private:

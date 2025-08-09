@@ -73,6 +73,23 @@ namespace musac {
     
     decoder_vorbis::~decoder_vorbis() = default;
     
+    bool decoder_vorbis::do_accept(io_stream* rwops) {
+        // stb_vorbis doesn't have a simple "test" function, so we need to check the header
+        // Check for OggS magic
+        char magic[4];
+        if (rwops->read(magic, 4) != 4) {
+            return false;
+        }
+        
+        // Check for Ogg Vorbis signature
+        return (magic[0] == 'O' && magic[1] == 'g' && 
+                magic[2] == 'g' && magic[3] == 'S');
+    }
+    
+    const char* decoder_vorbis::get_name() const {
+        return "Vorbis";
+    }
+    
     void decoder_vorbis::open(io_stream* rwops) {
         m_pimpl->load_from_stream(rwops);
         set_is_open(true);

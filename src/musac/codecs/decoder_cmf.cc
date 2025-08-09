@@ -37,6 +37,21 @@ namespace musac {
 
     decoder_cmf::~decoder_cmf() = default;
 
+    bool decoder_cmf::do_accept(io_stream* rwops) {
+        // Check for "CTMF" magic bytes at the start of the file
+        uint8_t magic[4];
+        
+        if (rwops->read(magic, 4) != 4) {
+            return false;
+        }
+        
+        return (magic[0] == 'C' && magic[1] == 'T' && magic[2] == 'M' && magic[3] == 'F');
+    }
+    
+    const char* decoder_cmf::get_name() const {
+        return "CMF (Creative Music File)";
+    }
+
     void decoder_cmf::open(io_stream* rwops) {
         auto sz = rwops->get_size();
         if (sz <= 0) {

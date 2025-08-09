@@ -63,6 +63,21 @@ namespace musac {
 
     decoder_drflac::~decoder_drflac() = default;
 
+    bool decoder_drflac::do_accept(io_stream* rwops) {
+        // Use dr_flac's open function to test if the format is valid
+        drflac* test_handle = drflac_open(drflacReadCb, drflacSeekCb, rwops, nullptr);
+        if (test_handle) {
+            // Successfully opened, it's a valid FLAC file
+            drflac_close(test_handle);
+            return true;
+        }
+        return false;
+    }
+    
+    const char* decoder_drflac::get_name() const {
+        return "FLAC (dr_flac)";
+    }
+
     void decoder_drflac::open(io_stream* const rwops) {
         if (is_open()) {
             return;

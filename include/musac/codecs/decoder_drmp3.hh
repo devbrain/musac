@@ -13,6 +13,8 @@ namespace musac {
             decoder_drmp3();
             ~decoder_drmp3() override;
 
+            [[nodiscard]] const char* get_name() const override;
+            
             void open(io_stream* rwops) override;
             [[nodiscard]] channels_t get_channels() const override;
             [[nodiscard]] sample_rate_t get_rate() const override;
@@ -21,6 +23,7 @@ namespace musac {
             auto seek_to_time(std::chrono::microseconds pos) -> bool override;
 
         protected:
+            [[nodiscard]] bool do_accept(io_stream* rwops) override;
             size_t do_decode(float buf[], size_t len, bool& callAgain) override;
 
         private:

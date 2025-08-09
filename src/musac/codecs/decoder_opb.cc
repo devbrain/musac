@@ -39,6 +39,22 @@ namespace musac {
 
     decoder_opb::~decoder_opb() = default;
 
+    bool decoder_opb::do_accept(io_stream* rwops) {
+        // Check for "OPBin1" magic bytes followed by null terminator
+        uint8_t magic[7];
+        
+        if (rwops->read(magic, 7) != 7) {
+            return false;
+        }
+        
+        return (magic[0] == 'O' && magic[1] == 'P' && magic[2] == 'B' &&
+                magic[3] == 'i' && magic[4] == 'n' && magic[5] == '1' && magic[6] == '\0');
+    }
+    
+    const char* decoder_opb::get_name() const {
+        return "OPB (OPL Binary)";
+    }
+
     void decoder_opb::open(io_stream* rwops) {
         auto rc = OPB_BinaryToOpl(StreamReader, rwops, impl::ReceiveOpbBuffer, m_pimpl.get());
         if (rc != 0) {
