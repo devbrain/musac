@@ -30,8 +30,8 @@
 
 
 
-#include <musac/sdk/opl/ymfm/ymfm_opn.h>
-#include "musac/sdk/opl/ymfm/ymfm_fm.ipp"
+#include "../internal/ymfm/ymfm_opn.h"
+#include "../internal/ymfm/ymfm_fm.ipp"
 
 namespace ymfm
 {

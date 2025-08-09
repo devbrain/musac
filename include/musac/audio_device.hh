@@ -24,6 +24,7 @@ namespace musac {
     
     // Forward declarations
     class audio_stream;
+    class pc_speaker_stream;
     class audio_source;
     class audio_backend_v2;
     struct device_info_v2;
@@ -63,6 +64,7 @@ namespace musac {
 
             // Stream creation
             audio_stream create_stream(audio_source&& audio_src);
+            pc_speaker_stream create_pc_speaker_stream();
             
             void create_stream_with_callback(
                 void (*callback)(void* userdata, uint8_t* stream, int len),

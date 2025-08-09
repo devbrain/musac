@@ -12,10 +12,23 @@
 #define WARN_UNSUPPORTED_CHIP(name) LOG_WARN("VGM", "Clock for " name " specified, but not supported")
 
 
-#include <musac/sdk/opl/ymfm/ymfm_misc.h>
-#include <musac/sdk/opl/ymfm/ymfm_opl.h>
-#include <musac/sdk/opl/ymfm/ymfm_opm.h>
-#include <musac/sdk/opl/ymfm/ymfm_opn.h>
+// Define access class constants locally
+namespace {
+    enum access_class_type {
+        ACCESS_IO = 0,
+        ACCESS_ADPCM_A,
+        ACCESS_ADPCM_B,
+        ACCESS_PCM,
+        ACCESS_CLASSES
+    };
+    
+    // Clamp helper function
+    inline int32_t clamp(int32_t value, int32_t minval, int32_t maxval) {
+        if (value < minval) return minval;
+        if (value > maxval) return maxval;
+        return value;
+    }
+}
 #include "musac/codecs/vgm/em_inflate.h"
 
 
@@ -122,8 +135,8 @@ namespace musac {
                     chip->generate(m_output_pos, output_step, outputs);
                 }
                 m_output_pos += output_step;
-                buff[2*i] = (float)ymfm::clamp(outputs[0], -32768, 32768) / 32768.0f;
-                buff[2*i+1] = (float)ymfm::clamp(outputs[1], -32768, 32768) / 32768.0f;
+                buff[2*i] = (float)clamp(outputs[0], -32768, 32768) / 32768.0f;
+                buff[2*i+1] = (float)clamp(outputs[1], -32768, 32768) / 32768.0f;
             }
             m_remainig_delays = delay - to_take;
             return 2*to_take;
@@ -135,8 +148,8 @@ namespace musac {
                     chip->generate(m_output_pos, output_step, outputs);
                 }
                 m_output_pos += output_step;
-                buff[2*i] = (float)ymfm::clamp(outputs[0], -32768, 32768) / 32768.0f;
-                buff[2*i+1] = (float)ymfm::clamp(outputs[1], -32768, 32768) / 32768.0f;
+                buff[2*i] = (float)clamp(outputs[0], -32768, 32768) / 32768.0f;
+                buff[2*i+1] = (float)clamp(outputs[1], -32768, 32768) / 32768.0f;
             }
             m_remainig_delays -= to_take;
             return 2*to_take;
@@ -152,8 +165,9 @@ namespace musac {
 
     void vgm_player::write_chip(chip_type type, uint8_t index, uint32_t reg, uint8_t data) const {
         auto* chip = find_chip(type, index);
-        if (chip != nullptr)
+        if (chip != nullptr) {
             chip->write(reg, data);
+        }
     }
 
     uint32_t vgm_player::parse_header(const std::vector <uint8_t>& buffer, uint32_t& offset) {
@@ -172,7 +186,7 @@ namespace musac {
         // +10: YM2413 clock
         clock = parse_uint32(buffer, offset);
         if (clock != 0)
-            add_chips <ymfm::ym2413>(clock, CHIP_YM2413, "YM2413");
+            add_chips(clock, CHIP_YM2413, "YM2413");
 
         // +14: GD3 offset
         uint32_t dummy = parse_uint32(buffer, offset);
@@ -195,12 +209,12 @@ namespace musac {
         // +2C: YM2612 clock
         clock = parse_uint32(buffer, offset);
         if (version >= 0x110 && clock != 0)
-            add_chips <ymfm::ym2612>(clock, CHIP_YM2612, "YM2612");
+            add_chips(clock, CHIP_YM2612, "YM2612");
 
         // +30: YM2151 clock
         clock = parse_uint32(buffer, offset);
         if (version >= 0x110 && clock != 0)
-            add_chips <ymfm::ym2151>(clock, CHIP_YM2151, "YM2151");
+            add_chips(clock, CHIP_YM2151, "YM2151");
 
         // +34: VGM data offset
         uint32_t data_start = parse_uint32(buffer, offset);
@@ -228,14 +242,14 @@ namespace musac {
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
-            add_chips <ymfm::ym2203>(clock, CHIP_YM2203, "YM2203");
+            add_chips(clock, CHIP_YM2203, "YM2203");
 
         // +48: YM2608 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
-            add_chips <ymfm::ym2608>(clock, CHIP_YM2608, "YM2608");
+            add_chips(clock, CHIP_YM2608, "YM2608");
 
         // +4C: YM2610/2610B clock
         if (offset + 4 > data_start)
@@ -243,9 +257,9 @@ namespace musac {
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0) {
             if (clock & 0x80000000)
-                add_chips <ymfm::ym2610b>(clock, CHIP_YM2610, "YM2610B");
+                add_chips(clock, CHIP_YM2610, "YM2610B");
             else
-                add_chips <ymfm::ym2610>(clock, CHIP_YM2610, "YM2610");
+                add_chips(clock, CHIP_YM2610, "YM2610");
         }
 
         // +50: YM3812 clock
@@ -253,35 +267,35 @@ namespace musac {
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
-            add_chips <ymfm::ym3812>(clock, CHIP_YM3812, "YM3812");
+            add_chips(clock, CHIP_YM3812, "YM3812");
 
         // +54: YM3526 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
-            add_chips <ymfm::ym3526>(clock, CHIP_YM3526, "YM3526");
+            add_chips(clock, CHIP_YM3526, "YM3526");
 
         // +58: Y8950 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
-            add_chips <ymfm::y8950>(clock, CHIP_Y8950, "Y8950");
+            add_chips(clock, CHIP_Y8950, "Y8950");
 
         // +5C: YMF262 clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
-            add_chips <ymfm::ymf262>(clock, CHIP_YMF262, "YMF262");
+            add_chips(clock, CHIP_YMF262, "YMF262");
 
         // +60: YMF278B clock
         if (offset + 4 > data_start)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
-            add_chips <ymfm::ymf278b>(clock, CHIP_YMF278B, "YMF278B");
+            add_chips(clock, CHIP_YMF278B, "YMF278B");
 
         // +64: YMF271 clock
         if (offset + 4 > data_start)
@@ -317,7 +331,7 @@ namespace musac {
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0) {
             LOG_WARN("VGM", "Clock for AY8910 specified, substituting YM2149");
-            add_chips <ymfm::ym2149>(clock, CHIP_YM2149, "YM2149");
+            add_chips(clock, CHIP_YM2149, "YM2149");
         }
 
         // +78: AY8910 flags
@@ -526,7 +540,7 @@ namespace musac {
         }
     }
 
-    void vgm_player::add_rom_data(chip_type type, ymfm::access_class access, const std::vector <uint8_t>& buffer,
+    void vgm_player::add_rom_data(chip_type type, int access, const std::vector <uint8_t>& buffer,
                                   uint32_t& localoffset, uint32_t size) {
         /*uint32_t length = */parse_uint32(buffer, localoffset);
         uint32_t start = parse_uint32(buffer, localoffset);
@@ -683,29 +697,29 @@ namespace musac {
                     {
                         auto* chip = find_chip(CHIP_YM2612, 0);
                         if (chip != nullptr)
-                            chip->write_data(ymfm::ACCESS_PCM, 0, size - 8, &buffer[localoffset]);
+                            chip->write_data(ACCESS_PCM, 0, size - 8, &buffer[localoffset]);
                         break;
                     }
 
                     case 0x82: // YM2610 ADPCM ROM data
-                        add_rom_data(CHIP_YM2610, ymfm::ACCESS_ADPCM_A, buffer, localoffset, size - 8);
+                        add_rom_data(CHIP_YM2610, ACCESS_ADPCM_A, buffer, localoffset, size - 8);
                         break;
 
                     case 0x81: // YM2608 DELTA-T ROM data
-                        add_rom_data(CHIP_YM2608, ymfm::ACCESS_ADPCM_B, buffer, localoffset, size - 8);
+                        add_rom_data(CHIP_YM2608, ACCESS_ADPCM_B, buffer, localoffset, size - 8);
                         break;
 
                     case 0x83: // YM2610 DELTA-T ROM data
-                        add_rom_data(CHIP_YM2610, ymfm::ACCESS_ADPCM_B, buffer, localoffset, size - 8);
+                        add_rom_data(CHIP_YM2610, ACCESS_ADPCM_B, buffer, localoffset, size - 8);
                         break;
 
                     case 0x84: // YMF278B ROM data
                     case 0x87: // YMF278B RAM data
-                        add_rom_data(CHIP_YMF278B, ymfm::ACCESS_PCM, buffer, localoffset, size - 8);
+                        add_rom_data(CHIP_YMF278B, ACCESS_PCM, buffer, localoffset, size - 8);
                         break;
 
                     case 0x88: // Y8950 DELTA-T ROM data
-                        add_rom_data(CHIP_Y8950, ymfm::ACCESS_ADPCM_B, buffer, localoffset, size - 8);
+                        add_rom_data(CHIP_Y8950, ACCESS_ADPCM_B, buffer, localoffset, size - 8);
                         break;
 
                     case 0x80: // Sega PCM ROM data
@@ -732,10 +746,7 @@ namespace musac {
                         break;
 
                     default:
-                        if (type >= 0x40 && type < 0x7f)
-                            printf("Compressed data block not supported\n");
-                        else
-                            printf("Unknown data block type 0x%02X\n", type);
+                        // Ignore unsupported data blocks
                         break;
                 }
                 offset += size;
@@ -744,7 +755,7 @@ namespace musac {
 
             // PCM RAM write
             case 0x68:
-                printf("68: PCM RAM write\n");
+                // Ignore PCM RAM writes for now
                 break;
 
             // AY8910, write value dd to register aa

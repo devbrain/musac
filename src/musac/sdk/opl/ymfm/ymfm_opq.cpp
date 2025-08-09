@@ -28,8 +28,8 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <musac/sdk/opl/ymfm/ymfm_opq.h>
-#include "musac/sdk/opl/ymfm/ymfm_fm.ipp"
+#include "../internal/ymfm/ymfm_opq.h"
+#include "../internal/ymfm/ymfm_fm.ipp"
 
 #define TEMPORARY_DEBUG_PRINTS (0)
 

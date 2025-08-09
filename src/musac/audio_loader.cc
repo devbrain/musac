@@ -13,6 +13,7 @@
 #include <musac/codecs/decoder_seq.hh>
 #include <musac/codecs/decoder_vgm.hh>
 #include <musac/codecs/decoder_voc.hh>
+#include <musac/codecs/decoder_mml.hh>
 
 
 namespace musac {
@@ -49,5 +50,6 @@ d_MUSAC_LOAD_IMPLEMENT(mod);
 d_MUSAC_LOAD_IMPLEMENT(midi);
 d_MUSAC_LOAD_IMPLEMENT(opb);
 d_MUSAC_LOAD_IMPLEMENT(vgm);
+d_MUSAC_LOAD_IMPLEMENT(mml);
 
 } // namespace musac

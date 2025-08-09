@@ -30,8 +30,8 @@
 
 
 
-#include <musac/sdk/opl/ymfm/ymfm_opz.h>
-#include "musac/sdk/opl/ymfm/ymfm_fm.ipp"
+#include "../internal/ymfm/ymfm_opz.h"
+#include "../internal/ymfm/ymfm_fm.ipp"
 
 #define TEMPORARY_DEBUG_PRINTS (0)
 

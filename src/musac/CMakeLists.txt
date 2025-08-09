@@ -30,6 +30,11 @@ set(MUSAC_SOURCES
 
         stream.cc
         ${MUSAC_PROJECT_ROOT}/musac/stream.hh
+        
+        pc_speaker_stream.cc
+        ${MUSAC_PROJECT_ROOT}/musac/pc_speaker_stream.hh
+        pc_speaker_decoder.cc
+        pc_speaker_decoder.hh
 
         fade_envelop.cc
         fade_envelop.hh

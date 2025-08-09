@@ -25,6 +25,10 @@ set (sdk_sources
         io_stream.cc
         audio_converter_v2.cc
         audio_converter_internal.cc
+        
+        # MML parser utility
+        ${MUSAC_PROJECT_ROOT}/musac/sdk/mml_parser.hh
+        mml_parser.cc
 )
 
 set(opl_sources
@@ -37,29 +41,50 @@ set(opl_sources
         ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/opl_command.h
         opl/opl_player.cc
         ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/opl_player.hh
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/ymfm/ymfm.h
-        opl/ymfm/ymfm_adpcm.cpp
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/ymfm/ymfm_adpcm.h
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/ymfm/ymfm_fm.h
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/ymfm/ymfm_fm.ipp
-        opl/ymfm/ymfm_misc.cpp
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/ymfm/ymfm_misc.h
-        opl/ymfm/ymfm_opl.cpp
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/ymfm/ymfm_opl.h
-        opl/ymfm/ymfm_opm.cpp
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/ymfm/ymfm_opm.h
-        opl/ymfm/ymfm_opn.cpp
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/ymfm/ymfm_opn.h
-        opl/ymfm/ymfm_opq.cpp
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/ymfm/ymfm_opq.h
-        opl/ymfm/ymfm_opz.cpp
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/ymfm/ymfm_opz.h
-        opl/ymfm/ymfm_pcm.cpp
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/ymfm/ymfm_pcm.h
-        opl/ymfm/ymfm_ssg.cpp
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/ymfm/ymfm_ssg.h
-        opl/ymfm_chip.cc
+        # New chip emulator interface
+        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/chip_emulator.hh
+        opl/chip_emulator_impl.cc
+        # Legacy compatibility header
         ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/ymfm_chip.hh
+        # Internal YMFM sources (no longer in public headers)
+        opl/ymfm/ymfm_adpcm.cpp
+        opl/ymfm/ymfm_misc.cpp
+        opl/ymfm/ymfm_opl.cpp
+        opl/ymfm/ymfm_opm.cpp
+        opl/ymfm/ymfm_opn.cpp
+        opl/ymfm/ymfm_opq.cpp
+        opl/ymfm/ymfm_opz.cpp
+        opl/ymfm/ymfm_pcm.cpp
+        opl/ymfm/ymfm_ssg.cpp
+)
+
+set(midi_sources
+        # Public headers
+        ${MUSAC_PROJECT_ROOT}/musac/sdk/midi/opl_midi_synth.hh
+        ${MUSAC_PROJECT_ROOT}/musac/sdk/midi/opl_patches.hh
+        ${MUSAC_PROJECT_ROOT}/musac/sdk/midi/midi_sequence.hh
+        # Implementation files
+        midi/opl_midi_synth.cc
+        midi/opl_midi_synth_impl.cc
+        midi/opl_midi_synth_impl.hh
+        midi/opl_patches.cc
+        midi/patchnames.cc
+        midi/midi_sequence.cc
+        # Sequence format implementations
+        midi/sequence.h
+        midi/sequence.cpp
+        midi/sequence_mid.h
+        midi/sequence_mid.cpp
+        midi/sequence_mus.h
+        midi/sequence_mus.cpp
+        midi/sequence_xmi.h
+        midi/sequence_xmi.cpp
+        midi/sequence_hmi.h
+        midi/sequence_hmi.cpp
+        midi/sequence_hmp.h
+        midi/sequence_hmp.cpp
+        # Patch data
+        midi/midi_opl_data.cc
 )
 
 # Test for endianness
@@ -85,6 +110,7 @@ endif()
 add_library(musac_sdk ${LIB_BUILD_TYPE}
         ${sdk_sources}
         ${opl_sources}
+        ${midi_sources}
 )
 
 target_include_directories(musac_sdk
@@ -93,6 +119,9 @@ target_include_directories(musac_sdk
             $<BUILD_INTERFACE:${MUSAC_PROJECT_ROOT}>
             $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/opl  # For internal YMFM headers
+            ${CMAKE_CURRENT_SOURCE_DIR}/midi  # For internal MIDI headers
 )
 target_link_libraries(musac_sdk PUBLIC thirdparty::failsafe)
 

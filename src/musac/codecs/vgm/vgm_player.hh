@@ -30,7 +30,6 @@ namespace musac {
                 return m_done;
             }
         private:
-            template<typename ChipType>
             void add_chips(uint32_t clock, chip_type type, char const* chipname) {
                 uint32_t clockval = clock & 0x3fffffff;
                 int numchips = (clock & 0x40000000) ? 2 : 1;
@@ -38,7 +37,7 @@ namespace musac {
                     std::string name = (numchips == 2) ? 
                         std::string(chipname) + " #" + std::to_string(index) : chipname;
                     m_active_chips.push_back(
-                        std::make_unique <ymfm_chip <ChipType>>(clockval, type, name.c_str()));
+                        std::make_unique<ymfm_chip_base>(clockval, type, name.c_str()));
                 }
             }
 
@@ -57,7 +56,7 @@ namespace musac {
                               uint32_t output_rate,
                               std::vector <int32_t>& wav_buffer);
 
-            void add_rom_data(chip_type type, ymfm::access_class access,
+            void add_rom_data(chip_type type, int access,
                               const std::vector <uint8_t>& buffer, uint32_t& localoffset, uint32_t size);
 
             int apply_cmd(const std::vector <uint8_t>& buffer, uint32_t& offset, bool& done);

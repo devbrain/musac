@@ -14,6 +14,8 @@ enum class music_type {
     cmf,
     hmp,
     mid,
+    mml_bouree,
+    mml_complex,
     mp3,
     opb,
     s3m,

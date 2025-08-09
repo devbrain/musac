@@ -5,6 +5,7 @@
 #include <musac/audio_source.hh>
 #include <musac/error.hh>
 #include <failsafe/failsafe.hh>
+#include <iostream>
 musac::audio_source::audio_source(std::unique_ptr <decoder> decoder_obj,
                                   std::unique_ptr <resampler> resampler_obj,
                                   std::unique_ptr<musac::io_stream> rwops)
