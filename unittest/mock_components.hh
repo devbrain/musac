@@ -141,7 +141,15 @@ public:
         return false;
     }
     
+    const char* get_name() const override {
+        return "Test Decoder";
+    }
+    
 protected:
+    bool do_accept(musac::io_stream* /*rwops*/) override {
+        // Test decoder accepts any input
+        return true;
+    }
     size_t do_decode(float* buf, size_t len, bool& call_again) override {
         size_t frames_requested = len / m_channels;
         size_t frames_to_read = std::min(frames_requested, 
@@ -411,7 +419,16 @@ public:
         return false;
     }
     
+    const char* get_name() const override {
+        return "Mock Decoder With Errors";
+    }
+    
 protected:
+    bool do_accept(io_stream* /*rwops*/) override {
+        // Mock decoder accepts any input unless configured to fail
+        return !wrong_format;
+    }
+    
     size_t do_decode(float* buf, size_t len, bool& call_again) override {
         if (fail_on_decode) {
             throw std::runtime_error("Simulated decode failure");

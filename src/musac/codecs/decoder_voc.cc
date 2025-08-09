@@ -434,6 +434,21 @@ decoder_voc::decoder_voc() : m_pimpl(std::make_unique<impl>()) {}
 
 decoder_voc::~decoder_voc() = default;
 
+bool decoder_voc::do_accept(io_stream* rwops) {
+    // Check for Creative Voice File signature
+    uint8 signature[20];
+    
+    if (rwops->read(signature, sizeof(signature)) != sizeof(signature)) {
+        return false;
+    }
+    
+    return (std::memcmp(signature, "Creative Voice File\032", sizeof(signature)) == 0);
+}
+
+const char* decoder_voc::get_name() const {
+    return "Creative Voice File (VOC)";
+}
+
 void decoder_voc::open(io_stream* rwops) {
     m_pimpl->m_rwops = rwops;
     

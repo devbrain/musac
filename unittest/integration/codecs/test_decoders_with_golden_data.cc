@@ -684,4 +684,190 @@ TEST_SUITE("Decoders::GoldenData") {
             }
         }
     }
+    
+    TEST_CASE("Decoder Accept Tests") {
+        SUBCASE("Each decoder accepts its own format") {
+            struct TestCase {
+                const uint8_t* data;
+                size_t size;
+                std::function<std::unique_ptr<musac::decoder>()> create_decoder;
+                const char* name;
+            };
+            
+            TestCase tests[] = {
+                { test16_aiff_input, test16_aiff_input_size,
+                  []() { return std::make_unique<musac::decoder_aiff>(); }, "AIFF" },
+                { file_1_voc_input, file_1_voc_input_size,
+                  []() { return std::make_unique<musac::decoder_voc>(); }, "VOC" },
+                { soundcard_wav_input, soundcard_wav_input_size,
+                  []() { return std::make_unique<musac::decoder_drwav>(); }, "WAV" },
+                { brix_cmf_input, brix_cmf_input_size,
+                  []() { return std::make_unique<musac::decoder_cmf>(); }, "CMF" },
+                { simon_mid_input, simon_mid_input_size,
+                  []() { return std::make_unique<musac::decoder_seq>(); }, "MIDI" },
+                { doom_mus_input, doom_mus_input_size,
+                  []() { return std::make_unique<musac::decoder_seq>(); }, "MUS" },
+                { doom_opb_input, doom_opb_input_size,
+                  []() { return std::make_unique<musac::decoder_opb>(); }, "OPB" },
+                { vgm_vgz_input, vgm_vgz_input_size,
+                  []() { return std::make_unique<musac::decoder_vgm>(); }, "VGM" },
+                { GCOMP1_XMI_input, GCOMP1_XMI_input_size,
+                  []() { return std::make_unique<musac::decoder_seq>(); }, "XMI" },
+                { punch_ogg_input, punch_ogg_input_size,
+                  []() { return std::make_unique<musac::decoder_vorbis>(); }, "Vorbis" }
+            };
+            
+            for (const auto& test : tests) {
+                INFO("Testing " << test.name << " decoder accepts its format");
+                
+                auto io = musac::io_from_memory(test.data, test.size);
+                REQUIRE(io != nullptr);
+                
+                auto decoder = test.create_decoder();
+                CHECK(decoder->accept(io.get()));
+                
+                // Verify stream position is restored
+                CHECK(io->tell() == 0);
+                
+                // Verify decoder can still open the file after accept
+                CHECK_NOTHROW(decoder->open(io.get()));
+                CHECK(decoder->is_open());
+            }
+        }
+        
+        SUBCASE("Decoders reject wrong formats") {
+            // Test that each decoder rejects formats it shouldn't handle
+            struct TestCase {
+                std::function<std::unique_ptr<musac::decoder>()> create_decoder;
+                const char* decoder_name;
+                const uint8_t* wrong_data;
+                size_t wrong_size;
+                const char* wrong_format;
+            };
+            
+            TestCase cross_tests[] = {
+                // AIFF decoder should reject WAV
+                { []() { return std::make_unique<musac::decoder_aiff>(); }, "AIFF",
+                  soundcard_wav_input, soundcard_wav_input_size, "WAV" },
+                  
+                // WAV decoder should reject AIFF
+                { []() { return std::make_unique<musac::decoder_drwav>(); }, "WAV",
+                  test16_aiff_input, test16_aiff_input_size, "AIFF" },
+                  
+                // VOC decoder should reject MIDI
+                { []() { return std::make_unique<musac::decoder_voc>(); }, "VOC",
+                  simon_mid_input, simon_mid_input_size, "MIDI" },
+                  
+                // CMF decoder should reject MUS
+                { []() { return std::make_unique<musac::decoder_cmf>(); }, "CMF",
+                  doom_mus_input, doom_mus_input_size, "MUS" },
+                  
+                // OPB decoder should reject VGM
+                { []() { return std::make_unique<musac::decoder_opb>(); }, "OPB",
+                  vgm_vgz_input, vgm_vgz_input_size, "VGM" },
+                  
+                // VGM decoder should reject OPB
+                { []() { return std::make_unique<musac::decoder_vgm>(); }, "VGM",
+                  doom_opb_input, doom_opb_input_size, "OPB" },
+                  
+                // Vorbis decoder should reject WAV
+                { []() { return std::make_unique<musac::decoder_vorbis>(); }, "Vorbis",
+                  soundcard_wav_input, soundcard_wav_input_size, "WAV" }
+            };
+            
+            for (const auto& test : cross_tests) {
+                INFO("Testing " << test.decoder_name << " decoder rejects " << test.wrong_format);
+                
+                auto io = musac::io_from_memory(test.wrong_data, test.wrong_size);
+                REQUIRE(io != nullptr);
+                
+                auto decoder = test.create_decoder();
+                CHECK_FALSE(decoder->accept(io.get()));
+                
+                // Verify stream position is restored even on rejection
+                CHECK(io->tell() == 0);
+            }
+        }
+        
+        SUBCASE("Accept called multiple times") {
+            // Test that accept can be called multiple times safely
+            auto io = musac::io_from_memory(soundcard_wav_input, soundcard_wav_input_size);
+            REQUIRE(io != nullptr);
+            
+            musac::decoder_drwav decoder;
+            
+            // Call accept multiple times
+            CHECK(decoder.accept(io.get()));
+            CHECK(decoder.accept(io.get()));
+            CHECK(decoder.accept(io.get()));
+            
+            // Stream position should still be at beginning
+            CHECK(io->tell() == 0);
+            
+            // Decoder should still work
+            CHECK_NOTHROW(decoder.open(io.get()));
+            CHECK(decoder.is_open());
+        }
+        
+        SUBCASE("Accept with invalid/empty data") {
+            // Test decoders handle invalid data gracefully
+            uint8_t empty_data[1] = {0};
+            uint8_t random_data[100];
+            for (int i = 0; i < 100; ++i) {
+                random_data[i] = static_cast<uint8_t>(i * 7 + 13);
+            }
+            
+            std::vector<std::unique_ptr<musac::decoder>> decoders;
+            decoders.push_back(std::make_unique<musac::decoder_aiff>());
+            decoders.push_back(std::make_unique<musac::decoder_voc>());
+            decoders.push_back(std::make_unique<musac::decoder_drwav>());
+            decoders.push_back(std::make_unique<musac::decoder_cmf>());
+            decoders.push_back(std::make_unique<musac::decoder_seq>());
+            decoders.push_back(std::make_unique<musac::decoder_opb>());
+            decoders.push_back(std::make_unique<musac::decoder_vgm>());
+            decoders.push_back(std::make_unique<musac::decoder_vorbis>());
+            
+            for (auto& decoder : decoders) {
+                INFO("Testing " << decoder->get_name() << " with invalid data");
+                
+                // Test with empty data
+                auto io_empty = musac::io_from_memory(empty_data, sizeof(empty_data));
+                CHECK_FALSE(decoder->accept(io_empty.get()));
+                CHECK(io_empty->tell() == 0);
+                
+                // Test with random data
+                auto io_random = musac::io_from_memory(random_data, sizeof(random_data));
+                // Most decoders should reject random data (some might have false positives)
+                [[maybe_unused]] bool accepted = decoder->accept(io_random.get());  // Just verify it doesn't crash
+                CHECK(io_random->tell() == 0);  // Position should be restored
+            }
+        }
+        
+        SUBCASE("Decoder name is set correctly") {
+            struct NameTest {
+                std::function<std::unique_ptr<musac::decoder>()> create_decoder;
+                const char* expected_name_substring;
+            };
+            
+            NameTest name_tests[] = {
+                { []() { return std::make_unique<musac::decoder_aiff>(); }, "AIFF" },
+                { []() { return std::make_unique<musac::decoder_voc>(); }, "VOC" },
+                { []() { return std::make_unique<musac::decoder_drwav>(); }, "WAV" },
+                { []() { return std::make_unique<musac::decoder_cmf>(); }, "CMF" },
+                { []() { return std::make_unique<musac::decoder_seq>(); }, "MIDI" },
+                { []() { return std::make_unique<musac::decoder_opb>(); }, "OPB" },
+                { []() { return std::make_unique<musac::decoder_vgm>(); }, "VGM" },
+                { []() { return std::make_unique<musac::decoder_vorbis>(); }, "Vorbis" }
+            };
+            
+            for (const auto& test : name_tests) {
+                auto decoder = test.create_decoder();
+                std::string name = decoder->get_name();
+                
+                INFO("Checking decoder name contains: " << test.expected_name_substring);
+                CHECK(name.find(test.expected_name_substring) != std::string::npos);
+                CHECK(!name.empty());
+            }
+        }
+    }
 }

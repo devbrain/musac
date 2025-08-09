@@ -10,6 +10,67 @@ namespace musac {
 decoder_mml::decoder_mml() = default;
 decoder_mml::~decoder_mml() = default;
 
+bool decoder_mml::do_accept(io_stream* stream) {
+    // Read a portion of the file to check for MML commands
+    char buffer[512];
+    int64_t bytes_read = stream->read(buffer, sizeof(buffer) - 1);
+    
+    if (bytes_read <= 0) {
+        return false;
+    }
+    
+    buffer[bytes_read] = '\0';
+    
+    // Convert to uppercase for easier matching
+    std::string content(buffer);
+    std::transform(content.begin(), content.end(), content.begin(), ::toupper);
+    
+    // Look for common MML commands
+    // Note: C, D, E, F, G, A, B notes
+    // T (tempo), L (length), O (octave), V (volume), R/P (rest)
+    // ML/MN/MS (articulation), < > (octave up/down)
+    
+    // Check for MML-specific patterns
+    bool has_notes = false;
+    bool has_commands = false;
+    
+    // Look for note patterns (letter followed by optional sharp/flat and number)
+    for (char note : {'C', 'D', 'E', 'F', 'G', 'A', 'B'}) {
+        if (content.find(note) != std::string::npos) {
+            has_notes = true;
+            break;
+        }
+    }
+    
+    // Look for MML commands
+    if (content.find('T') != std::string::npos || // Tempo
+        content.find('L') != std::string::npos || // Length
+        content.find('O') != std::string::npos || // Octave
+        content.find('V') != std::string::npos || // Volume
+        content.find('R') != std::string::npos || // Rest
+        content.find('P') != std::string::npos || // Pause
+        content.find('<') != std::string::npos || // Octave down
+        content.find('>') != std::string::npos) { // Octave up
+        has_commands = true;
+    }
+    
+    // Must have both notes and commands to be considered MML
+    // Also check that it's primarily text (not binary)
+    bool is_text = true;
+    for (int i = 0; i < bytes_read; i++) {
+        if (buffer[i] < 32 && buffer[i] != '\n' && buffer[i] != '\r' && buffer[i] != '\t') {
+            is_text = false;
+            break;
+        }
+    }
+    
+    return is_text && has_notes && has_commands;
+}
+
+const char* decoder_mml::get_name() const {
+    return "MML (Music Macro Language)";
+}
+
 void decoder_mml::open(io_stream* stream) {
     if (!stream) {
         THROW_RUNTIME("No stream provided to MML decoder");

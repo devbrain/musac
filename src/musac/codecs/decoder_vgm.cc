@@ -25,6 +25,34 @@ namespace musac {
 
     decoder_vgm::~decoder_vgm() = default;
 
+    bool decoder_vgm::do_accept(io_stream* rwops) {
+        // Check for "Vgm " magic bytes at the start of the file
+        // VGM files can be gzip compressed, so we need to check for both cases
+        uint8_t magic[4];
+        
+        if (rwops->read(magic, 4) != 4) {
+            return false;
+        }
+        
+        // Check for uncompressed VGM signature "Vgm "
+        if (magic[0] == 'V' && magic[1] == 'g' && magic[2] == 'm' && magic[3] == ' ') {
+            return true;
+        }
+        
+        // Check for gzip compressed VGM (0x1F 0x8B 0x08)
+        if (magic[0] == 0x1f && magic[1] == 0x8b && magic[2] == 0x08) {
+            // It's a gzip file, but we'd need to decompress to check if it's VGM
+            // For now, we'll assume it could be VGM and let the full load process validate
+            return true;
+        }
+        
+        return false;
+    }
+    
+    const char* decoder_vgm::get_name() const {
+        return "VGM (Video Game Music)";
+    }
+
     void decoder_vgm::open(io_stream* rwops) {
         bool result = m_pimpl->m_player.load(rwops);
         if (!result) {

@@ -69,7 +69,16 @@ public:
         return seek_to_pcm_frame(frame_num);
     }
     
+    const char* get_name() const override {
+        return "Test Decoder";
+    }
+    
 protected:
+    bool do_accept(musac::io_stream* /*rwops*/) override {
+        // Test decoder accepts any input
+        return true;
+    }
+    
     size_t do_decode(float* buf, size_t len, bool& call_again) override {
         size_t available = m_data.size() - m_position;
         size_t to_copy = std::min(len, available);

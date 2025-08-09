@@ -57,6 +57,35 @@ namespace musac {
 
     decoder_modplug::~decoder_modplug() = default;
 
+    bool decoder_modplug::do_accept(io_stream* rwops) {
+        // ModPlug_Load accepts many formats, so we need to actually try loading
+        // Read some data to test
+        int64 dataSize = rwops->get_size();
+        if (dataSize <= 0 || dataSize > std::numeric_limits<int>::max()) {
+            return false;
+        }
+        
+        // Read up to 64KB for testing (most module headers are much smaller)
+        size_t testSize = std::min(static_cast<size_t>(dataSize), size_t(65536));
+        buffer<uint8> data(testSize);
+        
+        if (rwops->read(data.data(), testSize) != testSize) {
+            return false;
+        }
+        
+        // Try to load with ModPlug
+        ModPlugFile* test = ModPlug_Load(data.data(), static_cast<int>(testSize), &m_pimpl->settings);
+        if (test) {
+            ModPlug_Unload(test);
+            return true;
+        }
+        return false;
+    }
+    
+    const char* decoder_modplug::get_name() const {
+        return "ModPlug (MOD/S3M/XM/IT)";
+    }
+
     void decoder_modplug::open(io_stream* rwops) {
         if (is_open()) {
             return;

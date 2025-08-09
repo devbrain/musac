@@ -32,6 +32,17 @@ namespace musac {
         return 1;  // PC speaker is mono
     }
     
+    const char* pc_speaker_decoder::get_name() const {
+        return "PC Speaker";
+    }
+    
+    bool pc_speaker_decoder::do_accept(io_stream* rwops) {
+        // PC speaker decoder doesn't use file streams, it generates tones
+        // So we always return false for file-based streams
+        (void)rwops;
+        return false;
+    }
+    
     size_t pc_speaker_decoder::do_decode(float buf[], size_t len, bool& call_again) {
         size_t samples_written = 0;
         

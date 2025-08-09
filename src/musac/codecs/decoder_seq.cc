@@ -33,6 +33,57 @@ namespace musac {
 
     decoder_seq::~decoder_seq() = default;
 
+    bool decoder_seq::do_accept(io_stream* rwops) {
+        // Read enough data to identify the format
+        // Most MIDI-like formats have their signature in the first 32 bytes
+        uint8_t header[32];
+        size_t bytes_read = rwops->read(header, sizeof(header));
+        
+        if (bytes_read < 4) {
+            return false;
+        }
+        
+        // Check for supported formats using the midi_sequence validators
+        // These are implemented in sequence_*.cpp files
+        bool is_valid = false;
+        
+        // MUS format: "MUS\x1a"
+        if (bytes_read >= 4 && header[0] == 'M' && header[1] == 'U' && 
+            header[2] == 'S' && header[3] == 0x1a) {
+            is_valid = true;
+        }
+        // MIDI format: "MThd"
+        else if (bytes_read >= 4 && header[0] == 'M' && header[1] == 'T' && 
+                 header[2] == 'h' && header[3] == 'd') {
+            is_valid = true;
+        }
+        // XMI format: "FORM" followed by "XDIR" or "XMID"
+        else if (bytes_read >= 4 && header[0] == 'F' && header[1] == 'O' && 
+                 header[2] == 'R' && header[3] == 'M') {
+            // Check for XMI signature later in the header
+            if (bytes_read >= 12) {
+                if ((header[8] == 'X' && header[9] == 'D' && header[10] == 'I' && header[11] == 'R') ||
+                    (header[8] == 'X' && header[9] == 'M' && header[10] == 'I' && header[11] == 'D')) {
+                    is_valid = true;
+                }
+            }
+        }
+        // HMI format: "HMI-MIDISONG"
+        else if (bytes_read >= 18 && std::memcmp(header, "HMI-MIDISONG061595", 18) == 0) {
+            is_valid = true;
+        }
+        // HMP format: "HMIMIDIP"
+        else if (bytes_read >= 8 && std::memcmp(header, "HMIMIDIP", 8) == 0) {
+            is_valid = true;
+        }
+        
+        return is_valid;
+    }
+    
+    const char* decoder_seq::get_name() const {
+        return "MIDI Sequence (MID/MUS/XMI/HMI/HMP)";
+    }
+
     void decoder_seq::open(io_stream* rwops) {
         bool result = m_pimpl->m_player->load_sequence(rwops);
         if (!result) {

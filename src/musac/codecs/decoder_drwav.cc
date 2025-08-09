@@ -69,6 +69,21 @@ namespace musac {
         drwav_uninit(&m_pimpl->m_handle);
     }
 
+    bool decoder_drwav::do_accept(io_stream* rwops) {
+        // Use dr_wav's init function to test if the format is valid
+        drwav test_handle;
+        if (drwav_init(&test_handle, drwav_read_callback, drwav_seek_callback, rwops, nullptr)) {
+            // Successfully initialized, it's a valid WAV file
+            drwav_uninit(&test_handle);
+            return true;
+        }
+        return false;
+    }
+    
+    const char* decoder_drwav::get_name() const {
+        return "WAV (dr_wav)";
+    }
+
     void decoder_drwav::open(io_stream* const rwops) {
         if (is_open()) {
             return;
