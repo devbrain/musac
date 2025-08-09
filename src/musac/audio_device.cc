@@ -1,6 +1,6 @@
 #include <musac/audio_device.hh>
 #include <musac/audio_stream_interface.hh>
-#include <musac/sdk/audio_backend_v2.hh>
+#include <musac/sdk/audio_backend.hh>
 #include <musac/backends/sdl3/sdl3_backend.hh>
 #include <musac/backends/null/null_backend.hh>
 #include <musac/stream.hh>
@@ -22,7 +22,7 @@ extern void close_audio_stream();
 extern void reset_audio_stream();
 
 // Global backend instance for backward compatibility
-static std::shared_ptr<audio_backend_v2> s_global_backend;
+static std::shared_ptr<audio_backend> s_global_backend;
 static std::mutex s_backend_mutex;
 
 
@@ -63,7 +63,7 @@ void close_audio_devices() {
 
 // New v2 API factory methods
 std::vector<device_info> audio_device::enumerate_devices(
-    std::shared_ptr<audio_backend_v2> backend,
+    std::shared_ptr<audio_backend> backend,
     bool playback_devices) {
     
     if (!backend) {
@@ -85,7 +85,7 @@ std::vector<device_info> audio_device::enumerate_devices(
 }
 
 audio_device audio_device::open_default_device(
-    std::shared_ptr<audio_backend_v2> backend,
+    std::shared_ptr<audio_backend> backend,
     const audio_spec* spec) {
     
     if (!backend) {
@@ -100,7 +100,7 @@ audio_device audio_device::open_default_device(
 }
 
 audio_device audio_device::open_device(
-    std::shared_ptr<audio_backend_v2> backend,
+    std::shared_ptr<audio_backend> backend,
     const std::string& device_id, 
     const audio_spec* spec) {
     
@@ -130,7 +130,7 @@ struct audio_device::impl {
     std::unique_ptr<audio_stream_interface> stream;
     
     // 2. For v2 backend path
-    std::shared_ptr<audio_backend_v2> backend_v2;
+    std::shared_ptr<audio_backend> backend_v2;
     uint32_t device_handle_v2 = 0;
     
     // 3. Common members
@@ -162,7 +162,7 @@ audio_device::~audio_device() {
 
 // New v2 backend constructor
 audio_device::audio_device(
-    std::shared_ptr<audio_backend_v2> backend,
+    std::shared_ptr<audio_backend> backend,
     const device_info_v2& info, 
     const audio_spec* desired_spec)
     : m_pimpl(std::make_unique<impl>()) {

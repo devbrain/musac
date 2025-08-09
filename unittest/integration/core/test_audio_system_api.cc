@@ -9,7 +9,7 @@ namespace musac::test {
 TEST_SUITE("AudioSystem::Integration") {
     // Test fixture to ensure proper initialization/cleanup
     struct audio_system_fixture {
-        std::shared_ptr<audio_backend_v2> backend;
+        std::shared_ptr<audio_backend> backend;
         
         audio_system_fixture() {
             backend = init_test_audio_system();
@@ -117,13 +117,13 @@ TEST_SUITE("AudioSystem::Integration") {
         
         SUBCASE("enumerate_devices throws when not initialized") {
             // Can't enumerate without a backend
-            std::shared_ptr<audio_backend_v2> null_backend;
+            std::shared_ptr<audio_backend> null_backend;
             CHECK_THROWS(audio_device::enumerate_devices(null_backend, true));
         }
         
         SUBCASE("open_default_device throws when not initialized") {
             // Can't open device without a backend
-            std::shared_ptr<audio_backend_v2> null_backend;
+            std::shared_ptr<audio_backend> null_backend;
             CHECK_THROWS(audio_device::open_default_device(null_backend));
         }
         

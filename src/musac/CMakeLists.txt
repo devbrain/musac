@@ -24,10 +24,6 @@ set(MUSAC_SOURCES
         ${MUSAC_PROJECT_ROOT}/musac/audio_loader.hh
 
 
-
-        lock.hh
-
-
         stream.cc
         ${MUSAC_PROJECT_ROOT}/musac/stream.hh
         
@@ -121,8 +117,8 @@ if(MUSAC_BUILD_TESTS AND MUSAC_BUILD_SHARED)
         target_sources(musac_internal PRIVATE
             backends/sdl3/sdl3_audio_stream.cc
             backends/sdl3/sdl3_audio_stream.hh
-            backends/sdl3/sdl3_backend_v2.cc
-            backends/sdl3/sdl3_backend_v2.hh
+            backends/sdl3/sdl3_backend.cc
+            backends/sdl3/sdl3_backend.hh
             backends/sdl3/sdl3_backend_factory.cc
         )
     endif()

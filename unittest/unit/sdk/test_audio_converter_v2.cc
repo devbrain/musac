@@ -1,5 +1,5 @@
 #include <doctest/doctest.h>
-#include <musac/sdk/audio_converter_v2.hh>
+#include <musac/sdk/audio_converter.hh>
 #include <musac/sdk/audio_format.hh>
 #include <musac/sdk/buffer.hh>
 #include <vector>

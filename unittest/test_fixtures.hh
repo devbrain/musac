@@ -5,7 +5,7 @@
 #include <musac/audio_device.hh>
 #include <musac/stream.hh>
 #include <musac/backends/sdl3/sdl3_backend.hh>
-#include <musac/sdk/audio_backend_v2.hh>
+#include <musac/sdk/audio_backend.hh>
 #include <memory>
 #include <thread>
 #include <chrono>
@@ -20,13 +20,13 @@ namespace test {
 // Helper class for tests that automatically initializes and cleans up audio system
 class audio_test_fixture_v2 {
 protected:
-    std::shared_ptr<audio_backend_v2> backend;
+    std::shared_ptr<audio_backend> backend;
     
 public:
     audio_test_fixture_v2() {
         // Create and initialize SDL3 backend with dummy driver for testing
         // The dummy driver is set via environment variable in test_main.cc
-        backend = std::shared_ptr<audio_backend_v2>(create_sdl3_backend_v2());
+        backend = std::shared_ptr<audio_backend>(create_sdl3_backend());
         audio_system::init(backend);
     }
     
@@ -45,7 +45,7 @@ public:
     }
     
     // Helper to get the backend
-    std::shared_ptr<audio_backend_v2> get_backend() const {
+    std::shared_ptr<audio_backend> get_backend() const {
         return backend;
     }
 };
@@ -63,11 +63,11 @@ public:
 // RAII wrapper for backend initialization/shutdown
 class backend_guard {
 private:
-    std::shared_ptr<audio_backend_v2> m_backend;
+    std::shared_ptr<audio_backend> m_backend;
     
 public:
-    explicit backend_guard(std::shared_ptr<audio_backend_v2> backend = nullptr)
-        : m_backend(backend ? backend : std::shared_ptr<audio_backend_v2>(create_sdl3_backend_v2())) {
+    explicit backend_guard(std::shared_ptr<audio_backend> backend = nullptr)
+        : m_backend(backend ? backend : std::shared_ptr<audio_backend>(create_sdl3_backend())) {
         if (m_backend) {
             m_backend->init();
         }
@@ -97,16 +97,16 @@ public:
         return *this;
     }
     
-    std::shared_ptr<audio_backend_v2> get() const { return m_backend; }
-    audio_backend_v2* operator->() const { return m_backend.get(); }
-    audio_backend_v2& operator*() const { return *m_backend; }
+    std::shared_ptr<audio_backend> get() const { return m_backend; }
+    audio_backend* operator->() const { return m_backend.get(); }
+    audio_backend& operator*() const { return *m_backend; }
 };
 
 // Standalone helper functions for simple test conversions
 
 // Initialize audio system with SDL3 backend (dummy driver) for testing
-inline std::shared_ptr<audio_backend_v2> init_test_audio_system() {
-    std::shared_ptr<audio_backend_v2> backend(create_sdl3_backend_v2());
+inline std::shared_ptr<audio_backend> init_test_audio_system() {
+    std::shared_ptr<audio_backend> backend(create_sdl3_backend());
     audio_system::init(backend);
     return backend;
 }
@@ -140,11 +140,11 @@ inline std::unique_ptr<audio_stream> create_playing_stream(audio_device& device,
 
 // Helper to create device with stream ready to play
 inline std::pair<audio_device, std::unique_ptr<audio_stream>> create_device_with_stream(
-    std::shared_ptr<audio_backend_v2> backend = nullptr,
+    std::shared_ptr<audio_backend> backend = nullptr,
     size_t duration_samples = 44100) {
     
     if (!backend) {
-        backend = std::shared_ptr<audio_backend_v2>(create_sdl3_backend_v2());
+        backend = std::shared_ptr<audio_backend>(create_sdl3_backend());
         backend->init();
     }
     

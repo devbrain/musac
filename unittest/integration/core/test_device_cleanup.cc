@@ -2,7 +2,7 @@
 #include <musac/audio_device.hh>
 #include <musac/audio_system.hh>
 #include <musac/backends/sdl3/sdl3_backend.hh>
-#include <musac/sdk/audio_backend_v2.hh>
+#include <musac/sdk/audio_backend.hh>
 #include <memory>
 #include <thread>
 #include <chrono>
@@ -10,7 +10,7 @@
 TEST_SUITE("Core::DeviceLifecycle::Integration") {
 
 TEST_CASE("Resource cleanup ordering with device_guard") {
-    std::shared_ptr<musac::audio_backend_v2> backend(musac::create_sdl3_backend_v2());
+    std::shared_ptr<musac::audio_backend> backend(musac::create_sdl3_backend());
     musac::audio_system::init(backend);
     
     SUBCASE("Device destroyed with active callback") {

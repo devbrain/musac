@@ -29,9 +29,9 @@ struct device_info_v2 {
  * @note This is the v2 interface. The original audio_backend interface is preserved
  *       for backward compatibility during the migration period.
  */
-class audio_backend_v2 {
+class audio_backend {
 public:
-    virtual ~audio_backend_v2() = default;
+    virtual ~audio_backend() = default;
     
     // ========================================================================
     // Initialization and lifecycle management

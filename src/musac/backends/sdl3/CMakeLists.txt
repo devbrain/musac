@@ -70,8 +70,8 @@ set(SDL3_BACKEND_SOURCES
     sdl3_audio_stream.cc
     sdl3_audio_stream.hh
     # v2 backend implementation
-    sdl3_backend_v2.cc
-    sdl3_backend_v2.hh
+    sdl3_backend.cc
+    sdl3_backend.hh
     sdl3_backend_factory.cc
 )
 

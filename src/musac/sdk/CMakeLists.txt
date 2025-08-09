@@ -20,10 +20,10 @@ set (sdk_sources
         audio_format.cc
         ${MUSAC_PROJECT_ROOT}/musac/sdk/io_stream.hh
         ${MUSAC_PROJECT_ROOT}/musac/sdk/endian.hh
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/audio_converter_v2.hh
+        ${MUSAC_PROJECT_ROOT}/musac/sdk/audio_converter.hh
         ${CMAKE_CURRENT_BINARY_DIR}/musac/sdk/musac_sdk_config.h
         io_stream.cc
-        audio_converter_v2.cc
+        audio_converter.cc
         audio_converter_internal.cc
         
         # MML parser utility

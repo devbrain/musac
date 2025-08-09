@@ -1,7 +1,7 @@
 #ifndef MUSAC_SDL3_BACKEND_V2_HH
 #define MUSAC_SDL3_BACKEND_V2_HH
 
-#include <musac/sdk/audio_backend_v2.hh>
+#include <musac/sdk/audio_backend.hh>
 #include <SDL3/SDL.h>
 #include <map>
 #include <mutex>
@@ -10,14 +10,12 @@
 
 namespace musac {
 
-// Forward declaration
-class sdl3_audio_stream_v2;
 
 /**
  * SDL3 implementation of the unified audio backend interface.
  * This backend provides full device management and audio streaming using SDL3.
  */
-class sdl3_backend_v2 : public audio_backend_v2 {
+class sdl3_backend : public audio_backend {
 private:
     bool m_initialized = false;
     std::map<uint32_t, SDL_AudioDeviceID> m_open_devices;
@@ -30,8 +28,8 @@ private:
     static SDL_AudioFormat musac_to_sdl_format(audio_format fmt);
     
 public:
-    sdl3_backend_v2() = default;
-    ~sdl3_backend_v2() override;
+    sdl3_backend() = default;
+    ~sdl3_backend() override;
     
     // Initialization
     void init() override;

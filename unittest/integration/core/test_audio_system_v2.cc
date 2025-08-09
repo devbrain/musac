@@ -2,7 +2,7 @@
 #include <musac/audio_system.hh>
 #include <musac/audio_device.hh>
 #include <musac/backends/sdl3/sdl3_backend.hh>
-#include <musac/sdk/audio_backend_v2.hh>
+#include <musac/sdk/audio_backend.hh>
 #include <musac/sdk/audio_format.hh>
 #include <memory>
 #include <stdexcept>
@@ -13,7 +13,7 @@ TEST_SUITE("AudioSystem::BackendV2::Integration") {
     
     TEST_CASE("init with explicit backend") {
         // Create a backend explicitly
-        std::shared_ptr<audio_backend_v2> backend(create_sdl3_backend_v2());
+        std::shared_ptr<audio_backend> backend(create_sdl3_backend());
         REQUIRE(backend.get() != nullptr);
         
         // Initialize audio system with backend
@@ -37,7 +37,7 @@ TEST_SUITE("AudioSystem::BackendV2::Integration") {
     
     TEST_CASE("init with pre-initialized backend") {
         // Create and pre-initialize a backend
-        std::shared_ptr<audio_backend_v2> backend(create_sdl3_backend_v2());
+        std::shared_ptr<audio_backend> backend(create_sdl3_backend());
         backend->init();
         REQUIRE(backend->is_initialized());
         
@@ -54,7 +54,7 @@ TEST_SUITE("AudioSystem::BackendV2::Integration") {
     
     TEST_CASE("enumerate devices with v2 backend") {
         // Initialize with explicit backend
-        std::shared_ptr<audio_backend_v2> backend(create_sdl3_backend_v2());
+        std::shared_ptr<audio_backend> backend(create_sdl3_backend());
         audio_system::init(backend);
         
         // Enumerate devices should use the v2 backend
@@ -78,7 +78,7 @@ TEST_SUITE("AudioSystem::BackendV2::Integration") {
     }
     
     TEST_CASE("get default device with v2 backend") {
-        std::shared_ptr<audio_backend_v2> backend(create_sdl3_backend_v2());
+        std::shared_ptr<audio_backend> backend(create_sdl3_backend());
         audio_system::init(backend);
         
         // Get default device
@@ -102,7 +102,7 @@ TEST_SUITE("AudioSystem::BackendV2::Integration") {
     }
     
     TEST_CASE("create device from system backend") {
-        std::shared_ptr<audio_backend_v2> backend(create_sdl3_backend_v2());
+        std::shared_ptr<audio_backend> backend(create_sdl3_backend());
         audio_system::init(backend);
         
         // Get the backend from system
@@ -120,7 +120,7 @@ TEST_SUITE("AudioSystem::BackendV2::Integration") {
     }
     
     TEST_CASE("device switching with v2 backend") {
-        std::shared_ptr<audio_backend_v2> backend(create_sdl3_backend_v2());
+        std::shared_ptr<audio_backend> backend(create_sdl3_backend());
         audio_system::init(backend);
         
         // Create initial device
@@ -152,8 +152,8 @@ TEST_SUITE("AudioSystem::BackendV2::Integration") {
     
     TEST_CASE("multiple backends not shared") {
         // Create two separate backends
-        std::shared_ptr<audio_backend_v2> backend1(create_sdl3_backend_v2());
-        std::shared_ptr<audio_backend_v2> backend2(create_sdl3_backend_v2());
+        std::shared_ptr<audio_backend> backend1(create_sdl3_backend());
+        std::shared_ptr<audio_backend> backend2(create_sdl3_backend());
         
         // Initialize system with first backend
         audio_system::init(backend1);
@@ -177,7 +177,7 @@ TEST_SUITE("AudioSystem::BackendV2::Integration") {
         
         // Old API should still work
         // Initialize with null backend
-        std::shared_ptr<audio_backend_v2> backend(create_sdl3_backend_v2());
+        std::shared_ptr<audio_backend> backend(create_sdl3_backend());
         bool result = audio_system::init(backend);
         REQUIRE(result == true);
         
@@ -206,7 +206,7 @@ TEST_SUITE("AudioSystem::BackendV2::Integration") {
         
         // Enumerate should throw without initialization
         // Can't enumerate without backend
-        std::shared_ptr<audio_backend_v2> null_backend;
+        std::shared_ptr<audio_backend> null_backend;
         CHECK_THROWS_AS(
             audio_device::enumerate_devices(null_backend, true),
             std::runtime_error

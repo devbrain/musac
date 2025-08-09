@@ -9,11 +9,11 @@ namespace musac {
      * Use startFadeIn or startFadeOut to initiate fading, then call getGain() per block
      * to retrieve the current gain [0..1].
      */
-    class FadeEnvelope {
+    class fade_envelope {
         public:
-            enum class State { None, FadeIn, FadeOut };
+            enum class state { none, fade_in, fade_out };
 
-            FadeEnvelope() = default;
+            fade_envelope() = default;
 
             /**
              * Start a fade-in over the given duration in milliseconds.
@@ -35,14 +35,14 @@ namespace musac {
             /**
              * Query the current fade state.
              */
-            [[nodiscard]] State getState() const noexcept { return m_state; }
+            [[nodiscard]] state getState() const noexcept { return m_state; }
 
             void reset() {
-                m_state = State::None;
+                m_state = state::none;
             }
 
         private:
-            State                       m_state      = State::None;
+            state                       m_state      = state::none;
             std::chrono::milliseconds   m_duration    {0};
             std::chrono::steady_clock::time_point m_startTime;
     };

@@ -1,7 +1,7 @@
 #ifndef MUSAC_MOCK_BACKENDS_HH
 #define MUSAC_MOCK_BACKENDS_HH
 
-#include <musac/sdk/audio_backend_v2.hh>
+#include <musac/sdk/audio_backend.hh>
 #include <musac/audio_stream_interface.hh>
 #include <musac/sdk/audio_format.hh>
 #include <memory>
@@ -125,7 +125,7 @@ public:
 };
 
 // Enhanced mock backend with configurable behavior
-class mock_backend_v2_enhanced : public audio_backend_v2 {
+class mock_backend_v2_enhanced : public audio_backend {
 private:
     bool m_initialized{false};
     std::map<uint32_t, device_info_v2> m_devices;

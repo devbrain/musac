@@ -1,5 +1,5 @@
 #include <doctest/doctest.h>
-#include <musac/sdk/audio_backend_v2.hh>
+#include <musac/sdk/audio_backend.hh>
 #include <musac/audio_stream_interface.hh>
 #include <memory>
 #include <vector>
@@ -9,7 +9,7 @@
 namespace musac::test {
 
 // Mock implementation for testing the interface contract
-class mock_backend_v2 : public audio_backend_v2 {
+class mock_backend_v2 : public audio_backend {
 private:
     bool m_initialized = false;
     std::string m_name;
@@ -358,7 +358,7 @@ TEST_SUITE("Backend::Interface::Integration") {
             // Test the non-virtual convenience method
             // Note: This tests that the convenience wrapper correctly delegates to the virtual method
             // Need to cast to base class to access the convenience method
-            audio_backend_v2& base = backend;
+            audio_backend& base = backend;
             auto stream = base.create_stream(handle, spec);
             CHECK(stream == nullptr); // Expected for mock
         }

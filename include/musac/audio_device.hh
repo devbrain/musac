@@ -26,20 +26,20 @@ namespace musac {
     class audio_stream;
     class pc_speaker_stream;
     class audio_source;
-    class audio_backend_v2;
+    class audio_backend;
     struct device_info_v2;
 
     class MUSAC_EXPORT audio_device {
         public:
             // New factory methods that accept backend (v2 API)
             static std::vector<device_info> enumerate_devices(
-                std::shared_ptr<audio_backend_v2> backend,
+                std::shared_ptr<audio_backend> backend,
                 bool playback_devices = true);
             static audio_device open_default_device(
-                std::shared_ptr<audio_backend_v2> backend,
+                std::shared_ptr<audio_backend> backend,
                 const audio_spec* spec = nullptr);
             static audio_device open_device(
-                std::shared_ptr<audio_backend_v2> backend,
+                std::shared_ptr<audio_backend> backend,
                 const std::string& device_id, 
                 const audio_spec* spec = nullptr);
             
@@ -73,7 +73,7 @@ namespace musac {
         private:
             // Constructor with backend
             audio_device(
-                std::shared_ptr<audio_backend_v2> backend,
+                std::shared_ptr<audio_backend> backend,
                 const device_info_v2& info, 
                 const audio_spec* spec);
             

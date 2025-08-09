@@ -5,7 +5,7 @@
 #include <musac/codecs/decoder_voc.hh>
 #include <musac/sdk/samples_converter.hh>
 #include <musac/sdk/audio_format.hh>
-#include <musac/sdk/audio_converter_v2.hh>
+#include <musac/sdk/audio_converter.hh>
 #include <musac/sdk/endian.hh>
 
 #include <musac/sdk/musac_sdk_config.h>

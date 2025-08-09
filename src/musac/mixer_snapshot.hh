@@ -9,7 +9,7 @@
 namespace musac {
 
 // Forward declarations
-class FadeEnvelope;
+class fade_envelope;
 
 /**
  * Captures the complete state of the audio mixer for device switching.

@@ -1,16 +1,16 @@
 #include "musac/callback_dispatcher.hh"
 namespace musac {
-    CallbackDispatcher& CallbackDispatcher::instance() {
-        static CallbackDispatcher inst;
+    callback_dispatcher& callback_dispatcher::instance() {
+        static callback_dispatcher inst;
         return inst;
     }
 
-    void CallbackDispatcher::enqueue(const callback_t& cbk) {
+    void callback_dispatcher::enqueue(const callback_t& cbk) {
         std::lock_guard <std::mutex> lk(m_mutex);
         m_queue.emplace_back(cbk);
     }
 
-    void CallbackDispatcher::dispatch() {
+    void callback_dispatcher::dispatch() {
         // 1) snapshot & clear under lock
         std::vector <callback_t> toDispatch; {
             std::lock_guard <std::mutex> lk(m_mutex);
@@ -24,7 +24,7 @@ namespace musac {
         }
     }
 
-    void CallbackDispatcher::cleanup(int token) {
+    void callback_dispatcher::cleanup(int token) {
         std::lock_guard <std::mutex> lk(m_mutex);
         auto it = m_queue.begin();
         while (it != m_queue.end()) {
@@ -36,6 +36,6 @@ namespace musac {
         }
     }
 
-    CallbackDispatcher::CallbackDispatcher() = default;
-    CallbackDispatcher::~CallbackDispatcher() = default;
+    callback_dispatcher::callback_dispatcher() = default;
+    callback_dispatcher::~callback_dispatcher() = default;
 }

@@ -1,4 +1,4 @@
-#include "sdl3_backend_v2.hh"
+#include "sdl3_backend.hh"
 #include "sdl3_audio_stream.hh"
 #include <musac/audio_stream_interface.hh>
 #include <musac/error.hh>
@@ -35,7 +35,7 @@ namespace {
 }
 
 // Format conversion helpers
-audio_format sdl3_backend_v2::sdl_to_musac_format(SDL_AudioFormat sdl_fmt) {
+audio_format sdl3_backend::sdl_to_musac_format(SDL_AudioFormat sdl_fmt) {
     switch (sdl_fmt) {
         case SDL_AUDIO_U8:     return audio_format::u8;
         case SDL_AUDIO_S8:     return audio_format::s8;
@@ -49,7 +49,7 @@ audio_format sdl3_backend_v2::sdl_to_musac_format(SDL_AudioFormat sdl_fmt) {
     }
 }
 
-SDL_AudioFormat sdl3_backend_v2::musac_to_sdl_format(audio_format fmt) {
+SDL_AudioFormat sdl3_backend::musac_to_sdl_format(audio_format fmt) {
     switch (fmt) {
         case audio_format::u8:     return SDL_AUDIO_U8;
         case audio_format::s8:     return SDL_AUDIO_S8;
@@ -63,13 +63,13 @@ SDL_AudioFormat sdl3_backend_v2::musac_to_sdl_format(audio_format fmt) {
     }
 }
 
-sdl3_backend_v2::~sdl3_backend_v2() {
+sdl3_backend::~sdl3_backend() {
     if (m_initialized) {
         shutdown();
     }
 }
 
-void sdl3_backend_v2::init() {
+void sdl3_backend::init() {
     if (m_initialized) {
         THROW_RUNTIME("SDL3 backend already initialized");
     }
@@ -82,7 +82,7 @@ void sdl3_backend_v2::init() {
     m_initialized = true;
 }
 
-void sdl3_backend_v2::shutdown() {
+void sdl3_backend::shutdown() {
     if (!m_initialized) {
         return;
     }
@@ -102,15 +102,15 @@ void sdl3_backend_v2::shutdown() {
     m_initialized = false;
 }
 
-std::string sdl3_backend_v2::get_name() const {
+std::string sdl3_backend::get_name() const {
     return "SDL3";
 }
 
-bool sdl3_backend_v2::is_initialized() const {
+bool sdl3_backend::is_initialized() const {
     return m_initialized;
 }
 
-std::vector<device_info_v2> sdl3_backend_v2::enumerate_devices(bool playback) {
+std::vector<device_info_v2> sdl3_backend::enumerate_devices(bool playback) {
     if (!m_initialized) {
         THROW_RUNTIME("Backend not initialized");
     }
@@ -158,7 +158,7 @@ std::vector<device_info_v2> sdl3_backend_v2::enumerate_devices(bool playback) {
     return devices;
 }
 
-device_info_v2 sdl3_backend_v2::get_default_device(bool playback) {
+device_info_v2 sdl3_backend::get_default_device(bool playback) {
     auto devices = enumerate_devices(playback);
     if (!devices.empty()) {
         return devices[0]; // First device is typically default
@@ -174,7 +174,7 @@ device_info_v2 sdl3_backend_v2::get_default_device(bool playback) {
     return info;
 }
 
-uint32_t sdl3_backend_v2::open_device(const std::string& device_id, 
+uint32_t sdl3_backend::open_device(const std::string& device_id, 
                                       const audio_spec& spec, 
                                       audio_spec& obtained_spec) {
     if (!m_initialized) {
@@ -221,7 +221,7 @@ uint32_t sdl3_backend_v2::open_device(const std::string& device_id,
     return handle;
 }
 
-void sdl3_backend_v2::close_device(uint32_t device_handle) {
+void sdl3_backend::close_device(uint32_t device_handle) {
     std::lock_guard<std::mutex> lock(m_devices_mutex);
     
     auto it = m_open_devices.find(device_handle);
@@ -233,7 +233,7 @@ void sdl3_backend_v2::close_device(uint32_t device_handle) {
 }
 
 
-audio_format sdl3_backend_v2::get_device_format(uint32_t device_handle) {
+audio_format sdl3_backend::get_device_format(uint32_t device_handle) {
     std::lock_guard<std::mutex> lock(m_devices_mutex);
     
     auto it = m_device_specs.find(device_handle);
@@ -243,7 +243,7 @@ audio_format sdl3_backend_v2::get_device_format(uint32_t device_handle) {
     return it->second.format;
 }
 
-sample_rate_t sdl3_backend_v2::get_device_frequency(uint32_t device_handle) {
+sample_rate_t sdl3_backend::get_device_frequency(uint32_t device_handle) {
     std::lock_guard<std::mutex> lock(m_devices_mutex);
     
     auto it = m_device_specs.find(device_handle);
@@ -253,7 +253,7 @@ sample_rate_t sdl3_backend_v2::get_device_frequency(uint32_t device_handle) {
     return it->second.freq;
 }
 
-channels_t sdl3_backend_v2::get_device_channels(uint32_t device_handle) {
+channels_t sdl3_backend::get_device_channels(uint32_t device_handle) {
     std::lock_guard<std::mutex> lock(m_devices_mutex);
     
     auto it = m_device_specs.find(device_handle);
@@ -263,7 +263,7 @@ channels_t sdl3_backend_v2::get_device_channels(uint32_t device_handle) {
     return it->second.channels;
 }
 
-float sdl3_backend_v2::get_device_gain(uint32_t device_handle) {
+float sdl3_backend::get_device_gain(uint32_t device_handle) {
     std::lock_guard<std::mutex> lock(m_devices_mutex);
     
     auto it = m_open_devices.find(device_handle);
@@ -275,7 +275,7 @@ float sdl3_backend_v2::get_device_gain(uint32_t device_handle) {
     return gain;
 }
 
-void sdl3_backend_v2::set_device_gain(uint32_t device_handle, float gain) {
+void sdl3_backend::set_device_gain(uint32_t device_handle, float gain) {
     std::lock_guard<std::mutex> lock(m_devices_mutex);
     
     auto it = m_open_devices.find(device_handle);
@@ -288,7 +288,7 @@ void sdl3_backend_v2::set_device_gain(uint32_t device_handle, float gain) {
     }
 }
 
-bool sdl3_backend_v2::pause_device(uint32_t device_handle) {
+bool sdl3_backend::pause_device(uint32_t device_handle) {
     std::lock_guard<std::mutex> lock(m_devices_mutex);
     
     auto it = m_open_devices.find(device_handle);
@@ -299,7 +299,7 @@ bool sdl3_backend_v2::pause_device(uint32_t device_handle) {
     return SDL_PauseAudioDevice(it->second);
 }
 
-bool sdl3_backend_v2::resume_device(uint32_t device_handle) {
+bool sdl3_backend::resume_device(uint32_t device_handle) {
     std::lock_guard<std::mutex> lock(m_devices_mutex);
     
     auto it = m_open_devices.find(device_handle);
@@ -310,7 +310,7 @@ bool sdl3_backend_v2::resume_device(uint32_t device_handle) {
     return SDL_ResumeAudioDevice(it->second);
 }
 
-bool sdl3_backend_v2::is_device_paused(uint32_t device_handle) {
+bool sdl3_backend::is_device_paused(uint32_t device_handle) {
     std::lock_guard<std::mutex> lock(m_devices_mutex);
     
     auto it = m_open_devices.find(device_handle);
@@ -321,7 +321,7 @@ bool sdl3_backend_v2::is_device_paused(uint32_t device_handle) {
     return SDL_AudioDevicePaused(it->second);
 }
 
-std::unique_ptr<audio_stream_interface> sdl3_backend_v2::create_stream(
+std::unique_ptr<audio_stream_interface> sdl3_backend::create_stream(
     uint32_t device_handle,
     const audio_spec& spec,
     void (*callback)(void* userdata, uint8_t* stream, int len),
@@ -339,16 +339,16 @@ std::unique_ptr<audio_stream_interface> sdl3_backend_v2::create_stream(
     return std::make_unique<sdl3_audio_stream>(sdl_device, spec, callback, userdata);
 }
 
-bool sdl3_backend_v2::supports_recording() const {
+bool sdl3_backend::supports_recording() const {
     return true;
 }
 
-int sdl3_backend_v2::get_max_open_devices() const {
+int sdl3_backend::get_max_open_devices() const {
     // SDL3 doesn't have a hard limit, but let's be reasonable
     return 32;
 }
 
-SDL_AudioDeviceID sdl3_backend_v2::get_sdl_device(uint32_t handle) const {
+SDL_AudioDeviceID sdl3_backend::get_sdl_device(uint32_t handle) const {
     std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_devices_mutex));
     
     auto it = m_open_devices.find(handle);
