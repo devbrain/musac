@@ -1,0 +1,65 @@
+apply plugin: 'java-library'
+apply plugin: 'maven-publish'
+
+archivesBaseName = 'musac-gwt'
+
+dependencies {
+    api project(':core')
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['../web/src/com/musac/gwt']
+        }
+        resources {
+            srcDirs = ['../web']
+            include '**/*.gwt.xml'
+            srcDirs = ['../web/build/dist']
+            include '**/*.js'
+            include '**/*.wasm'
+        }
+    }
+}
+
+jar {
+    manifest {
+        attributes(
+            'Implementation-Title': 'Musac GWT',
+            'Implementation-Version': project.version
+        )
+    }
+}
+
+// Create sources JAR for GWT
+task sourcesJar(type: Jar) {
+    archiveClassifier = 'sources'
+    from sourceSets.main.allSource
+    
+    // Include core sources for GWT compilation
+    from project(':core').sourceSets.main.allJava
+}
+
+artifacts {
+    archives sourcesJar
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            
+            artifact sourcesJar {
+                classifier 'sources'
+            }
+            
+            artifactId = 'musac-gwt'
+            
+            pom {
+                name = 'Musac GWT'
+                description = 'Musac audio decoder - GWT/Web platform support'
+                url = 'https://github.com/yourusername/musac'
+            }
+        }
+    }
+}

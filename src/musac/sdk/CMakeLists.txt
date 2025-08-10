@@ -38,6 +38,14 @@ set (sdk_sources
         # MML parser utility
         ${MUSAC_PROJECT_ROOT}/include/musac/sdk/mml_parser.hh
         mml_parser.cc
+
+        # Resampler
+        resampler/resampler_speex.cc
+        resampler/resampler_speex.hh
+        resampler/speex/arch.h
+        resampler/speex/resample.c
+        resampler/speex/resample_sse.h
+        resampler/speex/speex_resampler.h
 )
 
 set(opl_sources

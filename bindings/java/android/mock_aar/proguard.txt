@@ -1,0 +1,5 @@
+# Musac library ProGuard rules
+-keep class com.musac.** { *; }
+-keepclassmembers class com.musac.** {
+    native <methods>;
+}

@@ -15,35 +15,35 @@
 namespace musac {
 
 // Helper function to convert audio samples and return a vector
-static std::vector<uint8> convert_audio_samples_to_vector(
-    const audio_spec& src_spec, const uint8* src_data, size_t src_len,
+static std::vector<uint8_t> convert_audio_samples_to_vector(
+    const audio_spec& src_spec, const uint8_t* src_data, size_t src_len,
     const audio_spec& dst_spec) {
     // Use new audio converter API
-    buffer<uint8> converted = audio_converter::convert(src_spec, src_data, src_len, dst_spec);
+    buffer<uint8_t> converted = audio_converter::convert(src_spec, src_data, src_len, dst_spec);
     // Copy to vector (until we refactor to use buffer throughout)
-    return std::vector<uint8>(converted.begin(), converted.end());
+    return std::vector<uint8_t>(converted.begin(), converted.end());
 }
 
 // AIFF format constants (big-endian)
-static constexpr uint32 FORM = 0x464f524d;  // "FORM"
-static constexpr uint32 AIFF = 0x41494646;  // "AIFF"
-static constexpr uint32 SSND = 0x53534e44;  // "SSND"
-static constexpr uint32 COMM = 0x434f4d4d;  // "COMM"
-static constexpr uint32 _8SVX = 0x38535658; // "8SVX"
-static constexpr uint32 VHDR = 0x56484452;  // "VHDR"
-static constexpr uint32 BODY = 0x424f4459;  // "BODY"
+static constexpr uint32_t FORM = 0x464f524d;  // "FORM"
+static constexpr uint32_t AIFF = 0x41494646;  // "AIFF"
+static constexpr uint32_t SSND = 0x53534e44;  // "SSND"
+static constexpr uint32_t COMM = 0x434f4d4d;  // "COMM"
+static constexpr uint32_t _8SVX = 0x38535658; // "8SVX"
+static constexpr uint32_t VHDR = 0x56484452;  // "VHDR"
+static constexpr uint32_t BODY = 0x424f4459;  // "BODY"
 
 struct decoder_aiff::impl {
     io_stream* m_rwops = nullptr;
     audio_spec m_spec = {};
-    std::vector<uint8> m_buffer;
+    std::vector<uint8_t> m_buffer;
     size_t m_total_samples = 0;
     size_t m_consumed = 0;
     to_float_converter_func_t m_converter = nullptr;
     
-    // Convert SANE 80-bit float to uint32
-    static uint32 SANE_to_uint32(const uint8* sanebuf) {
-        // Is the frequency outside of what we can represent with uint32?
+    // Convert SANE 80-bit float to uint32_t
+    static uint32_t SANE_to_uint32(const uint8_t* sanebuf) {
+        // Is the frequency outside of what we can represent with uint32_t?
         if ((sanebuf[0] & 0x80) || (sanebuf[0] <= 0x3F) || (sanebuf[0] > 0x40)
             || (sanebuf[0] == 0x40 && sanebuf[1] > 0x1C)) {
             return 0;
@@ -62,9 +62,9 @@ struct decoder_aiff::impl {
         m_rwops->seek( 0, musac::seek_origin::set);
         
         // Read AIFF magic header
-        uint32 FORMchunk;
-        uint32 chunk_length;
-        uint32 AIFFmagic;
+        uint32_t FORMchunk;
+        uint32_t chunk_length;
+        uint32_t AIFFmagic;
         
         if (!read_u32be(m_rwops, &FORMchunk) ||
             !read_u32be(m_rwops, &chunk_length)) {
@@ -90,23 +90,23 @@ struct decoder_aiff::impl {
         bool found_COMM = false;
         bool found_VHDR = false;
         bool found_BODY = false;
-        int64 data_start = 0;
-        uint32 data_length = 0;
-        uint16 channels = 0;
-        uint32 numsamples = 0;
-        uint16 samplesize = 0;
-        uint32 frequency = 0;
+        int64_t data_start = 0;
+        uint32_t data_length = 0;
+        uint16_t channels = 0;
+        uint32_t numsamples = 0;
+        uint16_t samplesize = 0;
+        uint32_t frequency = 0;
         
         while (true) {
-            uint32 chunk_type;
-            uint32 chunk_len;
+            uint32_t chunk_type;
+            uint32_t chunk_len;
             
             if (!read_u32be(m_rwops, &chunk_type) ||
                 !read_u32be(m_rwops, &chunk_len)) {
                 break;
             }
             
-            int64 next_chunk = m_rwops->tell() + chunk_len;
+            int64_t next_chunk = m_rwops->tell() + chunk_len;
             
             // Paranoia to avoid infinite loops
             if (chunk_len == 0) {
@@ -116,7 +116,7 @@ struct decoder_aiff::impl {
             switch (chunk_type) {
                 case SSND: {
                     found_SSND = true;
-                    uint32 offset, blocksize;
+                    uint32_t offset, blocksize;
                     if (!read_u32be(m_rwops, &offset) ||
                         !read_u32be(m_rwops, &blocksize)) {
                         THROW_RUNTIME("Failed to read SSND chunk");
@@ -134,7 +134,7 @@ struct decoder_aiff::impl {
                         THROW_RUNTIME("Failed to read COMM chunk");
                     }
                     
-                    uint8 sane_freq[10];
+                    uint8_t sane_freq[10];
                     if (m_rwops->read( sane_freq, sizeof(sane_freq)) != sizeof(sane_freq)) {
                         THROW_RUNTIME("Bad AIFF sample frequency");
                     }
@@ -147,7 +147,7 @@ struct decoder_aiff::impl {
                 
                 case VHDR: {
                     found_VHDR = true;
-                    uint16 frequency16;
+                    uint16_t frequency16;
                     // Skip first 12 bytes
                     m_rwops->seek( 12, musac::seek_origin::cur);
                     if (!read_u16be(m_rwops, &frequency16)) {
@@ -262,7 +262,7 @@ struct decoder_aiff::impl {
                 intermediate_spec.format = audio_format::s16le;
                 
                 try {
-                    std::vector<uint8> temp_buffer = convert_audio_samples_to_vector(
+                    std::vector<uint8_t> temp_buffer = convert_audio_samples_to_vector(
                         m_spec, m_buffer.data(), m_buffer.size(), intermediate_spec);
                     
                     // Now convert from intermediate to final format
@@ -307,7 +307,7 @@ bool decoder_aiff::accept(io_stream* rwops) {
     }
     
     // Check for AIFF or 8SVX format
-    uint32 magic1, magic2;
+    uint32_t magic1, magic2;
     bool result = false;
     
     // Read first 4 bytes (should be "FORM")
@@ -396,7 +396,7 @@ size_t decoder_aiff::do_decode(float* buf, size_t len, bool& call_again) {
     
     if (take > 0) {
         // m_buffer contains int16_t samples stored as bytes
-        const uint8* sample_ptr = m_pimpl->m_buffer.data() + (m_pimpl->m_consumed * sizeof(int16_t));
+        const uint8_t* sample_ptr = m_pimpl->m_buffer.data() + (m_pimpl->m_consumed * sizeof(int16_t));
         m_pimpl->m_converter(buf, sample_ptr, take);
         m_pimpl->m_consumed += take;
     }

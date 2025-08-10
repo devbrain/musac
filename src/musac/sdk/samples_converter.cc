@@ -30,16 +30,16 @@ namespace musac {
         }
     }
 
-    void as_float_u8(float out[], const uint8* buff, unsigned int samples) {
+    void as_float_u8(float out[], const uint8_t* buff, unsigned int samples) {
         for (unsigned int i = 0; i < samples; i++) {
             out[i] = as_float(buff[i]);
         }
     }
 
-    void as_float_s8(float out[], const uint8* buff, unsigned int samples) {
+    void as_float_s8(float out[], const uint8_t* buff, unsigned int samples) {
         union {
-            const uint8* x;
-            const int8* buff;
+            const uint8_t* x;
+            const int8_t* buff;
         } data {};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
@@ -47,10 +47,10 @@ namespace musac {
         }
     }
 
-    void as_float_u16_le(float out[], const uint8* buff, unsigned int samples) {
+    void as_float_u16_le(float out[], const uint8_t* buff, unsigned int samples) {
         union {
-            const uint8* x;
-            const uint16* buff;
+            const uint8_t* x;
+            const uint16_t* buff;
         } data {};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
@@ -58,10 +58,10 @@ namespace musac {
         }
     }
 
-    void as_float_u16_be(float out[], const uint8* buff, unsigned int samples) {
+    void as_float_u16_be(float out[], const uint8_t* buff, unsigned int samples) {
         union {
-            const uint8* x;
-            const uint16* buff;
+            const uint8_t* x;
+            const uint16_t* buff;
         } data{};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
@@ -69,54 +69,54 @@ namespace musac {
         }
     }
 
-    void as_float_s16_le(float out[], const uint8* buff, unsigned int samples) {
+    void as_float_s16_le(float out[], const uint8_t* buff, unsigned int samples) {
         union {
-            const uint8* x;
-            const int16* buff;
+            const uint8_t* x;
+            const int16_t* buff;
         } data {};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
-            out[i] = as_float(static_cast<int16>(swap16le(data.buff[i])));
+            out[i] = as_float(static_cast<int16_t>(swap16le(data.buff[i])));
         }
     }
 
-    void as_float_s16_be(float out[], const uint8* buff, unsigned int samples) {
+    void as_float_s16_be(float out[], const uint8_t* buff, unsigned int samples) {
         union {
-            const uint8* x;
-            const uint16* buff;
+            const uint8_t* x;
+            const uint16_t* buff;
         } data{};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
-            out[i] = as_float(static_cast<int16>(swap16be(data.buff[i])));
+            out[i] = as_float(static_cast<int16_t>(swap16be(data.buff[i])));
         }
     }
 
-    void as_float_s32_le(float out[], const uint8* buff, unsigned int samples) {
+    void as_float_s32_le(float out[], const uint8_t* buff, unsigned int samples) {
         union {
-            const uint8* x;
-            const int32* buff;
+            const uint8_t* x;
+            const int32_t* buff;
         } data{};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
-            out[i] = as_float(static_cast<int32>(swap32le(data.buff[i])));
+            out[i] = as_float(static_cast<int32_t>(swap32le(data.buff[i])));
         }
     }
 
-    void as_float_s32_be(float out[], const uint8* buff, unsigned int samples) {
+    void as_float_s32_be(float out[], const uint8_t* buff, unsigned int samples) {
         union {
-            const uint8* x;
-            const uint32* buff;
+            const uint8_t* x;
+            const uint32_t* buff;
         } data{};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
-            out[i] = as_float(static_cast<int32>(swap32be(data.buff[i])));
+            out[i] = as_float(static_cast<int32_t>(swap32be(data.buff[i])));
         }
     }
 
-    void as_float_u32_le(float out[], const uint8* buff, unsigned int samples) {
+    void as_float_u32_le(float out[], const uint8_t* buff, unsigned int samples) {
         union {
-            const uint8* x;
-            const uint32* buff;
+            const uint8_t* x;
+            const uint32_t* buff;
         } data{};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
@@ -124,10 +124,10 @@ namespace musac {
         }
     }
 
-    void as_float_u32_be(float out[], const uint8* buff, unsigned int samples) {
+    void as_float_u32_be(float out[], const uint8_t* buff, unsigned int samples) {
         union {
-            const uint8* x;
-            const uint32* buff;
+            const uint8_t* x;
+            const uint32_t* buff;
         } data {};
         data.x = buff;
         for (unsigned int i = 0; i < samples; i++) {
@@ -135,9 +135,9 @@ namespace musac {
         }
     }
 
-    void as_float_f32_le(float out[], const uint8* buff, unsigned int samples) {
+    void as_float_f32_le(float out[], const uint8_t* buff, unsigned int samples) {
         union {
-            const uint8* x;
+            const uint8_t* x;
             const float* buff;
         } data {};
         data.x = buff;
@@ -146,9 +146,9 @@ namespace musac {
         }
     }
 
-    void as_float_f32_be(float out[], const uint8* buff, unsigned int samples) {
+    void as_float_f32_be(float out[], const uint8_t* buff, unsigned int samples) {
         union {
-            const uint8* x;
+            const uint8_t* x;
             const float* buff;
         } data {};
         data.x = buff;

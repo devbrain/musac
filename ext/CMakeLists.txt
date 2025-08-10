@@ -23,6 +23,11 @@ add_compile_options(
 
 add_subdirectory(failsafe)
 
+# Add doctest for testing
+if(MUSAC_BUILD_TESTS)
+    add_subdirectory(doctest)
+endif()
+
 # Restore original flags (though subdirectories won't inherit the change back)
 set(CMAKE_CXX_FLAGS ${SAVED_CMAKE_CXX_FLAGS})
 set(CMAKE_C_FLAGS ${SAVED_CMAKE_C_FLAGS})

@@ -460,7 +460,7 @@ DRMP3_API drmp3_bool32 drmp3_get_mp3_and_pcm_frame_count(drmp3* pMP3, drmp3_uint
 /*
 Calculates the seekpoints based on PCM frames. This is slow.
 
-pSeekpoint count is a pointer to a uint32 containing the seekpoint count. On input it contains the desired count.
+pSeekpoint count is a pointer to a uint32_t containing the seekpoint count. On input it contains the desired count.
 On output it contains the actual count. The reason for this design is that the client may request too many
 seekpoints, in which case dr_mp3 will return a corrected count.
 

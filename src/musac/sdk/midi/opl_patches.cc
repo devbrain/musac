@@ -213,7 +213,7 @@ namespace musac {
 					pos++;
 				}
 
-				// midi note offset (int16, but only really need the LSB)
+				// midi note offset (int16_t, but only really need the LSB)
 				voice.tune = (int8_t)bytes[pos];
 				pos += 2;
 			}

@@ -1,0 +1,14 @@
+rootProject.name = 'musac'
+
+include ':core'
+include ':desktop'
+include ':android'
+include ':gwt'
+include ':ios'
+
+// Set project directories
+project(':core').projectDir = file('core')
+project(':desktop').projectDir = file('desktop')
+project(':android').projectDir = file('android')
+project(':gwt').projectDir = file('gwt')
+project(':ios').projectDir = file('ios')

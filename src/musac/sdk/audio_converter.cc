@@ -5,35 +5,35 @@
 
 // Internal conversion functions
 namespace musac::detail {
-    void fast_swap16_inplace(uint8* data, size_t len);
-    void fast_swap32_inplace(uint8* data, size_t len);
-    buffer<uint8> fast_mono_to_stereo(const uint8* data, size_t len, audio_format format);
-    buffer<uint8> fast_stereo_to_mono(const uint8* data, size_t len, audio_format format);
-    buffer<uint8> convert_format(const uint8* data, size_t len, 
-                                 audio_format from, audio_format to, uint8 channels);
-    buffer<uint8> resample_cubic(const uint8* data, size_t len,
-                                 audio_format format, uint8 channels,
-                                 uint32 src_freq, uint32 dst_freq);
+    void fast_swap16_inplace(uint8_t* data, size_t len);
+    void fast_swap32_inplace(uint8_t* data, size_t len);
+    buffer<uint8_t> fast_mono_to_stereo(const uint8_t* data, size_t len, audio_format format);
+    buffer<uint8_t> fast_stereo_to_mono(const uint8_t* data, size_t len, audio_format format);
+    buffer<uint8_t> convert_format(const uint8_t* data, size_t len, 
+                                 audio_format from, audio_format to, uint8_t channels);
+    buffer<uint8_t> resample_cubic(const uint8_t* data, size_t len,
+                                 audio_format format, uint8_t channels,
+                                 uint32_t src_freq, uint32_t dst_freq);
 }
 
 namespace musac {
 
 // Implementation of audio_converter static methods
 
-buffer<uint8> audio_converter::convert(const audio_spec& src_spec, 
-                                       const uint8* src_data, 
+buffer<uint8_t> audio_converter::convert(const audio_spec& src_spec, 
+                                       const uint8_t* src_data, 
                                        size_t src_len,
                                        const audio_spec& dst_spec) {
     // Handle empty input
     if (src_len == 0 || src_data == nullptr) {
-        return buffer<uint8>(0);
+        return buffer<uint8_t>(0);
     }
     
     // Check for fast paths
     
     // Fast path 1: No conversion needed
     if (!needs_conversion(src_spec, dst_spec)) {
-        buffer<uint8> output(static_cast<unsigned int>(src_len));
+        buffer<uint8_t> output(static_cast<unsigned int>(src_len));
         std::memcpy(output.data(), src_data, src_len);
         return output;
     }
@@ -42,7 +42,7 @@ buffer<uint8> audio_converter::convert(const audio_spec& src_spec,
     if (src_spec.channels == dst_spec.channels && src_spec.freq == dst_spec.freq) {
         if ((src_spec.format == audio_format::s16le && dst_spec.format == audio_format::s16be) ||
             (src_spec.format == audio_format::s16be && dst_spec.format == audio_format::s16le)) {
-            buffer<uint8> output(static_cast<unsigned int>(src_len));
+            buffer<uint8_t> output(static_cast<unsigned int>(src_len));
             std::memcpy(output.data(), src_data, src_len);
             detail::fast_swap16_inplace(output.data(), src_len);
             return output;
@@ -51,7 +51,7 @@ buffer<uint8> audio_converter::convert(const audio_spec& src_spec,
             (src_spec.format == audio_format::s32be && dst_spec.format == audio_format::s32le) ||
             (src_spec.format == audio_format::f32le && dst_spec.format == audio_format::f32be) ||
             (src_spec.format == audio_format::f32be && dst_spec.format == audio_format::f32le)) {
-            buffer<uint8> output(static_cast<unsigned int>(src_len));
+            buffer<uint8_t> output(static_cast<unsigned int>(src_len));
             std::memcpy(output.data(), src_data, src_len);
             detail::fast_swap32_inplace(output.data(), src_len);
             return output;
@@ -69,7 +69,7 @@ buffer<uint8> audio_converter::convert(const audio_spec& src_spec,
     }
     
     // Complex conversion path - may need multiple stages
-    buffer<uint8> working_buffer(static_cast<unsigned int>(src_len));
+    buffer<uint8_t> working_buffer(static_cast<unsigned int>(src_len));
     std::memcpy(working_buffer.data(), src_data, src_len);
     audio_spec working_spec = src_spec;
     
@@ -110,7 +110,7 @@ buffer<uint8> audio_converter::convert(const audio_spec& src_spec,
 }
 
 void audio_converter::convert_in_place(audio_spec& spec, 
-                                       uint8* data, 
+                                       uint8_t* data, 
                                        size_t len,
                                        const audio_spec& dst_spec) {
     // Check if in-place conversion is possible
@@ -121,8 +121,8 @@ void audio_converter::convert_in_place(audio_spec& spec,
         if ((spec.format == audio_format::s16le && dst_spec.format == audio_format::s16be) ||
             (spec.format == audio_format::s16be && dst_spec.format == audio_format::s16le)) {
             // Swap bytes for 16-bit samples
-            int16* samples = reinterpret_cast<int16*>(data);
-            size_t num_samples = len / sizeof(int16);
+            int16_t* samples = reinterpret_cast<int16_t*>(data);
+            size_t num_samples = len / sizeof(int16_t);
             for (size_t i = 0; i < num_samples; ++i) {
                 samples[i] = swap16be(samples[i]);
             }
@@ -131,8 +131,8 @@ void audio_converter::convert_in_place(audio_spec& spec,
         } else if ((spec.format == audio_format::s32le && dst_spec.format == audio_format::s32be) ||
                    (spec.format == audio_format::s32be && dst_spec.format == audio_format::s32le)) {
             // Swap bytes for 32-bit samples
-            int32* samples = reinterpret_cast<int32*>(data);
-            size_t num_samples = len / sizeof(int32);
+            int32_t* samples = reinterpret_cast<int32_t*>(data);
+            size_t num_samples = len / sizeof(int32_t);
             for (size_t i = 0; i < num_samples; ++i) {
                 samples[i] = swap32be(samples[i]);
             }
@@ -176,10 +176,10 @@ size_t audio_converter::estimate_output_size(const audio_spec& src_spec,
                                             size_t src_len,
                                             const audio_spec& dst_spec) {
     // Validate formats
-    if (static_cast<uint16>(src_spec.format) > 0xFF00) {
+    if (static_cast<uint16_t>(src_spec.format) > 0xFF00) {
         throw unsupported_format_error(src_spec.format);
     }
-    if (static_cast<uint16>(dst_spec.format) > 0xFF00) {
+    if (static_cast<uint16_t>(dst_spec.format) > 0xFF00) {
         throw unsupported_format_error(dst_spec.format);
     }
     
@@ -208,12 +208,12 @@ size_t audio_converter::estimate_output_size(const audio_spec& src_spec,
 }
 
 size_t audio_converter::convert_into(const audio_spec& src_spec,
-                                     const uint8* src_data,
+                                     const uint8_t* src_data,
                                      size_t src_len,
                                      const audio_spec& dst_spec,
-                                     buffer<uint8>& dst_buffer) {
+                                     buffer<uint8_t>& dst_buffer) {
     // Use the main convert function
-    buffer<uint8> result = convert(src_spec, src_data, src_len, dst_spec);
+    buffer<uint8_t> result = convert(src_spec, src_data, src_len, dst_spec);
     
     // Ensure destination buffer is large enough
     if (dst_buffer.size() < result.size()) {
@@ -232,8 +232,8 @@ struct audio_converter::stream_converter::impl {
     audio_spec to_spec;
     
     // Buffers for streaming
-    buffer<uint8> input_buffer;      // Accumulated input data
-    buffer<uint8> output_buffer;     // Converted output ready to return
+    buffer<uint8_t> input_buffer;      // Accumulated input data
+    buffer<uint8_t> output_buffer;     // Converted output ready to return
     size_t input_accumulated;         // Bytes accumulated in input_buffer
     size_t output_available;          // Bytes available in output_buffer
     size_t output_consumed;           // Bytes already consumed from output_buffer
@@ -275,8 +275,8 @@ audio_converter::stream_converter::stream_converter(const audio_spec& from, cons
 
 audio_converter::stream_converter::~stream_converter() = default;
 
-size_t audio_converter::stream_converter::process_chunk(const uint8* input, size_t input_len,
-                                                       buffer<uint8>& output) {
+size_t audio_converter::stream_converter::process_chunk(const uint8_t* input, size_t input_len,
+                                                       buffer<uint8_t>& output) {
     // Return any previously converted data first
     if (m_pimpl->output_available > m_pimpl->output_consumed) {
         size_t available = m_pimpl->output_available - m_pimpl->output_consumed;
@@ -325,7 +325,7 @@ size_t audio_converter::stream_converter::process_chunk(const uint8* input, size
     
     // Convert the accumulated input
     try {
-        buffer<uint8> converted = audio_converter::convert(
+        buffer<uint8_t> converted = audio_converter::convert(
             m_pimpl->from_spec,
             m_pimpl->input_buffer.data(),
             bytes_to_process,
@@ -361,7 +361,7 @@ size_t audio_converter::stream_converter::process_chunk(const uint8* input, size
     }
 }
 
-size_t audio_converter::stream_converter::flush(buffer<uint8>& output) {
+size_t audio_converter::stream_converter::flush(buffer<uint8_t>& output) {
     // First, return any remaining converted data
     if (m_pimpl->output_available > m_pimpl->output_consumed) {
         size_t available = m_pimpl->output_available - m_pimpl->output_consumed;
@@ -376,7 +376,7 @@ size_t audio_converter::stream_converter::flush(buffer<uint8>& output) {
     // Process any remaining input (even if less than minimum)
     if (m_pimpl->input_accumulated > 0) {
         try {
-            buffer<uint8> converted = audio_converter::convert(
+            buffer<uint8_t> converted = audio_converter::convert(
                 m_pimpl->from_spec,
                 m_pimpl->input_buffer.data(),
                 m_pimpl->input_accumulated,

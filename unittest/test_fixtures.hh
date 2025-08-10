@@ -12,7 +12,6 @@
 #include <vector>
 #include <utility>
 #include "mock_components.hh"  // For create_mock_source
-#include <doctest/doctest.h>  // For CHECK macro
 
 namespace musac::test {
     // Helper class for tests that automatically initializes and cleans up audio system

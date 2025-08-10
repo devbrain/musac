@@ -1,0 +1,460 @@
+cmake_minimum_required(VERSION 3.16)
+project(musac_gdx_demo VERSION 1.0.0)
+
+# Options for platform builds
+option(BUILD_DESKTOP "Build desktop version" ON)
+option(BUILD_ANDROID "Build Android version" OFF)
+option(BUILD_WEB "Build Web/HTML5 version" OFF)
+option(BUILD_IOS "Build iOS version" OFF)
+
+# Java/Gradle configuration
+find_package(Java REQUIRED)
+include(UseJava)
+
+# Set Java version
+set(CMAKE_JAVA_COMPILE_FLAGS "-source" "1.8" "-target" "1.8")
+
+# Detect build platform
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    set(PLATFORM_NAME "windows")
+    set(NATIVE_EXT ".dll")
+    set(NATIVE_PREFIX "")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(PLATFORM_NAME "linux")
+    set(NATIVE_EXT ".so")
+    set(NATIVE_PREFIX "lib")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(PLATFORM_NAME "macos")
+    set(NATIVE_EXT ".dylib")
+    set(NATIVE_PREFIX "lib")
+endif()
+
+# Common directories
+set(ASSETS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets")
+set(CORE_SRC "${CMAKE_CURRENT_SOURCE_DIR}/core/src/main/java")
+set(BUILD_OUTPUT "${CMAKE_BINARY_DIR}/dist")
+
+# Gradle wrapper function
+function(gradle_build TARGET_NAME GRADLE_TASK)
+    add_custom_target(${TARGET_NAME}
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/gradlew ${GRADLE_TASK}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        COMMENT "Building ${TARGET_NAME} with Gradle..."
+    )
+endfunction()
+
+# ============================================================================
+# MUSAC JAVA BINDINGS (Common for all platforms)
+# ============================================================================
+message(STATUS "Building Musac Java bindings...")
+
+# Compile Java bindings into JAR
+file(GLOB_RECURSE MUSAC_JAVA_SOURCES 
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/com/musac/*.java"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/com/musac/decoders/*.java"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/com/musac/gdx/*.java"
+)
+
+set(MUSAC_CLASSES_DIR "${CMAKE_BINARY_DIR}/musac-classes")
+set(MUSAC_JAR "${CMAKE_CURRENT_SOURCE_DIR}/../core/build/libs/musac-core-1.0.0.jar")
+
+# Create classes directory
+file(MAKE_DIRECTORY ${MUSAC_CLASSES_DIR})
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../core/build/libs)
+
+# Convert list to space-separated string for javac
+string(REPLACE ";" " " MUSAC_JAVA_SOURCES_STR "${MUSAC_JAVA_SOURCES}")
+
+# Compile Musac Java sources
+add_custom_command(
+    OUTPUT ${MUSAC_JAR}
+    COMMAND ${CMAKE_COMMAND} -E echo "Compiling Musac Java sources..."
+    COMMAND ${Java_JAVAC_EXECUTABLE}
+        -d ${MUSAC_CLASSES_DIR}
+        -source 1.8
+        -target 1.8
+        ${MUSAC_JAVA_SOURCES}
+    COMMAND ${CMAKE_COMMAND} -E echo "Creating JAR file..."
+    COMMAND ${Java_JAR_EXECUTABLE}
+        cf ${MUSAC_JAR}
+        -C ${MUSAC_CLASSES_DIR} .
+    DEPENDS ${MUSAC_JAVA_SOURCES}
+    COMMENT "Building Musac Java bindings JAR..."
+    VERBATIM
+)
+
+add_custom_target(musac_jar ALL DEPENDS ${MUSAC_JAR})
+
+# ============================================================================
+# DESKTOP BUILD
+# ============================================================================
+if(BUILD_DESKTOP)
+    message(STATUS "Configuring Desktop build...")
+    
+    # Build native Musac library first
+    add_subdirectory(../native ${CMAKE_BINARY_DIR}/musac_native)
+    
+    # Copy native library to appropriate location
+    add_custom_command(
+        TARGET musac_java POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+            $<TARGET_FILE:musac_java>
+            ${CMAKE_CURRENT_SOURCE_DIR}/lwjgl3/libs/${NATIVE_PREFIX}musac_java${NATIVE_EXT}
+        COMMENT "Copying native library for desktop..."
+    )
+    
+    # Desktop JAR build
+    gradle_build(desktop_jar "lwjgl3:jar")
+    add_dependencies(desktop_jar musac_java musac_jar)
+    
+    # Desktop distribution
+    gradle_build(desktop_dist "lwjgl3:dist")
+    add_dependencies(desktop_dist desktop_jar)
+    
+    # Platform-specific distributions
+    if(WIN32)
+        gradle_build(desktop_exe "lwjgl3:construo:windowsX64")
+        add_dependencies(desktop_exe desktop_jar)
+    elseif(APPLE)
+        gradle_build(desktop_app "lwjgl3:construo:macM1")
+        add_dependencies(desktop_app desktop_jar)
+    else()
+        gradle_build(desktop_linux "lwjgl3:construo:linuxX64")
+        add_dependencies(desktop_linux desktop_jar)
+    endif()
+    
+    # Run desktop version
+    add_custom_target(run_desktop
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/gradlew lwjgl3:run
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        DEPENDS desktop_jar
+        COMMENT "Running desktop version..."
+    )
+endif()
+
+# ============================================================================
+# ANDROID BUILD
+# ============================================================================
+if(BUILD_ANDROID)
+    message(STATUS "Configuring Android build...")
+    
+    # Check for Android SDK/NDK
+    if(NOT DEFINED ENV{ANDROID_SDK_ROOT} AND NOT DEFINED ENV{ANDROID_HOME})
+        message(FATAL_ERROR "ANDROID_SDK_ROOT or ANDROID_HOME must be set")
+    endif()
+    
+    if(NOT DEFINED ENV{ANDROID_NDK_ROOT} AND NOT DEFINED ENV{NDK_ROOT})
+        message(WARNING "ANDROID_NDK_ROOT not set, will use SDK's NDK")
+    endif()
+    
+    # Configure Android native build
+    set(ANDROID_ABI "armeabi-v7a;arm64-v8a;x86;x86_64" CACHE STRING "Android ABIs to build")
+    
+    # Build native library for each ABI
+    foreach(ABI ${ANDROID_ABI})
+        set(ANDROID_BUILD_DIR ${CMAKE_BINARY_DIR}/android-${ABI})
+        
+        add_custom_target(musac_android_${ABI}
+            COMMAND ${CMAKE_COMMAND}
+                -DCMAKE_TOOLCHAIN_FILE=$ENV{ANDROID_NDK_ROOT}/build/cmake/android.toolchain.cmake
+                -DANDROID_ABI=${ABI}
+                -DANDROID_PLATFORM=android-21
+                -DANDROID_STL=c++_shared
+                -DMUSAC_BUILD_JAVA_BINDING=ON
+                -B ${ANDROID_BUILD_DIR}
+                -S ${CMAKE_CURRENT_SOURCE_DIR}/../../native
+            COMMAND ${CMAKE_COMMAND} --build ${ANDROID_BUILD_DIR}
+            COMMENT "Building native library for Android ${ABI}..."
+        )
+        
+        # Copy to jniLibs
+        add_custom_command(
+            TARGET musac_android_${ABI} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+                ${ANDROID_BUILD_DIR}/libmusac_java.so
+                ${CMAKE_CURRENT_SOURCE_DIR}/android/src/main/jniLibs/${ABI}/libmusac_java.so
+            COMMENT "Copying native library for Android ${ABI}..."
+        )
+    endforeach()
+    
+    # Combine all Android native builds
+    add_custom_target(musac_android_all)
+    foreach(ABI ${ANDROID_ABI})
+        add_dependencies(musac_android_all musac_android_${ABI})
+    endforeach()
+    
+    # Build Android APK
+    gradle_build(android_apk "android:assembleDebug")
+    add_dependencies(android_apk musac_android_all)
+    
+    # Build Android Bundle (AAB)
+    gradle_build(android_bundle "android:bundleRelease")
+    add_dependencies(android_bundle musac_android_all)
+    
+    # Install to device
+    add_custom_target(install_android
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/gradlew android:installDebug
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        DEPENDS android_apk
+        COMMENT "Installing to Android device..."
+    )
+    
+    # Run on device
+    add_custom_target(run_android
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/gradlew android:run
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        DEPENDS install_android
+        COMMENT "Running on Android device..."
+    )
+endif()
+
+# ============================================================================
+# WEB/HTML5 BUILD
+# ============================================================================
+if(BUILD_WEB)
+    message(STATUS "Configuring Web/HTML5 build...")
+    
+    # Check for Emscripten
+    if(NOT DEFINED ENV{EMSDK})
+        message(FATAL_ERROR "EMSDK environment variable must be set. Please install and source Emscripten SDK.")
+    endif()
+    
+    # Build WASM version of native library
+    set(WASM_BUILD_DIR ${CMAKE_BINARY_DIR}/wasm)
+    
+    add_custom_target(musac_wasm
+        COMMAND ${CMAKE_COMMAND}
+            -DCMAKE_TOOLCHAIN_FILE=$ENV{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake
+            -DMUSAC_BUILD_WASM=ON
+            -B ${WASM_BUILD_DIR}
+            -S ${CMAKE_CURRENT_SOURCE_DIR}/../../web
+        COMMAND ${CMAKE_COMMAND} --build ${WASM_BUILD_DIR}
+        COMMENT "Building WASM module..."
+    )
+    
+    # Copy WASM files to webapp
+    add_custom_command(
+        TARGET musac_wasm POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${WASM_BUILD_DIR}/musac.js
+            ${CMAKE_CURRENT_SOURCE_DIR}/html/webapp/musac.js
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${WASM_BUILD_DIR}/musac.wasm
+            ${CMAKE_CURRENT_SOURCE_DIR}/html/webapp/musac.wasm
+        COMMENT "Copying WASM files to webapp..."
+    )
+    
+    # Build GWT version
+    gradle_build(web_compile "html:dist")
+    add_dependencies(web_compile musac_wasm)
+    
+    # Development server
+    add_custom_target(run_web_dev
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/gradlew html:superDev
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        DEPENDS web_compile
+        COMMENT "Starting GWT development server..."
+    )
+    
+    # Production build
+    add_custom_target(web_dist
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/gradlew html:dist
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_CURRENT_SOURCE_DIR}/html/build/dist
+            ${BUILD_OUTPUT}/web
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        DEPENDS musac_wasm
+        COMMENT "Building production web version..."
+    )
+    
+    # Simple Python HTTP server for testing
+    add_custom_target(serve_web
+        COMMAND python3 -m http.server 8000
+        WORKING_DIRECTORY ${BUILD_OUTPUT}/web
+        DEPENDS web_dist
+        COMMENT "Serving web build at http://localhost:8000"
+    )
+endif()
+
+# ============================================================================
+# iOS BUILD
+# ============================================================================
+if(BUILD_IOS)
+    message(STATUS "Configuring iOS build...")
+    
+    if(NOT APPLE)
+        message(FATAL_ERROR "iOS builds can only be performed on macOS")
+    endif()
+    
+    # iOS toolchain setup
+    set(IOS_BUILD_DIR ${CMAKE_BINARY_DIR}/ios)
+    
+    # Build iOS framework
+    add_custom_target(musac_ios_framework
+        COMMAND xcodebuild
+            -project ${CMAKE_CURRENT_SOURCE_DIR}/../../ios/MusacFramework.xcodeproj
+            -scheme MusacFramework
+            -configuration Release
+            -sdk iphoneos
+            -derivedDataPath ${IOS_BUILD_DIR}
+            ONLY_ACTIVE_ARCH=NO
+            ENABLE_BITCODE=NO
+        COMMAND xcodebuild
+            -project ${CMAKE_CURRENT_SOURCE_DIR}/../../ios/MusacFramework.xcodeproj
+            -scheme MusacFramework
+            -configuration Release
+            -sdk iphonesimulator
+            -derivedDataPath ${IOS_BUILD_DIR}-sim
+            ONLY_ACTIVE_ARCH=NO
+            ENABLE_BITCODE=NO
+        COMMENT "Building iOS framework..."
+    )
+    
+    # Create XCFramework
+    add_custom_command(
+        TARGET musac_ios_framework POST_BUILD
+        COMMAND xcodebuild -create-xcframework
+            -framework ${IOS_BUILD_DIR}/Build/Products/Release-iphoneos/MusacFramework.framework
+            -framework ${IOS_BUILD_DIR}-sim/Build/Products/Release-iphonesimulator/MusacFramework.framework
+            -output ${CMAKE_CURRENT_SOURCE_DIR}/ios/MusacFramework.xcframework
+        COMMENT "Creating XCFramework..."
+    )
+    
+    # Build iOS app with RoboVM
+    gradle_build(ios_build "ios:build")
+    add_dependencies(ios_build musac_ios_framework)
+    
+    # Create IPA
+    gradle_build(ios_ipa "ios:createIPA")
+    add_dependencies(ios_ipa ios_build)
+    
+    # Deploy to device
+    add_custom_target(deploy_ios
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/gradlew ios:launchIOSDevice
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        DEPENDS ios_ipa
+        COMMENT "Deploying to iOS device..."
+    )
+    
+    # Run in simulator
+    add_custom_target(run_ios_sim
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/gradlew ios:launchIPhoneSimulator
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        DEPENDS ios_build
+        COMMENT "Running in iOS simulator..."
+    )
+endif()
+
+# ============================================================================
+# ALL PLATFORMS BUILD
+# ============================================================================
+add_custom_target(build_all
+    COMMENT "Building for all enabled platforms..."
+)
+
+if(BUILD_DESKTOP)
+    add_dependencies(build_all desktop_dist)
+endif()
+if(BUILD_ANDROID)
+    add_dependencies(build_all android_bundle)
+endif()
+if(BUILD_WEB)
+    add_dependencies(build_all web_dist)
+endif()
+if(BUILD_IOS)
+    add_dependencies(build_all ios_ipa)
+endif()
+
+# ============================================================================
+# PACKAGING
+# ============================================================================
+add_custom_target(package_all
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${BUILD_OUTPUT}
+    COMMENT "Packaging all platforms..."
+)
+
+if(BUILD_DESKTOP)
+    add_custom_command(TARGET package_all POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_SOURCE_DIR}/lwjgl3/build/libs/*.jar
+            ${BUILD_OUTPUT}/desktop/
+        COMMENT "Packaging desktop..."
+    )
+endif()
+
+if(BUILD_ANDROID)
+    add_custom_command(TARGET package_all POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_SOURCE_DIR}/android/build/outputs/bundle/release/*.aab
+            ${BUILD_OUTPUT}/android/
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_SOURCE_DIR}/android/build/outputs/apk/debug/*.apk
+            ${BUILD_OUTPUT}/android/
+        COMMENT "Packaging Android..."
+    )
+endif()
+
+if(BUILD_WEB)
+    # Already handled in web_dist target
+endif()
+
+if(BUILD_IOS)
+    add_custom_command(TARGET package_all POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_SOURCE_DIR}/ios/build/*.ipa
+            ${BUILD_OUTPUT}/ios/
+        COMMENT "Packaging iOS..."
+    )
+endif()
+
+add_dependencies(package_all build_all)
+
+# ============================================================================
+# CLEAN
+# ============================================================================
+add_custom_target(clean_all
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/gradlew clean
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/dist
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    COMMENT "Cleaning all build artifacts..."
+)
+
+# ============================================================================
+# HELP
+# ============================================================================
+add_custom_target(help_platforms
+    COMMAND ${CMAKE_COMMAND} -E echo "Available targets:"
+    COMMAND ${CMAKE_COMMAND} -E echo "  Desktop:"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - desktop_jar: Build desktop JAR"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - desktop_dist: Build desktop distribution"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - run_desktop: Run desktop version"
+    COMMAND ${CMAKE_COMMAND} -E echo "  Android:"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - android_apk: Build debug APK"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - android_bundle: Build release bundle"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - install_android: Install to device"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - run_android: Run on device"
+    COMMAND ${CMAKE_COMMAND} -E echo "  Web:"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - web_compile: Compile GWT"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - web_dist: Build production web"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - run_web_dev: Run development server"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - serve_web: Serve production build"
+    COMMAND ${CMAKE_COMMAND} -E echo "  iOS:"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - ios_build: Build iOS app"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - ios_ipa: Create IPA"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - deploy_ios: Deploy to device"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - run_ios_sim: Run in simulator"
+    COMMAND ${CMAKE_COMMAND} -E echo "  All:"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - build_all: Build all platforms"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - package_all: Package all platforms"
+    COMMAND ${CMAKE_COMMAND} -E echo "    - clean_all: Clean everything"
+    COMMENT "Platform build help"
+)
+
+message(STATUS "")
+message(STATUS "libGDX Multi-Platform Build Configuration:")
+message(STATUS "  Desktop: ${BUILD_DESKTOP}")
+message(STATUS "  Android: ${BUILD_ANDROID}")
+message(STATUS "  Web:     ${BUILD_WEB}")
+message(STATUS "  iOS:     ${BUILD_IOS}")
+message(STATUS "")
+message(STATUS "Run 'cmake --build . --target help_platforms' for available targets")

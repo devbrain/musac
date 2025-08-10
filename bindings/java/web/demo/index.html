@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Musac WASM Audio Decoder Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .file-label {
+            display: block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+        
+        .file-label:hover {
+            transform: translateY(-2px);
+        }
+        
+        .info-panel {
+            background: #f7f7f7;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .info-panel.active {
+            display: block;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .info-label {
+            color: #666;
+        }
+        
+        .info-value {
+            color: #333;
+            font-weight: 600;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.2s;
+        }
+        
+        .btn-play {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-play:hover {
+            background: #45a049;
+        }
+        
+        .btn-stop {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-stop:hover {
+            background: #da190b;
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .progress-bar {
+            background: #e0e0e0;
+            border-radius: 10px;
+            height: 10px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            width: 0%;
+            transition: width 0.1s;
+        }
+        
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        
+        .formats {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .formats strong {
+            color: #333;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .error.active {
+            display: block;
+        }
+        
+        .waveform {
+            height: 100px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .waveform canvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Musac WASM Decoder</h1>
+        <p class="subtitle">High-performance audio decoding in the browser</p>
+        
+        <div class="loading" id="loading">Initializing WASM module...</div>
+        <div class="error" id="error"></div>
+        
+        <div id="main" style="display: none;">
+            <label for="fileInput" class="file-label">
+                📁 Choose Audio File
+            </label>
+            <input type="file" id="fileInput" class="file-input" 
+                   accept=".wav,.mp3,.ogg,.flac,.mod,.s3m,.xm,.it,.mid,.midi,.vgm,.vgz">
+            
+            <div class="info-panel" id="infoPanel">
+                <div class="info-row">
+                    <span class="info-label">Format:</span>
+                    <span class="info-value" id="format">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Sample Rate:</span>
+                    <span class="info-value" id="sampleRate">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Channels:</span>
+                    <span class="info-value" id="channels">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Duration:</span>
+                    <span class="info-value" id="duration">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">File Size:</span>
+                    <span class="info-value" id="fileSize">-</span>
+                </div>
+            </div>
+            
+            <div class="waveform" id="waveform">
+                <canvas id="waveformCanvas"></canvas>
+            </div>
+            
+            <div class="controls">
+                <button class="btn btn-play" id="playBtn" disabled>▶ Play</button>
+                <button class="btn btn-stop" id="stopBtn" disabled>■ Stop</button>
+            </div>
+            
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            
+            <div class="time-display">
+                <span id="currentTime">0:00</span>
+                <span id="totalTime">0:00</span>
+            </div>
+            
+            <div class="formats">
+                <strong>Supported formats:</strong> WAV, MP3, OGG Vorbis, FLAC, MOD/S3M/XM/IT, MIDI, VGM
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        // Import Musac decoder
+        import { MusacDecoder, MusacWebAudioHelper } from '../build/dist/musac.js';
+        
+        let audioContext;
+        let currentSource;
+        let currentBuffer;
+        let startTime;
+        let pauseTime = 0;
+        let isPlaying = false;
+        let animationId;
+        
+        // UI elements
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const main = document.getElementById('main');
+        const fileInput = document.getElementById('fileInput');
+        const infoPanel = document.getElementById('infoPanel');
+        const playBtn = document.getElementById('playBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const progressFill = document.getElementById('progressFill');
+        const currentTimeEl = document.getElementById('currentTime');
+        const totalTimeEl = document.getElementById('totalTime');
+        const waveformCanvas = document.getElementById('waveformCanvas');
+        
+        // Initialize WASM module
+        async function init() {
+            try {
+                await MusacDecoder.initialize();
+                console.log('Musac WASM initialized');
+                
+                // Initialize Web Audio
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                loading.style.display = 'none';
+                main.style.display = 'block';
+            } catch (err) {
+                showError('Failed to initialize: ' + err.message);
+            }
+        }
+        
+        // Show error message
+        function showError(message) {
+            error.textContent = message;
+            error.classList.add('active');
+            loading.style.display = 'none';
+        }
+        
+        // Format time display
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        // Format file size
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+        
+        // Draw waveform
+        function drawWaveform(samples, sampleRate, channels) {
+            const canvas = waveformCanvas;
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Downsample for visualization
+            const step = Math.max(1, Math.floor(samples.length / canvas.width));
+            ctx.strokeStyle = '#764ba2';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            
+            for (let i = 0; i < canvas.width; i++) {
+                const idx = i * step;
+                const sample = samples[idx] || 0;
+                const y = (1 - sample) * canvas.height / 2;
+                
+                if (i === 0) {
+                    ctx.moveTo(i, y);
+                } else {
+                    ctx.lineTo(i, y);
+                }
+            }
+            
+            ctx.stroke();
+        }
+        
+        // Handle file selection
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            error.classList.remove('active');
+            
+            try {
+                // Read file
+                const arrayBuffer = await file.arrayBuffer();
+                const uint8Array = new Uint8Array(arrayBuffer);
+                
+                // Detect format
+                const format = MusacDecoder.detectFormat(uint8Array);
+                if (!format) {
+                    throw new Error('Unknown audio format');
+                }
+                
+                // Create decoder
+                const decoder = MusacDecoder.create(uint8Array);
+                
+                // Get info
+                const sampleRate = decoder.getSampleRate();
+                const channels = decoder.getChannels();
+                const duration = decoder.getDuration();
+                
+                // Update UI
+                document.getElementById('format').textContent = format;
+                document.getElementById('sampleRate').textContent = sampleRate + ' Hz';
+                document.getElementById('channels').textContent = 
+                    channels === 1 ? 'Mono' : 'Stereo';
+                document.getElementById('duration').textContent = formatTime(duration);
+                document.getElementById('fileSize').textContent = formatSize(file.size);
+                
+                totalTimeEl.textContent = formatTime(duration);
+                infoPanel.classList.add('active');
+                
+                // Decode audio
+                const samples = decoder.decodeAll();
+                decoder.dispose();
+                
+                // Draw waveform
+                drawWaveform(samples, sampleRate, channels);
+                
+                // Create audio buffer
+                currentBuffer = MusacWebAudioHelper.createAudioBuffer(
+                    audioContext, samples, sampleRate, channels
+                );
+                
+                // Enable play button
+                playBtn.disabled = false;
+                playBtn.textContent = '▶ Play';
+                
+            } catch (err) {
+                showError('Failed to decode: ' + err.message);
+            }
+        });
+        
+        // Play button
+        playBtn.addEventListener('click', () => {
+            if (!currentBuffer) return;
+            
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            
+            if (isPlaying) {
+                // Pause
+                if (currentSource) {
+                    currentSource.stop();
+                    pauseTime += audioContext.currentTime - startTime;
+                }
+                isPlaying = false;
+                playBtn.textContent = '▶ Play';
+                cancelAnimationFrame(animationId);
+            } else {
+                // Play
+                currentSource = audioContext.createBufferSource();
+                currentSource.buffer = currentBuffer;
+                currentSource.connect(audioContext.destination);
+                currentSource.onended = () => {
+                    if (isPlaying) {
+                        stopPlayback();
+                    }
+                };
+                
+                currentSource.start(0, pauseTime);
+                startTime = audioContext.currentTime;
+                isPlaying = true;
+                playBtn.textContent = '⏸ Pause';
+                stopBtn.disabled = false;
+                updateProgress();
+            }
+        });
+        
+        // Stop button
+        stopBtn.addEventListener('click', stopPlayback);
+        
+        function stopPlayback() {
+            if (currentSource) {
+                currentSource.stop();
+                currentSource = null;
+            }
+            isPlaying = false;
+            pauseTime = 0;
+            playBtn.textContent = '▶ Play';
+            stopBtn.disabled = true;
+            progressFill.style.width = '0%';
+            currentTimeEl.textContent = '0:00';
+            cancelAnimationFrame(animationId);
+        }
+        
+        // Update progress bar
+        function updateProgress() {
+            if (!isPlaying || !currentBuffer) return;
+            
+            const elapsed = pauseTime + (audioContext.currentTime - startTime);
+            const duration = currentBuffer.duration;
+            const progress = Math.min(100, (elapsed / duration) * 100);
+            
+            progressFill.style.width = progress + '%';
+            currentTimeEl.textContent = formatTime(elapsed);
+            
+            if (elapsed < duration) {
+                animationId = requestAnimationFrame(updateProgress);
+            }
+        }
+        
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>

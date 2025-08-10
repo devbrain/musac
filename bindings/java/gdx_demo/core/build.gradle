@@ -1,0 +1,15 @@
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+eclipse.project.name = appName + '-core'
+
+dependencies {
+  api "com.badlogicgames.ashley:ashley:$ashleyVersion"
+  api "com.badlogicgames.gdx:gdx-box2d:$gdxVersion"
+  api "com.badlogicgames.gdx:gdx:$gdxVersion"
+  
+  // Musac codec library - core module
+  api files('../../core/build/libs/musac-core-1.0.0.jar')
+
+  if(enableGraalNative == 'true') {
+    implementation "io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion"
+  }
+}

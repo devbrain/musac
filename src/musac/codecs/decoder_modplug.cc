@@ -17,7 +17,7 @@ namespace musac {
         bool m_eof = false;
         chrono::microseconds m_duration{};
         ModPlug_Settings settings;
-        std::vector<int32> m_decode_buffer;  // Reusable decode buffer
+        std::vector<int32_t> m_decode_buffer;  // Reusable decode buffer
         static bool initialized;
     };
 
@@ -86,13 +86,13 @@ namespace musac {
         
         // ModPlug_Load accepts many formats, so we need to actually try loading
         // Read some data to test
-        int64 dataSize = rwops->get_size();
+        int64_t dataSize = rwops->get_size();
         bool result = false;
         
         if (dataSize > 0 && dataSize <= std::numeric_limits<int>::max()) {
             // Read up to 64KB for testing (most module headers are much smaller)
             size_t testSize = std::min(static_cast<size_t>(dataSize), size_t(65536));
-            buffer<uint8> data(testSize);
+            buffer<uint8_t> data(testSize);
             
             if (rwops->read(data.data(), testSize) == testSize) {
                 // Try to load with ModPlug
@@ -117,11 +117,11 @@ namespace musac {
         if (is_open()) {
             return;
         }
-        int64 dataSize = rwops->get_size();
+        int64_t dataSize = rwops->get_size();
         if (dataSize <= 0 || dataSize > std::numeric_limits <int>::max()) {
             THROW_RUNTIME("Invalid ModPlug file size");
         }
-        buffer <uint8> data(static_cast <unsigned >(dataSize));
+        buffer <uint8_t> data(static_cast <unsigned >(dataSize));
         if (rwops->read( data.data(), data.size()) != static_cast<size_t>(dataSize)) {
             THROW_RUNTIME("Failed to read ModPlug file data");
         }

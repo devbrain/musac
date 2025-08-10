@@ -1,0 +1,199 @@
+apply plugin: 'java-library'
+apply plugin: 'maven-publish'
+
+archivesBaseName = 'musac-ios'
+
+dependencies {
+    api project(':core')
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src']
+        }
+        resources {
+            srcDirs = ['resources']
+        }
+    }
+}
+
+// iOS native framework packaging
+task buildIOSFramework(type: Exec) {
+    onlyIf { 
+        System.getProperty('os.name').toLowerCase().contains('mac') 
+    }
+    
+    workingDir '../..'
+    
+    commandLine 'xcodebuild',
+        '-project', 'ios/MusacFramework.xcodeproj',
+        '-scheme', 'MusacFramework',
+        '-configuration', 'Release',
+        '-sdk', 'iphoneos',
+        '-derivedDataPath', 'build/ios',
+        'ONLY_ACTIVE_ARCH=NO',
+        'ENABLE_BITCODE=NO'
+        
+    doLast {
+        // Build for simulator as well
+        exec {
+            workingDir '../..'
+            commandLine 'xcodebuild',
+                '-project', 'ios/MusacFramework.xcodeproj',
+                '-scheme', 'MusacFramework',
+                '-configuration', 'Release',
+                '-sdk', 'iphonesimulator',
+                '-derivedDataPath', 'build/ios-sim',
+                'ONLY_ACTIVE_ARCH=NO',
+                'ENABLE_BITCODE=NO'
+        }
+        
+        // Create XCFramework
+        exec {
+            workingDir '../..'
+            commandLine 'xcodebuild',
+                '-create-xcframework',
+                '-framework', 'build/ios/Build/Products/Release-iphoneos/MusacFramework.framework',
+                '-framework', 'build/ios-sim/Build/Products/Release-iphonesimulator/MusacFramework.framework',
+                '-output', 'build/MusacFramework.xcframework'
+        }
+    }
+}
+
+// Package XCFramework
+task packIOSFramework(type: Zip) {
+    dependsOn buildIOSFramework
+    archiveClassifier = 'natives-ios'
+    archiveExtension = 'zip'
+    
+    from('../../build') {
+        include 'MusacFramework.xcframework/**'
+    }
+}
+
+// iOS specific loader
+task generateIOSLoader {
+    def outputDir = file("$buildDir/generated/sources/ios/java")
+    outputs.dir outputDir
+    
+    doLast {
+        outputDir.mkdirs()
+        def loaderFile = file("$outputDir/com/musac/ios/IOSMusacLoader.java")
+        loaderFile.parentFile.mkdirs()
+        
+        loaderFile.text = '''package com.musac.ios;
+
+import com.musac.MusacNative;
+
+/**
+ * iOS-specific loader for Musac.
+ * This is typically handled by RoboVM or MOE (Multi-OS Engine).
+ */
+public class IOSMusacLoader {
+    private static boolean loaded = false;
+    
+    public static synchronized void load() {
+        if (loaded) return;
+        
+        // On iOS, the framework is linked at build time
+        // No dynamic loading needed
+        loaded = true;
+        
+        // Initialize Musac
+        MusacNative.init();
+    }
+    
+    static {
+        // Check if running on iOS
+        String osName = System.getProperty("os.name", "");
+        if (osName.toLowerCase().contains("ios") || 
+            System.getProperty("robovm.device.name") != null ||
+            System.getProperty("moe.platform.name") != null) {
+            load();
+        }
+    }
+}
+'''
+    }
+}
+
+compileJava.dependsOn generateIOSLoader
+sourceSets.main.java.srcDir "$buildDir/generated/sources/ios/java"
+
+artifacts {
+    if (System.getProperty('os.name').toLowerCase().contains('mac')) {
+        archives packIOSFramework
+    }
+}
+
+jar {
+    manifest {
+        attributes(
+            'Implementation-Title': 'Musac iOS',
+            'Implementation-Version': project.version,
+            'Automatic-Module-Name': 'musac.ios'
+        )
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            
+            if (System.getProperty('os.name').toLowerCase().contains('mac')) {
+                artifact packIOSFramework {
+                    classifier 'natives-ios'
+                }
+            }
+            
+            artifactId = 'musac-ios'
+            
+            pom {
+                name = 'Musac iOS'
+                description = 'Musac audio decoder - iOS platform support'
+                url = 'https://github.com/yourusername/musac'
+                
+                licenses {
+                    license {
+                        name = 'The MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                }
+                
+                developers {
+                    developer {
+                        id = 'yourusername'
+                        name = 'Your Name'
+                        email = 'your.email@example.com'
+                    }
+                }
+                
+                scm {
+                    connection = 'scm:git:git://github.com/yourusername/musac.git'
+                    developerConnection = 'scm:git:ssh://github.com/yourusername/musac.git'
+                    url = 'https://github.com/yourusername/musac'
+                }
+            }
+        }
+    }
+    
+    repositories {
+        maven {
+            name = "OSSRH"
+            url = version.endsWith('SNAPSHOT') 
+                ? "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+                : "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+            credentials {
+                username = project.findProperty("ossrhUsername") ?: ""
+                password = project.findProperty("ossrhPassword") ?: ""
+            }
+        }
+        
+        maven {
+            name = 'local'
+            url = "$buildDir/repo"
+        }
+    }
+}

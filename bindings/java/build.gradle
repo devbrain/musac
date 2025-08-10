@@ -1,0 +1,103 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        google()
+        maven { url "https://plugins.gradle.org/m2/" }
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:7.4.2'
+    }
+}
+
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'signing'
+}
+
+allprojects {
+    group = 'io.github.musac'
+    version = '1.0.0'
+    
+    repositories {
+        mavenCentral()
+        google()
+    }
+}
+
+subprojects {
+    apply plugin: 'java-library'
+    apply plugin: 'maven-publish'
+    
+    java {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+        withSourcesJar()
+        withJavadocJar()
+    }
+    
+    // Common publishing configuration
+    publishing {
+        repositories {
+            maven {
+                name = "OSSRH"
+                url = version.endsWith('SNAPSHOT') 
+                    ? "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+                    : "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+                credentials {
+                    username = project.findProperty("ossrhUsername") ?: ""
+                    password = project.findProperty("ossrhPassword") ?: ""
+                }
+            }
+            
+            // Local repository for testing
+            maven {
+                name = 'local'
+                url = "$buildDir/repo"
+            }
+        }
+    }
+}
+
+// Platform detection
+ext {
+    osName = System.getProperty('os.name').toLowerCase()
+    isWindows = osName.contains('windows')
+    isLinux = osName.contains('linux')
+    isMac = osName.contains('mac')
+    isArm = System.getProperty('os.arch').toLowerCase().contains('arm') || 
+            System.getProperty('os.arch').toLowerCase().contains('aarch')
+    is64Bit = System.getProperty('os.arch').contains('64')
+    
+    // Native library names
+    nativeLibName = 'musac_java'
+    nativeLibPrefix = isWindows ? '' : 'lib'
+    nativeLibSuffix = isWindows ? '.dll' : (isMac ? '.dylib' : '.so')
+    nativeLibFullName = "${nativeLibPrefix}${nativeLibName}${nativeLibSuffix}"
+}
+
+// Root project tasks
+task buildAll {
+    description = 'Build all modules for all platforms'
+    dependsOn ':core:build'
+    dependsOn ':desktop:build'
+    // Android and GWT require special setup
+    if (project.hasProperty('buildAndroid')) {
+        dependsOn ':android:build'
+    }
+    if (project.hasProperty('buildGwt')) {
+        dependsOn ':gwt:build'
+    }
+}
+
+task publishAll {
+    description = 'Publish all modules to Maven repository'
+    dependsOn ':core:publish'
+    dependsOn ':desktop:publish'
+    if (project.hasProperty('buildAndroid')) {
+        dependsOn ':android:publish'
+    }
+    if (project.hasProperty('buildGwt')) {
+        dependsOn ':gwt:publish'
+    }
+}

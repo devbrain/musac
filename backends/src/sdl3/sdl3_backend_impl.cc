@@ -242,6 +242,8 @@ namespace musac {
             m_open_devices.erase(it);
             m_device_specs.erase(device_handle);
         }
+        // Silently ignore invalid handles - this matches original behavior
+        // and prevents crashes during cleanup
     }
 
     audio_format sdl3_backend::get_device_format(uint32_t device_handle) {

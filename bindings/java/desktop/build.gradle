@@ -1,0 +1,170 @@
+apply plugin: 'java-library'
+apply plugin: 'maven-publish'
+
+archivesBaseName = 'musac-desktop'
+
+dependencies {
+    api project(':core')
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src']
+        }
+        resources {
+            srcDirs = ['resources']
+        }
+    }
+}
+
+// Task to package native libraries
+task packNatives(type: Jar) {
+    archiveClassifier = 'natives-desktop'
+    
+    // Include native libraries for all desktop platforms
+    from('../../build/bin') {
+        include '*.so'        // Linux
+        include '*.dll'       // Windows
+        include '*.dylib'     // macOS
+    }
+    
+    // Organize by platform
+    into('natives') {
+        from('../../build/bin') {
+            include 'libmusac_java.so'
+            into 'linux-x86-64'
+        }
+        from('../../build/bin') {
+            include 'musac_java.dll'
+            into 'windows-x86-64'
+        }
+        from('../../build/bin') {
+            include 'libmusac_java.dylib'
+            into 'macos'
+        }
+    }
+}
+
+artifacts {
+    archives packNatives
+}
+
+jar {
+    manifest {
+        attributes(
+            'Implementation-Title': 'Musac Desktop',
+            'Implementation-Version': project.version,
+            'Automatic-Module-Name': 'musac.desktop'
+        )
+    }
+}
+
+// Create loader class for desktop
+task generateDesktopLoader {
+    def outputDir = file("$buildDir/generated/sources/desktop/java")
+    outputs.dir outputDir
+    
+    doLast {
+        outputDir.mkdirs()
+        def loaderFile = file("$outputDir/com/musac/desktop/DesktopMusacLoader.java")
+        loaderFile.parentFile.mkdirs()
+        
+        loaderFile.text = '''package com.musac.desktop;
+
+import com.musac.MusacNative;
+import java.io.*;
+import java.nio.file.*;
+
+public class DesktopMusacLoader {
+    private static boolean loaded = false;
+    
+    public static synchronized void load() {
+        if (loaded) return;
+        
+        try {
+            // Try to load from java.library.path first
+            System.loadLibrary("musac_java");
+            loaded = true;
+        } catch (UnsatisfiedLinkError e) {
+            // Extract and load from JAR
+            loadFromJar();
+        }
+        
+        // Initialize Musac
+        MusacNative.init();
+    }
+    
+    private static void loadFromJar() {
+        String os = System.getProperty("os.name").toLowerCase();
+        String arch = System.getProperty("os.arch").toLowerCase();
+        
+        String platform;
+        String libName;
+        
+        if (os.contains("win")) {
+            platform = "windows-x86-64";
+            libName = "musac_java.dll";
+        } else if (os.contains("mac")) {
+            platform = "macos";
+            libName = "libmusac_java.dylib";
+        } else {
+            platform = "linux-x86-64";
+            libName = "libmusac_java.so";
+        }
+        
+        try {
+            // Extract native library to temp directory
+            String resourcePath = "/natives/" + platform + "/" + libName;
+            InputStream in = DesktopMusacLoader.class.getResourceAsStream(resourcePath);
+            if (in == null) {
+                throw new RuntimeException("Native library not found: " + resourcePath);
+            }
+            
+            Path tempDir = Files.createTempDirectory("musac-natives");
+            Path tempLib = tempDir.resolve(libName);
+            Files.copy(in, tempLib, StandardCopyOption.REPLACE_EXISTING);
+            in.close();
+            
+            System.load(tempLib.toAbsolutePath().toString());
+            loaded = true;
+            
+            // Delete on exit
+            tempLib.toFile().deleteOnExit();
+            tempDir.toFile().deleteOnExit();
+            
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to extract native library", e);
+        }
+    }
+    
+    static {
+        load();
+    }
+}
+'''
+    }
+}
+
+compileJava.dependsOn generateDesktopLoader
+sourceSets.main.java.srcDir "$buildDir/generated/sources/desktop/java"
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            
+            artifact packNatives {
+                classifier 'natives-desktop'
+            }
+            
+            artifactId = 'musac-desktop'
+            
+            pom {
+                name = 'Musac Desktop'
+                description = 'Musac audio decoder - Desktop platform support'
+                url = 'https://github.com/yourusername/musac'
+            }
+        }
+    }
+}
