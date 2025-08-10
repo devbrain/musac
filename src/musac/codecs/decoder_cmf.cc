@@ -37,15 +37,28 @@ namespace musac {
 
     decoder_cmf::~decoder_cmf() = default;
 
-    bool decoder_cmf::do_accept(io_stream* rwops) {
-        // Check for "CTMF" magic bytes at the start of the file
-        uint8_t magic[4];
-        
-        if (rwops->read(magic, 4) != 4) {
+    bool decoder_cmf::accept(io_stream* rwops) {
+        if (!rwops) {
             return false;
         }
         
-        return (magic[0] == 'C' && magic[1] == 'T' && magic[2] == 'M' && magic[3] == 'F');
+        // Save current stream position
+        auto original_pos = rwops->tell();
+        if (original_pos < 0) {
+            return false;
+        }
+        
+        // Check for "CTMF" magic bytes at the start of the file
+        uint8_t magic[4];
+        bool result = false;
+        
+        if (rwops->read(magic, 4) == 4) {
+            result = (magic[0] == 'C' && magic[1] == 'T' && magic[2] == 'M' && magic[3] == 'F');
+        }
+        
+        // Restore original position
+        rwops->seek(original_pos, seek_origin::set);
+        return result;
     }
     
     const char* decoder_cmf::get_name() const {

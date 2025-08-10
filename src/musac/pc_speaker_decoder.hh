@@ -23,7 +23,6 @@ namespace musac {
         bool seek_to_time(std::chrono::microseconds pos) override;
         
     protected:
-        [[nodiscard]] bool do_accept(io_stream* rwops) override;
         size_t do_decode(float* buf, size_t len, bool& call_again) override;
         
     private:

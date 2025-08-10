@@ -295,24 +295,35 @@ decoder_aiff::decoder_aiff() : m_pimpl(std::make_unique<impl>()) {}
 
 decoder_aiff::~decoder_aiff() = default;
 
-bool decoder_aiff::do_accept(io_stream* rwops) {
+bool decoder_aiff::accept(io_stream* rwops) {
+    if (!rwops) {
+        return false;
+    }
+    
+    // Save current stream position
+    auto original_pos = rwops->tell();
+    if (original_pos < 0) {
+        return false;
+    }
+    
     // Check for AIFF or 8SVX format
     uint32 magic1, magic2;
+    bool result = false;
     
     // Read first 4 bytes (should be "FORM")
-    if (!read_u32be(rwops, &magic1) || magic1 != FORM) {
-        return false;
+    if (read_u32be(rwops, &magic1) && magic1 == FORM) {
+        // Skip file size (4 bytes)
+        if (rwops->seek(4, seek_origin::cur) >= 0) {
+            // Read format type (should be "AIFF" or "8SVX")
+            if (read_u32be(rwops, &magic2)) {
+                result = (magic2 == AIFF || magic2 == _8SVX);
+            }
+        }
     }
     
-    // Skip file size (4 bytes)
-    rwops->seek(4, seek_origin::cur);
-    
-    // Read format type (should be "AIFF" or "8SVX")
-    if (!read_u32be(rwops, &magic2)) {
-        return false;
-    }
-    
-    return (magic2 == AIFF || magic2 == _8SVX);
+    // Restore original position
+    rwops->seek(original_pos, seek_origin::set);
+    return result;
 }
 
 const char* decoder_aiff::get_name() const {

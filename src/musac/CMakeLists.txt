@@ -20,8 +20,6 @@ set(MUSAC_SOURCES
         ${MUSAC_PROJECT_ROOT}/include/musac/audio_system.hh
         audio_source.cc
         ${MUSAC_PROJECT_ROOT}/include/musac/audio_source.hh
-        audio_loader.cc
-        ${MUSAC_PROJECT_ROOT}/include/musac/audio_loader.hh
 
 
         stream.cc
@@ -54,7 +52,7 @@ set(MUSAC_SOURCES
 add_library(musac ${LIB_BUILD_TYPE} ${MUSAC_SOURCES})
 
 
-target_link_libraries(musac PUBLIC musac_codecs musac_sdk thirdparty::failsafe)
+target_link_libraries(musac PUBLIC musac_sdk thirdparty::failsafe)
 target_compile_definitions(musac PRIVATE LOGGER_DEFAULT_CATEGORY=musac)
 
 

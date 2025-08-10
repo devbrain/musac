@@ -39,16 +39,29 @@ namespace musac {
 
     decoder_opb::~decoder_opb() = default;
 
-    bool decoder_opb::do_accept(io_stream* rwops) {
-        // Check for "OPBin1" magic bytes followed by null terminator
-        uint8_t magic[7];
-        
-        if (rwops->read(magic, 7) != 7) {
+    bool decoder_opb::accept(io_stream* rwops) {
+        if (!rwops) {
             return false;
         }
         
-        return (magic[0] == 'O' && magic[1] == 'P' && magic[2] == 'B' &&
-                magic[3] == 'i' && magic[4] == 'n' && magic[5] == '1' && magic[6] == '\0');
+        // Save current stream position
+        auto original_pos = rwops->tell();
+        if (original_pos < 0) {
+            return false;
+        }
+        
+        // Check for "OPBin1" magic bytes followed by null terminator
+        uint8_t magic[7];
+        bool result = false;
+        
+        if (rwops->read(magic, 7) == 7) {
+            result = (magic[0] == 'O' && magic[1] == 'P' && magic[2] == 'B' &&
+                     magic[3] == 'i' && magic[4] == 'n' && magic[5] == '1' && magic[6] == '\0');
+        }
+        
+        // Restore original position
+        rwops->seek(original_pos, seek_origin::set);
+        return result;
     }
     
     const char* decoder_opb::get_name() const {

@@ -3,20 +3,8 @@
 
 #include <memory>
 
-// Export macro for shared library builds
-#ifdef MUSAC_BACKEND_SDL3_SHARED
-    #ifdef _WIN32
-        #ifdef MUSAC_BACKEND_SDL3_EXPORTS
-            #define MUSAC_BACKEND_SDL3_EXPORT __declspec(dllexport)
-        #else
-            #define MUSAC_BACKEND_SDL3_EXPORT __declspec(dllimport)
-        #endif
-    #else
-        #define MUSAC_BACKEND_SDL3_EXPORT __attribute__((visibility("default")))
-    #endif
-#else
-    #define MUSAC_BACKEND_SDL3_EXPORT
-#endif
+// Include generated export header
+#include "export_musac_backend_sdl3.h"
 
 // Public factory header for SDL3 backend
 // This header can be included by applications that want to use SDL3 backend

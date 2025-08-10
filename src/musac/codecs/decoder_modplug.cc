@@ -57,29 +57,56 @@ namespace musac {
 
     decoder_modplug::~decoder_modplug() = default;
 
-    bool decoder_modplug::do_accept(io_stream* rwops) {
+    bool decoder_modplug::accept(io_stream* rwops) {
+        if (!rwops) {
+            return false;
+        }
+        
+        // Save current stream position
+        auto original_pos = rwops->tell();
+        if (original_pos < 0) {
+            return false;
+        }
+        
+        // Initialize ModPlug if needed
+        static bool modplug_initialized = false;
+        if (!modplug_initialized) {
+            ModPlug_Init();
+            modplug_initialized = true;
+        }
+        
+        // Setup default settings for testing
+        ModPlug_Settings settings{};
+        settings.mFlags = MODPLUG_ENABLE_OVERSAMPLING;
+        settings.mChannels = 2;
+        settings.mBits = 32;
+        settings.mFrequency = 44100;
+        settings.mResamplingMode = MODPLUG_RESAMPLE_FIR;
+        settings.mLoopCount = 0;
+        
         // ModPlug_Load accepts many formats, so we need to actually try loading
         // Read some data to test
         int64 dataSize = rwops->get_size();
-        if (dataSize <= 0 || dataSize > std::numeric_limits<int>::max()) {
-            return false;
+        bool result = false;
+        
+        if (dataSize > 0 && dataSize <= std::numeric_limits<int>::max()) {
+            // Read up to 64KB for testing (most module headers are much smaller)
+            size_t testSize = std::min(static_cast<size_t>(dataSize), size_t(65536));
+            buffer<uint8> data(testSize);
+            
+            if (rwops->read(data.data(), testSize) == testSize) {
+                // Try to load with ModPlug
+                ModPlugFile* test = ModPlug_Load(data.data(), static_cast<int>(testSize), &settings);
+                if (test) {
+                    ModPlug_Unload(test);
+                    result = true;
+                }
+            }
         }
         
-        // Read up to 64KB for testing (most module headers are much smaller)
-        size_t testSize = std::min(static_cast<size_t>(dataSize), size_t(65536));
-        buffer<uint8> data(testSize);
-        
-        if (rwops->read(data.data(), testSize) != testSize) {
-            return false;
-        }
-        
-        // Try to load with ModPlug
-        ModPlugFile* test = ModPlug_Load(data.data(), static_cast<int>(testSize), &m_pimpl->settings);
-        if (test) {
-            ModPlug_Unload(test);
-            return true;
-        }
-        return false;
+        // Restore original position
+        rwops->seek(original_pos, seek_origin::set);
+        return result;
     }
     
     const char* decoder_modplug::get_name() const {

@@ -18,10 +18,6 @@ namespace musac {
 
             [[nodiscard]] bool is_open() const;
             [[nodiscard]] size_t decode(float buf[], size_t len, bool& call_again, channels_t device_channels);
-
-            // Check if this decoder can handle the given data
-            // This method automatically saves and restores the stream position
-            [[nodiscard]] bool accept(io_stream* rwops);
             
             // Get the name of this decoder
             [[nodiscard]] virtual const char* get_name() const = 0;
@@ -36,10 +32,6 @@ namespace musac {
         protected:
             void set_is_open(bool f);
             virtual size_t do_decode(float* buf, size_t len, bool& call_again) = 0;
-            
-            // Override this to implement format detection
-            // Stream position is guaranteed to be restored after this call
-            [[nodiscard]] virtual bool do_accept(io_stream* rwops) = 0;
 
         private:
             struct impl;

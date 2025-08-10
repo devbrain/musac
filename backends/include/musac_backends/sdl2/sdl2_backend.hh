@@ -3,20 +3,8 @@
 
 #include <memory>
 
-// Export macro for shared library builds
-#ifdef MUSAC_BACKEND_SDL2_SHARED
-    #ifdef _WIN32
-        #ifdef MUSAC_BACKEND_SDL2_EXPORTS
-            #define MUSAC_BACKEND_SDL2_EXPORT __declspec(dllexport)
-        #else
-            #define MUSAC_BACKEND_SDL2_EXPORT __declspec(dllimport)
-        #endif
-    #else
-        #define MUSAC_BACKEND_SDL2_EXPORT __attribute__((visibility("default")))
-    #endif
-#else
-    #define MUSAC_BACKEND_SDL2_EXPORT
-#endif
+
+#include "export_musac_backend_sdl2.h"
 
 // Public factory header for SDL2 backend
 // This header can be included by applications that want to use SDL2 backend

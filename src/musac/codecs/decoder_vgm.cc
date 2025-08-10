@@ -25,28 +25,38 @@ namespace musac {
 
     decoder_vgm::~decoder_vgm() = default;
 
-    bool decoder_vgm::do_accept(io_stream* rwops) {
-        // Check for "Vgm " magic bytes at the start of the file
-        // VGM files can be gzip compressed, so we need to check for both cases
-        uint8_t magic[4];
-        
-        if (rwops->read(magic, 4) != 4) {
+    bool decoder_vgm::accept(io_stream* rwops) {
+        if (!rwops) {
             return false;
         }
         
-        // Check for uncompressed VGM signature "Vgm "
-        if (magic[0] == 'V' && magic[1] == 'g' && magic[2] == 'm' && magic[3] == ' ') {
-            return true;
+        // Save current stream position
+        auto original_pos = rwops->tell();
+        if (original_pos < 0) {
+            return false;
         }
         
-        // Check for gzip compressed VGM (0x1F 0x8B 0x08)
-        if (magic[0] == 0x1f && magic[1] == 0x8b && magic[2] == 0x08) {
-            // It's a gzip file, but we'd need to decompress to check if it's VGM
-            // For now, we'll assume it could be VGM and let the full load process validate
-            return true;
+        // Check for "Vgm " magic bytes at the start of the file
+        // VGM files can be gzip compressed, so we need to check for both cases
+        uint8_t magic[4];
+        bool result = false;
+        
+        if (rwops->read(magic, 4) == 4) {
+            // Check for uncompressed VGM signature "Vgm "
+            if (magic[0] == 'V' && magic[1] == 'g' && magic[2] == 'm' && magic[3] == ' ') {
+                result = true;
+            }
+            // Check for gzip compressed VGM (0x1F 0x8B 0x08)
+            else if (magic[0] == 0x1f && magic[1] == 0x8b && magic[2] == 0x08) {
+                // It's a gzip file, but we'd need to decompress to check if it's VGM
+                // For now, we'll assume it could be VGM and let the full load process validate
+                result = true;
+            }
         }
         
-        return false;
+        // Restore original position
+        rwops->seek(original_pos, seek_origin::set);
+        return result;
     }
     
     const char* decoder_vgm::get_name() const {

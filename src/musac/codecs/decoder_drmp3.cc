@@ -70,15 +70,27 @@ namespace musac {
         drmp3_uninit(&m_pimpl->handle_);
     }
 
-    bool decoder_drmp3::do_accept(io_stream* rwops) {
+    bool decoder_drmp3::accept(io_stream* rwops) {
+        if (!rwops) {
+            return false;
+        }
+        
+        // Save current stream position
+        auto original_pos = rwops->tell();
+        if (original_pos < 0) {
+            return false;
+        }
+        
         // Use dr_mp3's init function to test if the format is valid
         drmp3 test_handle;
-        if (drmp3_init(&test_handle, drmp3ReadCb, drmp3SeekCb, rwops, nullptr)) {
-            // Successfully initialized, it's a valid MP3 file
+        bool result = drmp3_init(&test_handle, drmp3ReadCb, drmp3SeekCb, rwops, nullptr);
+        if (result) {
             drmp3_uninit(&test_handle);
-            return true;
         }
-        return false;
+        
+        // Restore original position
+        rwops->seek(original_pos, seek_origin::set);
+        return result;
     }
     
     const char* decoder_drmp3::get_name() const {

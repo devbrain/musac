@@ -7,6 +7,7 @@
 
 #include <chrono>
 #include <musac/sdk/decoder.hh>
+#include <musac/sdk/decoders_registry.hh>
 #include <musac/sdk/resampler.hh>
 #include <musac/sdk/types.hh>
 #include <musac/export_musac.h>
@@ -20,6 +21,15 @@ namespace musac {
 
             audio_source(std::unique_ptr <decoder> decoder_obj,
                          std::unique_ptr<musac::io_stream> rwops);
+
+            // Constructor with automatic format detection using registry
+            audio_source(std::unique_ptr<musac::io_stream> rwops, 
+                        const decoders_registry* registry = nullptr);
+
+            // Constructor with automatic format detection and resampler
+            audio_source(std::unique_ptr<musac::io_stream> rwops,
+                        std::unique_ptr<resampler> resampler_obj,
+                        const decoders_registry* registry = nullptr);
 
             audio_source(audio_source&&) noexcept;
             audio_source& operator=(audio_source&&) noexcept = delete;
