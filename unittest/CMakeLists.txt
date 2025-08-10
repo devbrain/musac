@@ -136,29 +136,3 @@ if (TARGET musac_internal)
     target_compile_definitions(musac_unittest PRIVATE MUSAC_INTERNAL_TESTING)
 endif()
 
-# Register tests with CTest
-include(CTest)
-include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
-doctest_discover_tests(musac_unittest)
-
-# Add custom targets for running specific test types
-add_custom_target(run_tests
-        COMMAND musac_unittest
-        DEPENDS musac_unittest
-        WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-        COMMENT "Running all tests..."
-)
-
-add_custom_target(run_unit_tests
-        COMMAND musac_unittest -tc="*unit*"
-        DEPENDS musac_unittest
-        WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-        COMMENT "Running unit tests only..."
-)
-
-add_custom_target(run_integration_tests
-        COMMAND musac_unittest -tc="*integration*,*thread_safety*,*codec*,*backend*"
-        DEPENDS musac_unittest
-        WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-        COMMENT "Running integration tests only..."
-)

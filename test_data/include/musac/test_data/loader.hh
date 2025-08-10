@@ -7,8 +7,8 @@
 
 #include <musac/audio_source.hh>
 
-namespace musac {
-namespace test_data {
+
+namespace musac::test_data {
 
 enum class music_type {
     cmf,
@@ -29,9 +29,15 @@ struct loader {
     static void done();
 
     static musac::audio_source load(music_type type);
+    
+    // Returns true if the music_type is a music file, false if it's a sound effect
+    static bool is_music(music_type type);
+    
+    // Returns a human-readable name for the music_type
+    static const char* get_name(music_type type);
 };
 
-} // namespace test_data
-} // namespace musac
+} // namespace musac::test_data
+
 
 #endif

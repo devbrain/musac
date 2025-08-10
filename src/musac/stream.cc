@@ -195,6 +195,10 @@ namespace musac {
         m_is_playing = false;
     }
 
+    std::vector<float> audio_stream::get_final_output_buffer() {
+        return impl::s_mixer.get_final_output();
+    }
+    
     void audio_stream::audio_callback(uint8_t out[], unsigned int out_len) {
         // If we're tearing down, just emit silence and bail.
         if (s_isShuttingDown.load(std::memory_order_relaxed)) {
@@ -377,6 +381,9 @@ namespace musac {
                 stream->invoke_loop_callback();
             }
         } // in_use_guard released here
+        
+        // Capture the final mixed output for visualization
+        impl::s_mixer.capture_final_output(impl::s_mixer.m_final_mix_buf.data(), out_len_samples);
         
         // Finally convert the float mix into the device buffer
         dev.m_sample_converter(out, out_len, impl::s_mixer.m_final_mix_buf);

@@ -22,6 +22,9 @@ option(MUSAC_BUILD_SDL2_BACKEND "Build SDL2 backend as separate library" ON)
 # Option to enable/disable unit tests
 option(MUSAC_BUILD_TESTS "Build unit tests" ON)
 
+# Option to enable/disable examples
+option(MUSAC_BUILD_EXAMPLES "Build examples" ON)
+
 # Language bindings options
 option(MUSAC_BUILD_BINDINGS "Build language bindings" OFF)
 option(MUSAC_BUILD_JAVA_BINDING "Build Java/JNI binding" ON)
@@ -145,8 +148,11 @@ endif()
 add_subdirectory(ext)
 add_subdirectory(src/musac)
 
-add_subdirectory(test_data)
-add_subdirectory(example)
+# Build test_data library only if examples are enabled
+if(MUSAC_BUILD_EXAMPLES)
+    add_subdirectory(test_data)
+    add_subdirectory(example)
+endif()
 add_subdirectory(unittest)
 add_subdirectory(tools)
 
@@ -238,6 +244,7 @@ if(MUSAC_BUILD_TESTS)
         message(STATUS "    Test Backend:    None (limited testing)")
     endif()
 endif()
+message(STATUS "  Examples:          ${MUSAC_BUILD_EXAMPLES}")
 
 message(STATUS "  Sanitizers:        ${MUSAC_ENABLE_SANITIZERS}")
 message(STATUS "  LTO:               ${MUSAC_ENABLE_LTO}")

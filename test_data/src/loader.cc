@@ -70,4 +70,50 @@ musac::audio_source loader::load(music_type type) {
     return musac::audio_source(std::move(stream), s_registry.get());
 }
 
+bool loader::is_music(music_type type) {
+    // VOC files are typically sound effects, all others are music
+    switch (type) {
+        case music_type::cmf:
+            return true;
+        case music_type::hmp:
+            return true;
+        case music_type::mid:
+            return true;
+        case music_type::mml_bouree:
+            return true;
+        case music_type::mml_complex:
+            return true;
+        case music_type::mp3:
+            return true;
+        case music_type::opb:
+            return true;
+        case music_type::s3m:
+            return true;
+        case music_type::voc:
+            return false;
+        case music_type::xmi:
+            return true;;
+        case music_type::vorbis:
+            return true;
+    }
+    return type != music_type::voc;
+}
+
+const char* loader::get_name(music_type type) {
+    switch (type) {
+        case music_type::cmf:        return "CMF (Creative Music File)";
+        case music_type::hmp:        return "HMP (Human Machine Interfaces MIDI)";
+        case music_type::mid:        return "MIDI (Musical Instrument Digital Interface)";
+        case music_type::mml_bouree: return "MML - Bourrée in E minor";
+        case music_type::mml_complex:return "MML - Complex Example";
+        case music_type::mp3:        return "MP3 (MPEG-1 Audio Layer III)";
+        case music_type::opb:        return "OPB (OPL Binary)";
+        case music_type::s3m:        return "S3M (Scream Tracker 3 Module)";
+        case music_type::voc:        return "VOC (Creative Voice File)";
+        case music_type::xmi:        return "XMI (Extended MIDI)";
+        case music_type::vorbis:     return "Ogg Vorbis";
+        default:                     return "Unknown";
+    }
+}
+
 } // namespace musac::test_data
