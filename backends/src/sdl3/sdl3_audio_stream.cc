@@ -38,7 +38,7 @@ sdl3_audio_stream::sdl3_audio_stream(SDL_AudioDeviceID device_id, const audio_sp
     SDL_AudioSpec sdl_spec;
     sdl_spec.format = to_sdl_format(spec.format);
     sdl_spec.channels = spec.channels;
-    sdl_spec.freq = spec.freq;
+    sdl_spec.freq = static_cast<int>(spec.freq);
     
     if (m_callback) {
         // We already have an opened device, so we need to:
@@ -84,20 +84,18 @@ sdl3_audio_stream::sdl3_audio_stream(SDL_AudioDeviceID device_id, const audio_sp
     }
 }
 
-sdl3_audio_stream::~sdl3_audio_stream() {
-    // LOG_INFO("SDL3Stream", "Destroying audio stream, bound:", m_bound);
-    // The stream will be automatically destroyed by the shared_ptr
-    // Don't try to unbind - the device might already be closed
-}
+sdl3_audio_stream::~sdl3_audio_stream() = default;
 
-void sdl3_audio_stream::sdl_callback(void* userdata, SDL_AudioStream* stream, int additional_amount, int total_amount) {
+void sdl3_audio_stream::sdl_callback(void* userdata,
+    SDL_AudioStream* stream,
+    int additional_amount, [[maybe_unused]] int total_amount) {
     auto* self = static_cast<sdl3_audio_stream*>(userdata);
     if (!self) {
         return;
     }
     
     if (self->m_callback && additional_amount > 0) {
-        std::vector<uint8_t> buffer(additional_amount);
+        std::vector<uint8_t> buffer(static_cast<size_t>(additional_amount));
         auto* data = buffer.data();
         if (data) {
             self->m_callback(self->m_userdata, data, additional_amount);
@@ -106,12 +104,12 @@ void sdl3_audio_stream::sdl_callback(void* userdata, SDL_AudioStream* stream, in
     }
 }
 
-bool sdl3_audio_stream::put_data(const void* data, size_t size) {
-    return SDL_PutAudioStreamData(m_stream.get(), data, static_cast<int>(size));
+bool sdl3_audio_stream::put_data(const void* data, size_t sz) {
+    return SDL_PutAudioStreamData(m_stream.get(), data, static_cast<int>(sz));
 }
 
-size_t sdl3_audio_stream::get_data(void* data, size_t size) {
-    int result = SDL_GetAudioStreamData(m_stream.get(), data, static_cast<int>(size));
+size_t sdl3_audio_stream::get_data(void* data, size_t sz) {
+    int result = SDL_GetAudioStreamData(m_stream.get(), data, static_cast<int>(sz));
     return result > 0 ? static_cast<size_t>(result) : 0;
 }
 

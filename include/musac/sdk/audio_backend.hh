@@ -6,7 +6,8 @@
 #include <vector>
 #include <musac/sdk/audio_format.hh>
 #include <musac/sdk/types.hh>
-#include <musac/audio_stream_interface.hh>
+#include <musac/sdk/audio_stream_interface.hh>
+#include <musac/sdk/export_musac_sdk.h>
 
 namespace musac {
 
@@ -29,7 +30,7 @@ struct device_info_v2 {
  * @note This is the v2 interface. The original audio_backend interface is preserved
  *       for backward compatibility during the migration period.
  */
-class audio_backend {
+class MUSAC_SDK_EXPORT audio_backend {
 public:
     virtual ~audio_backend() = default;
     

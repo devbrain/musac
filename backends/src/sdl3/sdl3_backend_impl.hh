@@ -2,7 +2,7 @@
 #define MUSAC_SDL3_BACKEND_V2_HH
 
 #include <musac/sdk/audio_backend.hh>
-#include <SDL3/SDL.h>
+#include "sdl3.hh"
 #include <map>
 #include <mutex>
 #include <string>

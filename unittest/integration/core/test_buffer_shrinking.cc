@@ -12,19 +12,19 @@ TEST_CASE("audio_mixer buffer shrinking") {
         audio_mixer mixer;
         
         // Initial state
-        CHECK(mixer.allocatedSamples() == 0);
+        CHECK(mixer.allocated_samples() == 0);
         
         // Small resize
         mixer.resize(1024);
-        CHECK(mixer.allocatedSamples() == 1024);
+        CHECK(mixer.allocated_samples() == 1024);
         
         // Larger resize
         mixer.resize(8192);
-        CHECK(mixer.allocatedSamples() == 8192);
+        CHECK(mixer.allocated_samples() == 8192);
         
         // Even larger resize
         mixer.resize(65536);
-        CHECK(mixer.allocatedSamples() == 65536);
+        CHECK(mixer.allocated_samples() == 65536);
     }
     
     SUBCASE("buffers don't shrink immediately") {
@@ -32,17 +32,17 @@ TEST_CASE("audio_mixer buffer shrinking") {
         
         // Grow to large size
         mixer.resize(300000);  // > 256K limit
-        CHECK(mixer.allocatedSamples() == 300000);
+        CHECK(mixer.allocated_samples() == 300000);
         
         // Small request - should not shrink immediately
         mixer.resize(1024);
-        CHECK(mixer.allocatedSamples() == 300000);
+        CHECK(mixer.allocated_samples() == 300000);
         
         // Multiple small requests - still no shrink (< 100 frames)
         for (int i = 0; i < 50; ++i) {
             mixer.resize(1024);
         }
-        CHECK(mixer.allocatedSamples() == 300000);
+        CHECK(mixer.allocated_samples() == 300000);
     }
     
     SUBCASE("buffers shrink after stability period") {
@@ -50,7 +50,7 @@ TEST_CASE("audio_mixer buffer shrinking") {
         
         // Grow to large size
         mixer.resize(300000);  // > 256K limit
-        unsigned int large_size = mixer.allocatedSamples();
+        auto large_size = mixer.allocated_samples();
         CHECK(large_size == 300000);
         
         // Make 101 small requests (> STABILITY_FRAMES)
@@ -60,7 +60,7 @@ TEST_CASE("audio_mixer buffer shrinking") {
         }
         
         // Should have shrunk after stability period
-        unsigned int new_size = mixer.allocatedSamples();
+        auto new_size = mixer.allocated_samples();
         CHECK(new_size < large_size);
         CHECK(new_size <= 262144);  // MAX_RETAINED_SAMPLES
         CHECK(new_size >= 4096);     // MIN_BUFFER_SAMPLES
@@ -71,7 +71,7 @@ TEST_CASE("audio_mixer buffer shrinking") {
         
         // Grow to large size
         mixer.resize(300000);
-        CHECK(mixer.allocatedSamples() == 300000);
+        CHECK(mixer.allocated_samples() == 300000);
         
         // Make requests using > 25% of buffer
         for (int i = 0; i < 101; ++i) {
@@ -79,7 +79,7 @@ TEST_CASE("audio_mixer buffer shrinking") {
         }
         
         // Should NOT have shrunk
-        CHECK(mixer.allocatedSamples() == 300000);
+        CHECK(mixer.allocated_samples() == 300000);
     }
     
     SUBCASE("manual compaction works") {
@@ -87,17 +87,17 @@ TEST_CASE("audio_mixer buffer shrinking") {
         
         // Grow buffers
         mixer.resize(100000);
-        CHECK(mixer.allocatedSamples() == 100000);
+        CHECK(mixer.allocated_samples() == 100000);
         
         // Manual compact
         mixer.compact_buffers();
         
         // Should shrink to minimum
-        CHECK(mixer.allocatedSamples() == 4096);
+        CHECK(mixer.allocated_samples() == 4096);
         
         // Can grow again after compaction
         mixer.resize(8192);
-        CHECK(mixer.allocatedSamples() == 8192);
+        CHECK(mixer.allocated_samples() == 8192);
     }
     
     SUBCASE("compaction only happens for large buffers") {
@@ -105,27 +105,27 @@ TEST_CASE("audio_mixer buffer shrinking") {
         
         // Small buffer
         mixer.resize(8192);
-        CHECK(mixer.allocatedSamples() == 8192);
+        CHECK(mixer.allocated_samples() == 8192);
         
         // Compact - should not change small buffers
         mixer.compact_buffers();
-        CHECK(mixer.allocatedSamples() == 8192);
+        CHECK(mixer.allocated_samples() == 8192);
         
         // Medium buffer (< 4 * MIN_BUFFER_SAMPLES)
         mixer.resize(16000);
-        CHECK(mixer.allocatedSamples() == 16000);
+        CHECK(mixer.allocated_samples() == 16000);
         
         // Compact - still no change
         mixer.compact_buffers();
-        CHECK(mixer.allocatedSamples() == 16000);
+        CHECK(mixer.allocated_samples() == 16000);
         
         // Large buffer (> 4 * MIN_BUFFER_SAMPLES)
         mixer.resize(20000);
-        CHECK(mixer.allocatedSamples() == 20000);
+        CHECK(mixer.allocated_samples() == 20000);
         
         // Now compaction should work
         mixer.compact_buffers();
-        CHECK(mixer.allocatedSamples() == 4096);
+        CHECK(mixer.allocated_samples() == 4096);
     }
     
     SUBCASE("shrinking resets stability counters") {
@@ -138,23 +138,23 @@ TEST_CASE("audio_mixer buffer shrinking") {
         for (int i = 0; i < 50; ++i) {
             mixer.resize(1024);
         }
-        CHECK(mixer.allocatedSamples() == 300000);
+        CHECK(mixer.allocated_samples() == 300000);
         
         // One large request (resets counter)
         mixer.resize(80000);
-        CHECK(mixer.allocatedSamples() == 300000);
+        CHECK(mixer.allocated_samples() == 300000);
         
         // Another 50 small requests - still not enough
         for (int i = 0; i < 50; ++i) {
             mixer.resize(1024);
         }
-        CHECK(mixer.allocatedSamples() == 300000);
+        CHECK(mixer.allocated_samples() == 300000);
         
         // Need full 101 consecutive small requests
         for (int i = 0; i < 101; ++i) {
             mixer.resize(1024);
         }
-        CHECK(mixer.allocatedSamples() < 300000);
+        CHECK(mixer.allocated_samples() < 300000);
     }
 }
 

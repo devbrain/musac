@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 #include <musac/sdk/audio_backend.hh>
-#include <musac/audio_stream_interface.hh>
+#include <../../../include/musac/sdk/audio_stream_interface.hh>
 #include <memory>
 #include <vector>
 #include <stdexcept>

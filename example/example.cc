@@ -11,23 +11,7 @@
 #include "musac/audio_loader.hh"
 #include <musac/stream.hh>
 #include <musac/sdk/audio_backend.hh>
-#include <musac/backends/sdl3/sdl3_backend.hh>
-#include <musac/backends/null/null_backend.hh>
-
-
-
-#define PPCAT_NX(A, B) A ## B
-
-/*
- * Concatenate preprocessor tokens A and B after macro-expanding them.
- */
-#define PPCAT(A, B) PPCAT_NX(A, B)
-
-#define DN(N) PPCAT(PPCAT(EFILE, N), _BRX)
-#define DS(N) PPCAT(DN(N), _size)
-#define STR1(x) #x
-#define STR(x) STR1(x)
-#define LOAD(N) load(STR(DN(N)), DN(N), DS(N))
+#include <musac_backends/sdl3/sdl3_backend.hh>
 
 
 int main(int argc, char* argv[]) {

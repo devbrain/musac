@@ -9,13 +9,14 @@
 #include <musac/sdk/buffer.hh>
 #include <musac/sdk/types.hh>
 #include <musac/audio_device_data.hh>
+#include <musac/export_musac.h>
 #include "mixer_snapshot.hh"
 #include "stream_container.hh"
 
 namespace musac {
     class audio_stream;
 
-    class audio_mixer {
+    class MUSAC_EXPORT audio_mixer {
         public:
             audio_mixer();
             
@@ -49,9 +50,9 @@ namespace musac {
              * Access to the final mix buffer for conversion to device format.
             */
 
-            float* finalMixData();
+            float* final_mix_data();
 
-            [[nodiscard]] unsigned int allocatedSamples() const;
+            [[nodiscard]] std::size_t allocated_samples() const;
             
             // Buffer management - force compaction during quiet periods
             void compact_buffers();
@@ -70,7 +71,7 @@ namespace musac {
             buffer <float> m_final_mix_buf;
             buffer <float> m_stream_buf;
             buffer <float> m_processor_buf;
-            unsigned int m_allocated_samples = 0;
+            std::size_t m_allocated_samples = 0;
             static audio_device_data m_audio_device_data;
     };
 }

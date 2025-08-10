@@ -41,7 +41,7 @@ set(thirdparty
         vorbis/stb_vorbis.c
 )
 
-set(CODECS_INCLUDE ${MUSAC_PROJECT_ROOT}/musac/codecs/)
+set(CODECS_INCLUDE ${MUSAC_PROJECT_ROOT}/include/musac/codecs/)
 
 set(codecs_sources
         decoder_aiff.cc

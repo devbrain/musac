@@ -10,13 +10,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Build options
 option(MUSAC_BUILD_SHARED "Build MUSAC as a shared library" ON)
 option(MUSAC_BUILD_FPIC "Build MUSAC with position independent code (for static builds)" OFF)
-option(MUSAC_INSTALL "Generate install targets" ON)
+
 # Build configuration options
 option(MUSAC_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(MUSAC_ENABLE_LTO "Enable link-time optimization" OFF)
 
 # Audio backend options
 option(MUSAC_BUILD_SDL3_BACKEND "Build SDL3 backend as separate library" ON)
+option(MUSAC_BUILD_SDL2_BACKEND "Build SDL2 backend as separate library" OFF)
 
 # Option to enable/disable unit tests
 option(MUSAC_BUILD_TESTS "Build unit tests" ON)
@@ -126,7 +127,15 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${BINARY_OUT_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE ${BINARY_OUT_DIR})
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${LIB_OUT_DIR})
 # ===========================================================================
-set (MUSAC_PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set (MUSAC_PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+
+if(MUSAC_BUILD_SDL3_BACKEND)
+    add_subdirectory(backends/src/sdl3)
+endif()
+
+if(MUSAC_BUILD_SDL2_BACKEND)
+    add_subdirectory(backends/src/sdl2)
+endif()
 
 add_subdirectory(ext)
 add_subdirectory(src/musac)

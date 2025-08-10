@@ -4,8 +4,6 @@
 
 #include <musac/audio_system.hh>
 #include <musac/sdk/audio_backend.hh>
-#include <musac/backends/sdl3/sdl3_backend.hh>
-#include <musac/backends/null/null_backend.hh>
 #include <musac/audio_device.hh>
 #include <musac/stream.hh>
 #include <musac/error.hh>

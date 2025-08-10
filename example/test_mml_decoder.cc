@@ -4,8 +4,7 @@
 #include <musac/test_data/loader.hh>
 #include <musac/stream.hh>
 #include <musac/sdk/audio_backend.hh>
-#include <musac/backends/sdl3/sdl3_backend.hh>
-#include <musac/backends/null/null_backend.hh>
+#include <musac_backends/sdl3/sdl3_backend.hh>
 #include <musac/codecs/decoder_mml.hh>
 #include <chrono>
 #include <thread>

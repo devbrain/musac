@@ -55,7 +55,7 @@ public:
 // Test that convenience methods work
 #include <doctest/doctest.h>
 
-TEST_CASE("backend_v2 convenience methods compile") {
+TEST_CASE("backend convenience methods compile") {
     test_backend backend;
     
     // These should compile and work

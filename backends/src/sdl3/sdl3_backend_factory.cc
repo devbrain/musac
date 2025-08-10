@@ -1,5 +1,5 @@
-#include <musac/backends/sdl3/sdl3_backend.hh>
-#include "sdl3_backend.hh"
+#include <musac_backends/sdl3/sdl3_backend.hh>
+#include "sdl3_backend_impl.hh"
 
 namespace musac {
 
