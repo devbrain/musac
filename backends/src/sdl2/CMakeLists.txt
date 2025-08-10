@@ -18,27 +18,35 @@ if (NOT SDL2_FOUND)
 
     set(SDL_VERSION "2.30.10")
 
-    # Configure SDL2 build options
-    # When building musac_backend_sdl2 as shared library, we need SDL2 with PIC
+    # Configure SDL2 build options (Option 4: Smart defaults)
+    # If building shared musac, default to static SDL (for easier deployment)
+    # If building static musac, must use static SDL
     if (MUSAC_BUILD_SHARED)
-        # Build SDL2 as static with PIC for linking into our shared library
-        set(SDL_STATIC ON CACHE INTERNAL "")
-        set(SDL_SHARED OFF CACHE INTERNAL "")
-        set(SDL2_DISABLE_SDL2MAIN ON CACHE INTERNAL "")
-        set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "")
-        set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE INTERNAL "")
+        option(MUSAC_FETCHED_SDL2_STATIC "Build fetched SDL2 as static library" ON)
     else ()
-        # Build SDL2 as static library
+        set(MUSAC_FETCHED_SDL2_STATIC ON) # Force static for static builds
+    endif ()
+
+    # Apply the build configuration
+    if (MUSAC_FETCHED_SDL2_STATIC)
         set(SDL_STATIC ON CACHE INTERNAL "")
         set(SDL_SHARED OFF CACHE INTERNAL "")
-        set(SDL2_DISABLE_SDL2MAIN ON CACHE INTERNAL "")
-        # Enable PIC if musac is being built with PIC
-        if (MUSAC_BUILD_FPIC)
+        set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "")
+        # Enable PIC if needed for static SDL2
+        if (MUSAC_BUILD_SHARED OR MUSAC_BUILD_FPIC)
             set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE INTERNAL "")
         else ()
             set(CMAKE_POSITION_INDEPENDENT_CODE OFF CACHE INTERNAL "")
         endif ()
+    else ()
+        # Build SDL2 as shared library
+        set(SDL_STATIC OFF CACHE INTERNAL "")
+        set(SDL_SHARED ON CACHE INTERNAL "")
+        set(BUILD_SHARED_LIBS ON CACHE INTERNAL "")
     endif ()
+    
+    # Always disable SDL2main
+    set(SDL2_DISABLE_SDL2MAIN ON CACHE INTERNAL "")
 
     # Disable SDL2 features we don't need
     set(SDL_TEST OFF CACHE INTERNAL "")
@@ -143,3 +151,8 @@ if (MUSAC_BUILD_SHARED)
 endif ()
 
 target_compile_options(musac_backend_sdl2 PRIVATE ${MUSAC_WARNING_FLAGS})
+
+# Add tests subdirectory
+if (MUSAC_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()

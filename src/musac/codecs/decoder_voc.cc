@@ -18,13 +18,13 @@
 namespace musac {
 
 // Helper function to convert audio samples and return a vector
-static std::vector<uint8> convert_audio_samples_to_vector(
-    const audio_spec& src_spec, const uint8* src_data, size_t src_len,
+static std::vector<uint8_t> convert_audio_samples_to_vector(
+    const audio_spec& src_spec, const uint8_t* src_data, size_t src_len,
     const audio_spec& dst_spec) {
     // Use new audio converter API
-    buffer<uint8> converted = audio_converter::convert(src_spec, src_data, src_len, dst_spec);
+    buffer<uint8_t> converted = audio_converter::convert(src_spec, src_data, src_len, dst_spec);
     // Copy to vector (until we refactor to use buffer throughout)
-    return std::vector<uint8>(converted.begin(), converted.end());
+    return std::vector<uint8_t>(converted.begin(), converted.end());
 }
 
 // VOC format constants
@@ -42,32 +42,32 @@ static constexpr int VOC_LOOPEND = 7;
 static constexpr int VOC_EXTENDED = 8;
 static constexpr int VOC_DATA_16 = 9;
 
-static constexpr uint32 VOC_BAD_RATE = ~((uint32)0);
+static constexpr uint32_t VOC_BAD_RATE = ~((uint32_t)0);
 
 struct voc_data {
-    uint32 rest;           // bytes remaining in current block
-    uint32 rate;           // rate code (byte) of this chunk
+    uint32_t rest;           // bytes remaining in current block
+    uint32_t rate;           // rate code (byte) of this chunk
     int silent;            // sound or silence?
-    uint32 srate;          // rate code (byte) of silence
-    uint32 blockseek;      // start of current output block
-    uint32 samples;        // number of samples output
-    uint32 size;           // word length of data
-    uint8 channels;        // number of sound channels
+    uint32_t srate;          // rate code (byte) of silence
+    uint32_t blockseek;      // start of current output block
+    uint32_t samples;        // number of samples output
+    uint32_t size;           // word length of data
+    uint8_t channels;        // number of sound channels
     int has_extended;      // Has an extended block been read?
 };
 
 struct decoder_voc::impl {
     io_stream* m_rwops = nullptr;
     audio_spec m_spec = {};
-    std::vector<uint8> m_buffer;
+    std::vector<uint8_t> m_buffer;
     size_t m_total_samples = 0;
     size_t m_consumed = 0;
     to_float_converter_func_t m_converter = nullptr;
     
     bool check_header() {
         // VOC magic header
-        uint8 signature[20];  // "Creative Voice File\032"
-        uint16 datablockofs;
+        uint8_t signature[20];  // "Creative Voice File\032"
+        uint16_t datablockofs;
         
         m_rwops->seek( 0, musac::seek_origin::set);
         
@@ -80,7 +80,7 @@ struct decoder_voc::impl {
         }
         
         // get the offset where the first datablock is located
-        if (m_rwops->read( &datablockofs, sizeof(uint16)) != sizeof(uint16)) {
+        if (m_rwops->read( &datablockofs, sizeof(uint16_t)) != sizeof(uint16_t)) {
             return false;
         }
         
@@ -94,13 +94,13 @@ struct decoder_voc::impl {
     }
     
     bool get_block(voc_data& v, audio_spec& spec) {
-        uint8 bits24[3];
-        uint8 uc, block;
-        uint32 sblen;
-        uint16 new_rate_short;
-        uint32 new_rate_long;
-        uint8 trash[6];
-        uint16 period;
+        uint8_t bits24[3];
+        uint8_t uc, block;
+        uint32_t sblen;
+        uint16_t new_rate_short;
+        uint32_t new_rate_long;
+        uint8_t trash[6];
+        uint16_t period;
         
         v.silent = 0;
         while (v.rest == 0) {
@@ -117,7 +117,7 @@ struct decoder_voc::impl {
             }
             
             // Size is an 24-bit value. Ugh.
-            sblen = (uint32)((bits24[0]) | (bits24[1] << 8) | (bits24[2] << 16));
+            sblen = (uint32_t)((bits24[0]) | (bits24[1] << 8) | (bits24[2] << 16));
             
             // Sanity check: blocks shouldn't be larger than 16MB
             if (sblen > 16 * 1024 * 1024) {
@@ -145,7 +145,7 @@ struct decoder_voc::impl {
                         if (v.rate >= 256) {
                             THROW_RUNTIME("VOC sample rate out of range");
                         }
-                        spec.freq = (uint16)(1000000.0/(256 - v.rate));
+                        spec.freq = (uint16_t)(1000000.0/(256 - v.rate));
                         v.channels = 1;
                     }
                     
@@ -187,7 +187,7 @@ struct decoder_voc::impl {
                             THROW_RUNTIME("VOC with unknown data size");
                     }
                     
-                    if (m_rwops->read( &v.channels, sizeof(uint8)) != sizeof(uint8)) {
+                    if (m_rwops->read( &v.channels, sizeof(uint8_t)) != sizeof(uint8_t)) {
                         return false;
                     }
                     
@@ -219,7 +219,7 @@ struct decoder_voc::impl {
                     // different sample rate codes in silence.
                     // Adjust period.
                     if ((v.rate != VOC_BAD_RATE) && (uc != v.rate))
-                        period = (uint16)((period * (256 - uc))/(256 - v.rate));
+                        period = (uint16_t)((period * (256 - uc))/(256 - v.rate));
                     else
                         v.rate = uc;
                     v.rest = period;
@@ -229,7 +229,7 @@ struct decoder_voc::impl {
                 case VOC_LOOP:
                 case VOC_LOOPEND:
                     for (unsigned int i = 0; i < sblen; i++) { // skip repeat loops.
-                        if (m_rwops->read( trash, sizeof(uint8)) != sizeof(uint8)) {
+                        if (m_rwops->read( trash, sizeof(uint8_t)) != sizeof(uint8_t)) {
                             return false;
                         }
                     }
@@ -288,7 +288,7 @@ struct decoder_voc::impl {
                     
                 default:  // text block or other krapola.
                     for (unsigned int i = 0; i < sblen; i++) {
-                        if (m_rwops->read( trash, sizeof(uint8)) != sizeof(uint8)) {
+                        if (m_rwops->read( trash, sizeof(uint8_t)) != sizeof(uint8_t)) {
                             return false;
                         }
                     }
@@ -302,9 +302,9 @@ struct decoder_voc::impl {
         return true;
     }
     
-    uint32 voc_read(voc_data& v, uint8* buf, uint32 buf_size, audio_spec& spec) {
-        int64 done = 0;
-        uint8 silence = 0x80;
+    uint32_t voc_read(voc_data& v, uint8_t* buf, uint32_t buf_size, audio_spec& spec) {
+        int64_t done = 0;
+        uint8_t silence = 0x80;
         
         if (v.rest == 0) {
             if (!get_block(v, spec)) {
@@ -322,22 +322,22 @@ struct decoder_voc::impl {
             }
             
             // Fill in silence (limited by buffer size)
-            uint32 to_fill = (v.rest < buf_size) ? v.rest : buf_size;
+            uint32_t to_fill = (v.rest < buf_size) ? v.rest : buf_size;
             std::memset(buf, silence, to_fill);
             done = to_fill;
             v.rest -= to_fill;
         }
         else {
-            uint32 to_read = (v.rest < buf_size) ? v.rest : buf_size;
+            uint32_t to_read = (v.rest < buf_size) ? v.rest : buf_size;
             done = m_rwops->read( buf, to_read);
             if (done <= 0) {
                 return 0;
             }
             
-            v.rest = (uint32)(v.rest - done);
+            v.rest = (uint32_t)(v.rest - done);
             if (v.size == ST_SIZE_WORD) {
                 #if MUSAC_BIG_ENDIAN
-                uint16 *samples = (uint16 *)buf;
+                uint16_t *samples = (uint16_t *)buf;
                 size_t sample_count = done / 2;
                 for (size_t i = 0; i < sample_count; i++) {
                     samples[i] = musac::swap16le(samples[i]);
@@ -347,7 +347,7 @@ struct decoder_voc::impl {
             }
         }
         
-        return (uint32)done;
+        return (uint32_t)done;
     }
     
     bool load_voc() {
@@ -383,14 +383,14 @@ struct decoder_voc::impl {
         }
         
         // Read all audio data
-        std::vector<uint8> temp_buffer;
+        std::vector<uint8_t> temp_buffer;
         // Reserve space to avoid reallocations (estimate based on typical VOC file size)
         temp_buffer.reserve(1024 * 1024); // 1MB initial reservation
         const size_t chunk_size = 4096;
-        uint8 chunk[chunk_size];
+        uint8_t chunk[chunk_size];
         
         while (true) {
-            uint32 read = voc_read(v, chunk, chunk_size, m_spec);
+            uint32_t read = voc_read(v, chunk, chunk_size, m_spec);
             if (read == 0) {
                 // Try to get next block
                 if (!get_block(v, m_spec)) {
@@ -446,7 +446,7 @@ bool decoder_voc::accept(io_stream* rwops) {
     }
     
     // Check for Creative Voice File signature
-    uint8 signature[20];
+    uint8_t signature[20];
     bool result = false;
     
     if (rwops->read(signature, sizeof(signature)) == sizeof(signature)) {
@@ -528,7 +528,7 @@ size_t decoder_voc::do_decode(float* buf, size_t len, bool& call_again) {
     
     if (take > 0) {
         // m_buffer contains int16_t samples stored as bytes
-        const uint8* sample_ptr = m_pimpl->m_buffer.data() + (m_pimpl->m_consumed * sizeof(int16_t));
+        const uint8_t* sample_ptr = m_pimpl->m_buffer.data() + (m_pimpl->m_consumed * sizeof(int16_t));
         m_pimpl->m_converter(buf, sample_ptr, take);
         m_pimpl->m_consumed += take;
     }

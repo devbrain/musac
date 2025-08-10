@@ -109,15 +109,15 @@ TEST_SUITE("AudioConverterV2") {
             musac::audio_spec src{musac::audio_format::u8, 1, 44100};
             musac::audio_spec dst{musac::audio_format::s16le, 1, 44100};
             
-            std::vector<musac::uint8> src_data = {0, 64, 128, 192, 255};
+            std::vector<uint8_t> src_data = {0, 64, 128, 192, 255};
             
-            musac::buffer<musac::uint8> result = musac::audio_converter::convert(
+            musac::buffer<uint8_t> result = musac::audio_converter::convert(
                 src, src_data.data(), src_data.size(), dst);
             
             CHECK(result.size() == src_data.size() * 2);
             
             // Check converted values
-            musac::int16* samples = reinterpret_cast<musac::int16*>(result.data());
+            int16_t* samples = reinterpret_cast<int16_t*>(result.data());
             CHECK(samples[0] == -32768); // 0 -> -128 -> -32768
             CHECK(samples[2] == 0);      // 128 -> 0 -> 0  
             CHECK(samples[4] == 32512);  // 255 -> 127 -> 32512
@@ -127,16 +127,16 @@ TEST_SUITE("AudioConverterV2") {
             musac::audio_spec src{musac::audio_format::s16le, 1, 44100};
             musac::audio_spec dst{musac::audio_format::s16le, 2, 44100};
             
-            std::vector<musac::int16> src_samples = {100, 200, 300};
-            std::vector<musac::uint8> src_data(src_samples.size() * sizeof(musac::int16));
+            std::vector<int16_t> src_samples = {100, 200, 300};
+            std::vector<uint8_t> src_data(src_samples.size() * sizeof(int16_t));
             std::memcpy(src_data.data(), src_samples.data(), src_data.size());
             
-            musac::buffer<musac::uint8> result = musac::audio_converter::convert(
+            musac::buffer<uint8_t> result = musac::audio_converter::convert(
                 src, src_data.data(), src_data.size(), dst);
             
             CHECK(result.size() == src_data.size() * 2);
             
-            musac::int16* samples = reinterpret_cast<musac::int16*>(result.data());
+            int16_t* samples = reinterpret_cast<int16_t*>(result.data());
             CHECK(samples[0] == 100); // Left
             CHECK(samples[1] == 100); // Right
             CHECK(samples[2] == 200); // Left
@@ -147,7 +147,7 @@ TEST_SUITE("AudioConverterV2") {
             musac::audio_spec src{musac::audio_format::s16le, 2, 44100};
             musac::audio_spec dst{musac::audio_format::s16le, 2, 48000};
             
-            musac::buffer<musac::uint8> result = musac::audio_converter::convert(
+            musac::buffer<uint8_t> result = musac::audio_converter::convert(
                 src, nullptr, 0, dst);
             
             CHECK(result.size() == 0);
@@ -159,15 +159,15 @@ TEST_SUITE("AudioConverterV2") {
             musac::audio_spec spec{musac::audio_format::s16le, 2, 44100};
             musac::audio_spec dst_spec{musac::audio_format::s16be, 2, 44100};
             
-            std::vector<musac::int16> samples = {0x0102, 0x0304, 0x0506, 0x0708};
-            std::vector<musac::uint8> data(samples.size() * sizeof(musac::int16));
+            std::vector<int16_t> samples = {0x0102, 0x0304, 0x0506, 0x0708};
+            std::vector<uint8_t> data(samples.size() * sizeof(int16_t));
             std::memcpy(data.data(), samples.data(), data.size());
             
             musac::audio_converter::convert_in_place(spec, data.data(), data.size(), dst_spec);
             
             CHECK(spec.format == musac::audio_format::s16be);
             
-            musac::int16* converted = reinterpret_cast<musac::int16*>(data.data());
+            int16_t* converted = reinterpret_cast<int16_t*>(data.data());
             CHECK(converted[0] == 0x0201);
             CHECK(converted[1] == 0x0403);
             CHECK(converted[2] == 0x0605);
@@ -178,7 +178,7 @@ TEST_SUITE("AudioConverterV2") {
             musac::audio_spec spec{musac::audio_format::s16le, 1, 44100};
             musac::audio_spec dst_spec{musac::audio_format::s16le, 2, 44100};
             
-            std::vector<musac::uint8> data(100);
+            std::vector<uint8_t> data(100);
             
             CHECK_THROWS_AS(
                 musac::audio_converter::convert_in_place(spec, data.data(), data.size(), dst_spec),
@@ -191,8 +191,8 @@ TEST_SUITE("AudioConverterV2") {
             musac::audio_spec src{musac::audio_format::u8, 1, 44100};
             musac::audio_spec dst{musac::audio_format::s16le, 1, 44100};
             
-            std::vector<musac::uint8> src_data = {0, 64, 128, 192, 255};
-            musac::buffer<musac::uint8> dst_buffer(100); // Pre-allocate larger buffer
+            std::vector<uint8_t> src_data = {0, 64, 128, 192, 255};
+            musac::buffer<uint8_t> dst_buffer(100); // Pre-allocate larger buffer
             
             size_t written = musac::audio_converter::convert_into(
                 src, src_data.data(), src_data.size(), dst, dst_buffer);
@@ -200,7 +200,7 @@ TEST_SUITE("AudioConverterV2") {
             CHECK(written == src_data.size() * 2);
             CHECK(dst_buffer.size() >= written);
             
-            musac::int16* samples = reinterpret_cast<musac::int16*>(dst_buffer.data());
+            int16_t* samples = reinterpret_cast<int16_t*>(dst_buffer.data());
             CHECK(samples[0] == -32768);
         }
         
@@ -208,8 +208,8 @@ TEST_SUITE("AudioConverterV2") {
             musac::audio_spec src{musac::audio_format::s16le, 1, 44100};
             musac::audio_spec dst{musac::audio_format::s16le, 2, 44100};
             
-            std::vector<musac::uint8> src_data(100);
-            musac::buffer<musac::uint8> dst_buffer(10); // Too small
+            std::vector<uint8_t> src_data(100);
+            musac::buffer<uint8_t> dst_buffer(10); // Too small
             
             size_t written = musac::audio_converter::convert_into(
                 src, src_data.data(), src_data.size(), dst, dst_buffer);
@@ -226,14 +226,14 @@ TEST_SUITE("AudioConverterV2") {
         musac::audio_converter::stream_converter converter(src, dst);
         
         SUBCASE("process single chunk") {
-            std::vector<musac::uint8> input = {128, 128, 128, 128};
-            musac::buffer<musac::uint8> output(100);
+            std::vector<uint8_t> input = {128, 128, 128, 128};
+            musac::buffer<uint8_t> output(100);
             
             size_t written = converter.process_chunk(input.data(), input.size(), output);
             
             CHECK(written == input.size() * 2);
             
-            musac::int16* samples = reinterpret_cast<musac::int16*>(output.data());
+            int16_t* samples = reinterpret_cast<int16_t*>(output.data());
             CHECK(samples[0] == 0);
             CHECK(samples[1] == 0);
             CHECK(samples[2] == 0);
@@ -242,10 +242,10 @@ TEST_SUITE("AudioConverterV2") {
         
         SUBCASE("process multiple small chunks") {
             // Send data in small chunks
-            std::vector<musac::uint8> chunk1 = {0, 64};
-            std::vector<musac::uint8> chunk2 = {128, 192};
-            std::vector<musac::uint8> chunk3 = {255};
-            musac::buffer<musac::uint8> output(100);
+            std::vector<uint8_t> chunk1 = {0, 64};
+            std::vector<uint8_t> chunk2 = {128, 192};
+            std::vector<uint8_t> chunk3 = {255};
+            musac::buffer<uint8_t> output(100);
             
             // Process chunks
             size_t written1 = converter.process_chunk(chunk1.data(), chunk1.size(), output);
@@ -262,8 +262,8 @@ TEST_SUITE("AudioConverterV2") {
         }
         
         SUBCASE("flush returns remaining data") {
-            std::vector<musac::uint8> input = {128, 128, 128};
-            musac::buffer<musac::uint8> output(4);  // Small output buffer
+            std::vector<uint8_t> input = {128, 128, 128};
+            musac::buffer<uint8_t> output(4);  // Small output buffer
             
             size_t written = converter.process_chunk(input.data(), input.size(), output);
             CHECK(written == 4); // Only fits 2 samples
@@ -274,8 +274,8 @@ TEST_SUITE("AudioConverterV2") {
         }
         
         SUBCASE("reset clears internal state") {
-            std::vector<musac::uint8> input = {128, 128};
-            musac::buffer<musac::uint8> output(100);
+            std::vector<uint8_t> input = {128, 128};
+            musac::buffer<uint8_t> output(100);
             
             converter.process_chunk(input.data(), input.size(), output);
             converter.reset();
@@ -290,19 +290,19 @@ TEST_SUITE("AudioConverterV2") {
             musac::audio_spec dst_mono{musac::audio_format::s16le, 1, 44100};
             musac::audio_converter::stream_converter stereo_to_mono(src_stereo, dst_mono);
             
-            // 4 bytes = 1 stereo frame (2 * int16)
-            std::vector<musac::uint8> stereo_data = {
+            // 4 bytes = 1 stereo frame (2 * int16_t)
+            std::vector<uint8_t> stereo_data = {
                 0x00, 0x01,  // Left: 256
                 0x00, 0x02,  // Right: 512
                 0x00, 0x03,  // Left: 768
                 0x00, 0x04   // Right: 1024
             };
             
-            musac::buffer<musac::uint8> mono_output(100);
+            musac::buffer<uint8_t> mono_output(100);
             size_t written = stereo_to_mono.process_chunk(stereo_data.data(), stereo_data.size(), mono_output);
             
             CHECK(written == 4); // 2 stereo frames -> 2 mono frames
-            musac::int16* samples = reinterpret_cast<musac::int16*>(mono_output.data());
+            int16_t* samples = reinterpret_cast<int16_t*>(mono_output.data());
             CHECK(samples[0] == (256 + 512) / 2);  // Average of first frame
             CHECK(samples[1] == (768 + 1024) / 2); // Average of second frame
         }

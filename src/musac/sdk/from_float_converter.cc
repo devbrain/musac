@@ -17,45 +17,45 @@ namespace musac {
     }
 
     // S8: direct
-    static void floatToS8(uint8* dst, size_t dstBytes, const buffer<float>& src) noexcept {
+    static void floatToS8(uint8_t* dst, size_t dstBytes, const buffer<float>& src) noexcept {
         size_t count = std::min((size_t)src.size(), dstBytes);
-        auto* out = reinterpret_cast<int8*>(dst);
+        auto* out = reinterpret_cast<int8_t*>(dst);
         for (size_t i = 0; i < count; ++i) {
-            out[i] = floatSampleToIntFast<int8>(src[i]);
+            out[i] = floatSampleToIntFast<int8_t>(src[i]);
         }
         if (count < dstBytes) std::memset(dst + count, 0, dstBytes - count);
     }
 
     // U8: direct
-    static void floatToU8(uint8* dst, size_t dstBytes, const buffer<float>& src) noexcept {
+    static void floatToU8(uint8_t* dst, size_t dstBytes, const buffer<float>& src) noexcept {
         size_t count = std::min((size_t)src.size(), dstBytes);
-        uint8* out = dst;
+        uint8_t* out = dst;
         for (size_t i = 0; i < count; ++i) {
-            out[i] = static_cast<uint8>((src[i] * 0.5f + 0.5f) * std::numeric_limits<uint8>::max());
+            out[i] = static_cast<uint8_t>((src[i] * 0.5f + 0.5f) * std::numeric_limits<uint8_t>::max());
         }
         if (count < dstBytes) std::memset(dst + count, 0x80, dstBytes - count);
     }
 
     // S16LE
-    static void floatToS16LSB(uint8* dst, size_t dstBytes, const buffer<float>& src) noexcept {
+    static void floatToS16LSB(uint8_t* dst, size_t dstBytes, const buffer<float>& src) noexcept {
         size_t maxSamples = dstBytes / 2;
         size_t count = std::min((size_t)src.size(), maxSamples);
-        int16* out = reinterpret_cast<int16*>(dst);
+        int16_t* out = reinterpret_cast<int16_t*>(dst);
         for (size_t i = 0; i < count; ++i) {
-            out[i] = floatSampleToIntFast<int16>(src[i]);
+            out[i] = floatSampleToIntFast<int16_t>(src[i]);
         }
         size_t used = count * 2;
         if (used < dstBytes) std::memset(dst + used, 0, dstBytes - used);
     }
 
     // S16BE
-    static void floatToS16MSB(uint8* dst, size_t dstBytes, const buffer<float>& src) noexcept {
+    static void floatToS16MSB(uint8_t* dst, size_t dstBytes, const buffer<float>& src) noexcept {
         size_t maxSamples = dstBytes / 2;
         size_t count = std::min((size_t)src.size(), maxSamples);
-        uint8* p = dst;
+        uint8_t* p = dst;
         for (size_t i = 0; i < count; ++i) {
-            auto v = static_cast<int16>(swap16(static_cast<uint16>(floatSampleToIntFast<int16>(src[i]))));
-            *reinterpret_cast<int16*>(p) = v;
+            auto v = static_cast<int16_t>(swap16(static_cast<uint16_t>(floatSampleToIntFast<int16_t>(src[i]))));
+            *reinterpret_cast<int16_t*>(p) = v;
             p += 2;
         }
         size_t used = count * 2;
@@ -63,25 +63,25 @@ namespace musac {
     }
 
     // S32LE
-    static void floatToS32LSB(uint8* dst, size_t dstBytes, const buffer<float>& src) noexcept {
+    static void floatToS32LSB(uint8_t* dst, size_t dstBytes, const buffer<float>& src) noexcept {
         size_t maxSamples = dstBytes / 4;
         size_t count = std::min((size_t)src.size(), maxSamples);
-        int32* out = reinterpret_cast<int32*>(dst);
+        int32_t* out = reinterpret_cast<int32_t*>(dst);
         for (size_t i = 0; i < count; ++i) {
-            out[i] = floatSampleToIntFast<int32>(src[i]);
+            out[i] = floatSampleToIntFast<int32_t>(src[i]);
         }
         size_t used = count * 4;
         if (used < dstBytes) std::memset(dst + used, 0, dstBytes - used);
     }
 
     // S32BE
-    static void floatToS32MSB(uint8* dst, size_t dstBytes, const buffer<float>& src) noexcept {
+    static void floatToS32MSB(uint8_t* dst, size_t dstBytes, const buffer<float>& src) noexcept {
         size_t maxSamples = dstBytes / 4;
         size_t count = std::min((size_t)src.size(), maxSamples);
-        uint8* p = dst;
+        uint8_t* p = dst;
         for (size_t i = 0; i < count; ++i) {
-            auto v = static_cast<int32>(swap32(static_cast<uint32>(floatSampleToIntFast<int32>(src[i]))));
-            *reinterpret_cast<int32*>(p) = v;
+            auto v = static_cast<int32_t>(swap32(static_cast<uint32_t>(floatSampleToIntFast<int32_t>(src[i]))));
+            *reinterpret_cast<int32_t*>(p) = v;
             p += 4;
         }
         size_t used = count * 4;
@@ -89,7 +89,7 @@ namespace musac {
     }
 
     // F32LE
-    static void floatToFloatLSB(uint8* dst, size_t dstBytes, const buffer<float>& src) noexcept {
+    static void floatToFloatLSB(uint8_t* dst, size_t dstBytes, const buffer<float>& src) noexcept {
         size_t maxSamples = dstBytes / 4;
         size_t count = std::min((size_t)src.size(), maxSamples);
         std::memcpy(dst, src.data(), count * 4);
@@ -98,10 +98,10 @@ namespace musac {
     }
 
     // F32BE
-    static void floatToFloatMSB(uint8* dst, size_t dstBytes, const buffer<float>& src) noexcept {
+    static void floatToFloatMSB(uint8_t* dst, size_t dstBytes, const buffer<float>& src) noexcept {
         size_t maxSamples = dstBytes / 4;
         size_t count = std::min((size_t)src.size(), maxSamples);
-        uint8* p = dst;
+        uint8_t* p = dst;
         for (size_t i = 0; i < count; ++i) {
             float v = swap_float(src[i]);
             *reinterpret_cast<float*>(p) = v;

@@ -13,14 +13,14 @@ namespace musac {
 class MUSAC_SDK_EXPORT audio_converter {
 public:
     // Convert and return a buffer - throws on error
-    static buffer<uint8> convert(const audio_spec& src_spec, 
-                                 const uint8* src_data, 
+    static buffer<uint8_t> convert(const audio_spec& src_spec, 
+                                 const uint8_t* src_data, 
                                  size_t src_len,
                                  const audio_spec& dst_spec);
     
     // In-place conversion when possible (same format, different endianness)
     static void convert_in_place(audio_spec& spec, 
-                                 uint8* data, 
+                                 uint8_t* data, 
                                  size_t len,
                                  const audio_spec& dst_spec);
     
@@ -41,10 +41,10 @@ public:
     
     // Convert into existing buffer - returns bytes written
     static size_t convert_into(const audio_spec& src_spec,
-                               const uint8* src_data,
+                               const uint8_t* src_data,
                                size_t src_len,
                                const audio_spec& dst_spec,
-                               buffer<uint8>& dst_buffer);
+                               buffer<uint8_t>& dst_buffer);
     
     // Streaming conversion for large files
     class stream_converter {
@@ -53,11 +53,11 @@ public:
         ~stream_converter();
         
         // Process chunks without allocating full buffer
-        size_t process_chunk(const uint8* input, size_t input_len,
-                           buffer<uint8>& output);
+        size_t process_chunk(const uint8_t* input, size_t input_len,
+                           buffer<uint8_t>& output);
         
         // Flush any remaining samples
-        size_t flush(buffer<uint8>& output);
+        size_t flush(buffer<uint8_t>& output);
         
         // Reset the converter state
         void reset();

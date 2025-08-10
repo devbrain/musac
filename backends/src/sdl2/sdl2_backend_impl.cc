@@ -193,6 +193,7 @@ namespace musac {
             handle = m_next_handle++;
             m_open_devices[handle] = sdl_device;
             m_device_specs[handle] = obtained_spec;
+            m_device_gains[handle] = 1.0f;  // Default gain
         }
 
         return handle;
@@ -206,7 +207,10 @@ namespace musac {
             SDL_CloseAudioDevice(it->second);
             m_open_devices.erase(it);
             m_device_specs.erase(device_handle);
+            m_device_gains.erase(device_handle);
         }
+        // Silently ignore invalid handles - this matches original behavior
+        // and prevents crashes during cleanup
     }
 
     audio_format sdl2_backend::get_device_format(uint32_t device_handle) {
@@ -236,14 +240,24 @@ namespace musac {
         THROW_RUNTIME("Invalid device handle");
     }
 
-    float sdl2_backend::get_device_gain(uint32_t /*device_handle*/) {
-        // SDL2 doesn't have per-device gain control
-        return 1.0f;
+    float sdl2_backend::get_device_gain(uint32_t device_handle) {
+        std::lock_guard<std::mutex> lock(m_devices_mutex);
+        auto it = m_device_gains.find(device_handle);
+        if (it == m_device_gains.end()) {
+            THROW_RUNTIME("Invalid device handle");
+        }
+        return it->second;
     }
 
-    void sdl2_backend::set_device_gain(uint32_t /*device_handle*/, float /*gain*/) {
-        // SDL2 doesn't have per-device gain control
-        // Could be implemented with manual gain adjustment in the callback
+    void sdl2_backend::set_device_gain(uint32_t device_handle, float gain) {
+        std::lock_guard<std::mutex> lock(m_devices_mutex);
+        auto it = m_device_gains.find(device_handle);
+        if (it == m_device_gains.end()) {
+            THROW_RUNTIME("Invalid device handle");
+        }
+        // SDL2 doesn't actually support per-device gain control,
+        // but we track the value for API consistency
+        it->second = gain;
     }
 
     bool sdl2_backend::pause_device(uint32_t device_handle) {

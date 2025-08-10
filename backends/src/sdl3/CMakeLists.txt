@@ -18,23 +18,29 @@ if (NOT SDL3_FOUND)
 
     set(SDL_VERSION "3.2.16")
 
-    # Configure SDL3 build options
-    # When building musac_backend_sdl3 as shared library, we need SDL3 with PIC
+    # Configure SDL3 build options (Option 4: Smart defaults)
+    # If building shared musac, default to static SDL (for easier deployment)
+    # If building static musac, must use static SDL
     if (MUSAC_BUILD_SHARED)
-        # Build SDL3 as static with PIC for linking into our shared library
-        set(SDL_STATIC ON CACHE INTERNAL "")
-        set(SDL_SHARED OFF CACHE INTERNAL "")
-        set(SDL_STATIC_PIC ON CACHE INTERNAL "")  # Critical: Enable PIC for static SDL3
+        option(MUSAC_FETCHED_SDL3_STATIC "Build fetched SDL3 as static library" ON)
     else ()
-        # Build SDL3 as static library
+        set(MUSAC_FETCHED_SDL3_STATIC ON) # Force static for static builds
+    endif ()
+
+    # Apply the build configuration
+    if (MUSAC_FETCHED_SDL3_STATIC)
         set(SDL_STATIC ON CACHE INTERNAL "")
         set(SDL_SHARED OFF CACHE INTERNAL "")
-        # Enable PIC if musac is being built with PIC
-        if (MUSAC_BUILD_FPIC)
+        # Enable PIC if needed for static SDL3
+        if (MUSAC_BUILD_SHARED OR MUSAC_BUILD_FPIC)
             set(SDL_STATIC_PIC ON CACHE INTERNAL "")
         else ()
             set(SDL_STATIC_PIC OFF CACHE INTERNAL "")
         endif ()
+    else ()
+        # Build SDL3 as shared library
+        set(SDL_STATIC OFF CACHE INTERNAL "")
+        set(SDL_SHARED ON CACHE INTERNAL "")
     endif ()
 
     set(SDL_LIBURING OFF CACHE INTERNAL "")
@@ -136,4 +142,9 @@ endif ()
 
 
 target_compile_options(musac_backend_sdl3 PRIVATE ${MUSAC_WARNING_FLAGS})
+
+# Add tests subdirectory
+if (MUSAC_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
 

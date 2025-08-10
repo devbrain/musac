@@ -5365,7 +5365,7 @@ DRWAV_API size_t drwav_read_raw(drwav* pWav, size_t bytesToRead, void* pBufferOu
 DRWAV_API drwav_uint64 drwav_read_pcm_frames_le(drwav* pWav, drwav_uint64 framesToRead, void* pBufferOut)
 {
     drwav_uint32 bytesPerFrame;
-    drwav_uint64 bytesToRead;   /* Intentionally uint64 instead of size_t so we can do a check that we're not reading too much on 32-bit builds. */
+    drwav_uint64 bytesToRead;   /* Intentionally uint64_t instead of size_t so we can do a check that we're not reading too much on 32-bit builds. */
 
     if (pWav == NULL || framesToRead == 0) {
         return 0;

@@ -17,10 +17,15 @@ option(MUSAC_ENABLE_LTO "Enable link-time optimization" OFF)
 
 # Audio backend options
 option(MUSAC_BUILD_SDL3_BACKEND "Build SDL3 backend as separate library" ON)
-option(MUSAC_BUILD_SDL2_BACKEND "Build SDL2 backend as separate library" OFF)
+option(MUSAC_BUILD_SDL2_BACKEND "Build SDL2 backend as separate library" ON)
 
 # Option to enable/disable unit tests
 option(MUSAC_BUILD_TESTS "Build unit tests" ON)
+
+# Language bindings options
+option(MUSAC_BUILD_BINDINGS "Build language bindings" OFF)
+option(MUSAC_BUILD_JAVA_BINDING "Build Java/JNI binding" ON)
+option(MUSAC_BUILD_PYTHON_BINDING "Build Python binding" OFF)
 
 # Include standard install directories
 include(GNUInstallDirs)
@@ -144,4 +149,135 @@ add_subdirectory(test_data)
 add_subdirectory(example)
 add_subdirectory(unittest)
 add_subdirectory(tools)
+
+# Language bindings
+if(MUSAC_BUILD_BINDINGS)
+    add_subdirectory(bindings)
+endif()
+
+# ============================================================================
+# Build Configuration Summary
+# ============================================================================
+
+message(STATUS "")
+message(STATUS "========================================")
+message(STATUS "  MUSAC Build Configuration Summary")
+message(STATUS "========================================")
+message(STATUS "")
+
+# Library type
+if(MUSAC_BUILD_SHARED)
+    message(STATUS "Library Type:        SHARED")
+else()
+    message(STATUS "Library Type:        STATIC")
+    if(MUSAC_BUILD_FPIC)
+        message(STATUS "  Position Independent Code: ON")
+    else()
+        message(STATUS "  Position Independent Code: OFF")
+    endif()
+endif()
+
+message(STATUS "Build Type:          ${CMAKE_BUILD_TYPE}")
+message(STATUS "")
+
+# Audio backends
+message(STATUS "Audio Backends:")
+if(MUSAC_BUILD_SDL3_BACKEND)
+    message(STATUS "  SDL3 Backend:      ON")
+    # Check if SDL3 was fetched by looking for the source directory
+    if(EXISTS "${CMAKE_BINARY_DIR}/_deps/sdl3-src")
+        message(STATUS "    SDL3 Source:     Fetched from GitHub")
+        if(DEFINED MUSAC_FETCHED_SDL3_STATIC)
+            if(MUSAC_FETCHED_SDL3_STATIC)
+                message(STATUS "    SDL3 Build:      Static")
+            else()
+                message(STATUS "    SDL3 Build:      Shared")
+            endif()
+        endif()
+    else()
+        message(STATUS "    SDL3 Source:     System")
+    endif()
+else()
+    message(STATUS "  SDL3 Backend:      OFF")
+endif()
+
+if(MUSAC_BUILD_SDL2_BACKEND)
+    message(STATUS "  SDL2 Backend:      ON")
+    # Check if SDL2 was fetched by looking for the source directory
+    if(EXISTS "${CMAKE_BINARY_DIR}/_deps/sdl2-src")
+        message(STATUS "    SDL2 Source:     Fetched from GitHub")
+        if(DEFINED MUSAC_FETCHED_SDL2_STATIC)
+            if(MUSAC_FETCHED_SDL2_STATIC)
+                message(STATUS "    SDL2 Build:      Static")
+            else()
+                message(STATUS "    SDL2 Build:      Shared")
+            endif()
+        endif()
+    else()
+        if(SDL2_FOUND)
+            message(STATUS "    SDL2 Source:     System (${SDL2_VERSION})")
+        else()
+            message(STATUS "    SDL2 Source:     System")
+        endif()
+    endif()
+else()
+    message(STATUS "  SDL2 Backend:      OFF")
+endif()
+
+message(STATUS "")
+
+# Build options
+message(STATUS "Build Options:")
+message(STATUS "  Unit Tests:        ${MUSAC_BUILD_TESTS}")
+if(MUSAC_BUILD_TESTS)
+    if(TARGET musac_backend_sdl3)
+        message(STATUS "    Test Backend:    SDL3")
+    elseif(TARGET musac_backend_sdl2)
+        message(STATUS "    Test Backend:    SDL2")
+    else()
+        message(STATUS "    Test Backend:    None (limited testing)")
+    endif()
+endif()
+
+message(STATUS "  Sanitizers:        ${MUSAC_ENABLE_SANITIZERS}")
+message(STATUS "  LTO:               ${MUSAC_ENABLE_LTO}")
+message(STATUS "")
+
+# Language bindings
+if(MUSAC_BUILD_BINDINGS)
+    message(STATUS "Language Bindings:")
+    message(STATUS "  Java/JNI:          ${MUSAC_BUILD_JAVA_BINDING}")
+    message(STATUS "  Python:            ${MUSAC_BUILD_PYTHON_BINDING}")
+    message(STATUS "")
+endif()
+
+# Installation paths
+message(STATUS "Installation:")
+message(STATUS "  Install Prefix:    ${CMAKE_INSTALL_PREFIX}")
+message(STATUS "")
+
+# Compiler information
+message(STATUS "Compiler:")
+message(STATUS "  C++ Compiler:      ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
+message(STATUS "  C++ Standard:      ${CMAKE_CXX_STANDARD}")
+message(STATUS "")
+
+# Platform information
+message(STATUS "Platform:")
+message(STATUS "  System:            ${CMAKE_SYSTEM_NAME}")
+message(STATUS "  Processor:         ${CMAKE_SYSTEM_PROCESSOR}")
+message(STATUS "  Build Platform:    ${CMAKE_HOST_SYSTEM_NAME}")
+message(STATUS "")
+
+# Output directories
+message(STATUS "Output Directories:")
+message(STATUS "  Runtime:           ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+message(STATUS "  Library:           ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+message(STATUS "  Archive:           ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}")
+message(STATUS "")
+
+message(STATUS "========================================")
+message(STATUS "  Configuration complete!")
+message(STATUS "========================================")
+message(STATUS "")
 

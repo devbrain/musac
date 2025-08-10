@@ -8,7 +8,7 @@
 
 namespace musac {
 
-enum class audio_format : uint16 {
+enum class audio_format : uint16_t {
     unknown = 0,
     u8 = 0x0008,      // Unsigned 8-bit
     s8 = 0x8008,      // Signed 8-bit
@@ -21,24 +21,24 @@ enum class audio_format : uint16 {
 };
 
 // Helper functions to work with audio formats
-inline constexpr uint8 audio_format_bit_size(audio_format fmt) {
-    return static_cast<uint8>(static_cast<uint16>(fmt) & 0xFF);
+inline constexpr uint8_t audio_format_bit_size(audio_format fmt) {
+    return static_cast<uint8_t>(static_cast<uint16_t>(fmt) & 0xFF);
 }
 
-inline constexpr uint8 audio_format_byte_size(audio_format fmt) {
+inline constexpr uint8_t audio_format_byte_size(audio_format fmt) {
     return audio_format_bit_size(fmt) / 8;
 }
 
 inline constexpr bool audio_format_is_signed(audio_format fmt) {
-    return (static_cast<uint16>(fmt) & 0x8000) != 0;
+    return (static_cast<uint16_t>(fmt) & 0x8000) != 0;
 }
 
 inline constexpr bool audio_format_is_big_endian(audio_format fmt) {
-    return (static_cast<uint16>(fmt) & 0x1000) != 0;
+    return (static_cast<uint16_t>(fmt) & 0x1000) != 0;
 }
 
 inline constexpr bool audio_format_is_float(audio_format fmt) {
-    return (static_cast<uint16>(fmt) & 0x0100) != 0;
+    return (static_cast<uint16_t>(fmt) & 0x0100) != 0;
 }
 
 // Platform-specific native format using CMake-generated config
@@ -54,8 +54,8 @@ inline constexpr audio_format audio_f32sys = audio_format::f32le;
 
 struct audio_spec {
     audio_format format;
-    uint8 channels;
-    uint32 freq;
+    uint8_t channels;
+    uint32_t freq;
 };
 
 // Stream operator for audio_format

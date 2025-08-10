@@ -6,33 +6,22 @@ if (NOT MUSAC_BUILD_TESTS)
     return()
 endif ()
 
-# Try to find doctest or fetch it
-find_package(doctest QUIET)
+# Doctest should be available from ext/doctest
+if (NOT TARGET doctest::doctest)
+    message(FATAL_ERROR "doctest not available. Please ensure ext/doctest is included before unittest")
+endif()
 
-if (NOT doctest_FOUND)
-    message(STATUS "doctest not found, fetching from GitHub...")
-
-    include(FetchContent)
-    set(FETCHCONTENT_QUIET OFF)
-
-    # Allow FetchContent_Populate to be used
-    if (POLICY CMP0169)
-        cmake_policy(SET CMP0169 OLD)
-    endif ()
-
-    set(DOCTEST_WITH_TESTS OFF CACHE INTERNAL "")
-    set(DOCTEST_WITH_MAIN_IN_STATIC_LIB OFF CACHE INTERNAL "")
-    set(DOCTEST_NO_INSTALL ON CACHE INTERNAL "")
-
-    FetchContent_Declare(
-            doctest
-            GIT_REPOSITORY https://github.com/onqtam/doctest.git
-            GIT_TAG v2.4.12
-            GIT_PROGRESS TRUE
-    )
-
-    FetchContent_MakeAvailable(doctest)
-endif ()
+# Check that at least one backend is available
+set(MUSAC_TEST_BACKEND "")
+if(TARGET musac_backend_sdl3)
+    set(MUSAC_TEST_BACKEND "musac_backend_sdl3")
+    message(STATUS "Using SDL3 backend for core tests")
+elseif(TARGET musac_backend_sdl2)
+    set(MUSAC_TEST_BACKEND "musac_backend_sdl2")
+    message(STATUS "Using SDL2 backend for core tests")
+else()
+    message(WARNING "No backend available for core tests. Tests requiring a backend will be skipped.")
+endif()
 
 # Create test executable
 add_executable(musac_unittest
@@ -90,7 +79,7 @@ add_executable(musac_unittest
 
         # Backend integration tests
         integration/backends/test_backend_interface.cc
-        integration/backends/test_sdl3_backend.cc
+        # Backend-specific tests moved to backends/src/*/tests/
         integration/backends/compile_test_backend.cc
 
         # Codec integration tests
@@ -119,7 +108,6 @@ if (MUSAC_BUILD_SHARED AND TARGET musac_internal)
             musac_internal  # Static library with internal symbols
             musac_sdk
             musac_codecs
-            musac_backend_sdl3
             thirdparty::failsafe
     )
 else ()
@@ -130,10 +118,15 @@ else ()
             musac
             musac_sdk
             musac_codecs
-            musac_backend_sdl3
             thirdparty::failsafe
     )
 endif ()
+
+# Link with available backend (if any)
+if(MUSAC_TEST_BACKEND)
+    target_link_libraries(musac_unittest PRIVATE ${MUSAC_TEST_BACKEND})
+    target_compile_definitions(musac_unittest PRIVATE HAS_BACKEND_AVAILABLE)
+endif()
 
 # Compile options
 target_compile_options(musac_unittest PRIVATE ${MUSAC_WARNING_FLAGS})

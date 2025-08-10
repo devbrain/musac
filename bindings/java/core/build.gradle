@@ -1,0 +1,61 @@
+apply plugin: 'java-library'
+apply plugin: 'maven-publish'
+
+archivesBaseName = 'musac-core'
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['../src/com/musac']
+            exclude '**/android/**'  // Android-specific code
+            exclude '**/gwt/**'       // GWT-specific code
+        }
+    }
+}
+
+jar {
+    manifest {
+        attributes(
+            'Implementation-Title': 'Musac Core',
+            'Implementation-Version': project.version,
+            'Implementation-Vendor': 'Musac Contributors'
+        )
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            
+            artifactId = 'musac-core'
+            
+            pom {
+                name = 'Musac Core'
+                description = 'Cross-platform audio decoder library - Core module'
+                url = 'https://github.com/yourusername/musac'
+                
+                licenses {
+                    license {
+                        name = 'The MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                }
+                
+                developers {
+                    developer {
+                        id = 'yourusername'
+                        name = 'Your Name'
+                        email = 'your.email@example.com'
+                    }
+                }
+                
+                scm {
+                    connection = 'scm:git:git://github.com/yourusername/musac.git'
+                    developerConnection = 'scm:git:ssh://github.com/yourusername/musac.git'
+                    url = 'https://github.com/yourusername/musac'
+                }
+            }
+        }
+    }
+}

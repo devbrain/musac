@@ -23,11 +23,11 @@ public:
     memory_io_stream() : m_position(0), m_is_open(true) {}
     
     // io_stream implementation
-    musac::size read(void* ptr, musac::size size_bytes) override {
+    size_t read(void* ptr, size_t size_bytes) override {
         if (!m_is_open) return 0;
         
-        musac::size available = m_data.size() - m_position;
-        musac::size to_read = std::min(available, size_bytes);
+        size_t available = m_data.size() - m_position;
+        size_t to_read = std::min(available, size_bytes);
         
         if (to_read > 0) {
             std::memcpy(ptr, m_data.data() + m_position, to_read);
@@ -37,7 +37,7 @@ public:
         return to_read;
     }
     
-    musac::size write(const void* ptr, musac::size size_bytes) override {
+    size_t write(const void* ptr, size_t size_bytes) override {
         if (!m_is_open) return 0;
         
         m_data.resize(m_position + size_bytes);
@@ -46,37 +46,37 @@ public:
         return size_bytes;
     }
     
-    musac::int64 seek(musac::int64 offset, musac::seek_origin whence) override {
+    int64_t seek(int64_t offset, musac::seek_origin whence) override {
         if (!m_is_open) return -1;
         
-        musac::int64 new_pos = static_cast<musac::int64>(m_position);
+        int64_t new_pos = static_cast<int64_t>(m_position);
         
         switch (whence) {
             case musac::seek_origin::set:
                 new_pos = offset;
                 break;
             case musac::seek_origin::cur:
-                new_pos = static_cast<musac::int64>(m_position) + offset;
+                new_pos = static_cast<int64_t>(m_position) + offset;
                 break;
             case musac::seek_origin::end:
-                new_pos = static_cast<musac::int64>(m_data.size()) + offset;
+                new_pos = static_cast<int64_t>(m_data.size()) + offset;
                 break;
         }
         
-        if (new_pos < 0 || new_pos > static_cast<musac::int64>(m_data.size())) {
+        if (new_pos < 0 || new_pos > static_cast<int64_t>(m_data.size())) {
             return -1;
         }
         
-        m_position = static_cast<musac::size>(new_pos);
+        m_position = static_cast<size_t>(new_pos);
         return new_pos;
     }
     
-    musac::int64 tell() override {
-        return m_is_open ? static_cast<musac::int64>(m_position) : -1;
+    int64_t tell() override {
+        return m_is_open ? static_cast<int64_t>(m_position) : -1;
     }
     
-    musac::int64 get_size() override {
-        return m_is_open ? static_cast<musac::int64>(m_data.size()) : -1;
+    int64_t get_size() override {
+        return m_is_open ? static_cast<int64_t>(m_data.size()) : -1;
     }
     
     void close() override {
@@ -89,7 +89,7 @@ public:
     
 private:
     std::vector<uint8_t> m_data;
-    musac::size m_position;
+    size_t m_position;
     bool m_is_open;
 };
 
@@ -102,7 +102,7 @@ public:
         WHITE_NOISE
     };
     
-    test_decoder(musac::size total_frames = 44100, Pattern pattern = Pattern::SILENCE) 
+    test_decoder(size_t total_frames = 44100, Pattern pattern = Pattern::SILENCE) 
         : decoder(),
           m_current_frame(0),
           m_total_frames(total_frames),
@@ -133,7 +133,7 @@ public:
     }
     
     bool seek_to_time(std::chrono::microseconds pos) override {
-        musac::size frame_pos = static_cast<musac::size>((pos.count() * m_sample_rate) / 1000000);
+        size_t frame_pos = static_cast<size_t>((pos.count() * m_sample_rate) / 1000000);
         if (frame_pos < m_total_frames) {
             m_current_frame = frame_pos;
             return true;
@@ -185,40 +185,40 @@ protected:
     
 public:
     // Test helpers
-    musac::size get_read_count() const { return m_read_count; }
-    musac::size get_current_frame() const { return m_current_frame; }
-    musac::size get_rewind_count() const { return m_rewind_count; }
+    size_t get_read_count() const { return m_read_count; }
+    size_t get_current_frame() const { return m_current_frame; }
+    size_t get_rewind_count() const { return m_rewind_count; }
     
     void set_channels(channels_t channels) { m_channels = channels; }
     void set_sample_rate(sample_rate_t rate) { m_sample_rate = rate; }
     
 protected:
-    musac::size m_current_frame;
+    size_t m_current_frame;
     
 private:
-    musac::size m_total_frames;
+    size_t m_total_frames;
     Pattern m_pattern;
     channels_t m_channels;
     sample_rate_t m_sample_rate;
-    musac::size m_read_count = 0;
-    musac::size m_rewind_count = 0;
+    size_t m_read_count = 0;
+    size_t m_rewind_count = 0;
     
 };
 
 // Shared state for mock_audio_source that survives moves
 struct mock_audio_state {
-    musac::size total_frames;
-    std::atomic<musac::size> current_frame{0};
-    std::atomic<musac::size> rewind_count{0};
-    std::atomic<musac::size> read_count{0};
-    std::atomic<musac::size> open_count{0};
+    size_t total_frames;
+    std::atomic<size_t> current_frame{0};
+    std::atomic<size_t> rewind_count{0};
+    std::atomic<size_t> read_count{0};
+    std::atomic<size_t> open_count{0};
     std::atomic<sample_rate_t> rate{44100};
     std::atomic<channels_t> channels{2};
     std::atomic<size_t> frame_size{0};
     std::atomic<bool> is_open{false};
     bool generate_sine = false;
     
-    explicit mock_audio_state(musac::size frames) : total_frames(frames) {}
+    explicit mock_audio_state(size_t frames) : total_frames(frames) {}
 };
 
 // Mock audio source for testing - directly overrides virtual methods
@@ -231,7 +231,7 @@ private:
         
 public:
     // Factory method
-    static std::unique_ptr<mock_audio_source> create(musac::size total_frames = 44100);
+    static std::unique_ptr<mock_audio_source> create(size_t total_frames = 44100);
     
     void open(sample_rate_t rate, channels_t channels, size_t frame_size) override {
         m_state->rate = rate;
@@ -248,7 +248,7 @@ public:
     }
     
     bool seek_to_time(std::chrono::microseconds pos) const override {
-        musac::size frame_pos = static_cast<musac::size>((pos.count() * m_state->rate) / 1000000);
+        size_t frame_pos = static_cast<size_t>((pos.count() * m_state->rate) / 1000000);
         if (frame_pos < m_state->total_frames) {
             m_state->current_frame = frame_pos;
             return true;
@@ -285,10 +285,10 @@ public:
     void set_generate_sine(bool generate) { m_state->generate_sine = generate; }
     
     // Test inspection methods  
-    musac::size get_rewind_count() const { return m_state->rewind_count; }
-    musac::size get_current_frame() const { return m_state->current_frame; }
-    musac::size get_read_count() const { return m_state->read_count; }
-    musac::size get_open_count() const { return m_state->open_count; }
+    size_t get_rewind_count() const { return m_state->rewind_count; }
+    size_t get_current_frame() const { return m_state->current_frame; }
+    size_t get_read_count() const { return m_state->read_count; }
+    size_t get_open_count() const { return m_state->open_count; }
     bool is_open() const { return m_state->is_open; }
     
     // Get the shared state for tests
@@ -332,7 +332,7 @@ private:
 };
 
 // Factory method implementation
-inline std::unique_ptr<mock_audio_source> mock_audio_source::create(musac::size total_frames) {
+inline std::unique_ptr<mock_audio_source> mock_audio_source::create(size_t total_frames) {
     auto state = std::make_shared<mock_audio_state>(total_frames);
     auto decoder = std::make_unique<test_decoder_with_state>(state);
     auto io_stream = std::make_unique<memory_io_stream>();
@@ -344,7 +344,7 @@ inline std::unique_ptr<mock_audio_source> mock_audio_source::create(musac::size 
 
 // Helper factory functions
 inline std::unique_ptr<audio_source> create_test_source(
-    musac::size frames = 44100, 
+    size_t frames = 44100, 
     test_decoder::Pattern pattern = test_decoder::Pattern::SILENCE) {
     
     auto decoder = std::make_unique<test_decoder>(frames, pattern);
@@ -353,7 +353,7 @@ inline std::unique_ptr<audio_source> create_test_source(
     return std::make_unique<audio_source>(std::move(decoder), std::move(io));
 }
 
-inline std::unique_ptr<mock_audio_source> create_mock_source(musac::size frames = 44100) {
+inline std::unique_ptr<mock_audio_source> create_mock_source(size_t frames = 44100) {
     return mock_audio_source::create(frames);
 }
 
@@ -476,13 +476,13 @@ public:
     
     mock_io_stream(size_t data_size = 1024) : m_data(data_size, 0) {}
     
-    size read(void* buffer, size bytes) override {
+    size_t read(void* buffer, size_t bytes) override {
         if (fail_on_read) {
             return 0;
         }
         
-        size available = m_data.size() - m_position;
-        size to_read = std::min(bytes, available);
+        size_t available = m_data.size() - m_position;
+        size_t to_read = std::min(bytes, available);
         
         if (return_partial_reads && to_read > 0) {
             to_read /= 2;
@@ -496,7 +496,7 @@ public:
         return to_read;
     }
     
-    size write(const void* buffer, size bytes) override {
+    size_t write(const void* buffer, size_t bytes) override {
         if (m_position + bytes > m_data.size()) {
             m_data.resize(m_position + bytes);
         }
@@ -509,7 +509,7 @@ public:
         return bytes;
     }
     
-    int64 seek(int64 offset, seek_origin whence) override {
+    int64_t seek(int64_t offset, seek_origin whence) override {
         if (fail_on_seek) {
             return -1;
         }
@@ -542,15 +542,15 @@ public:
         }
         
         m_position = new_position;
-        return static_cast<int64>(m_position);
+        return static_cast<int64_t>(m_position);
     }
     
-    int64 tell() override {
-        return static_cast<int64>(m_position);
+    int64_t tell() override {
+        return static_cast<int64_t>(m_position);
     }
     
-    int64 get_size() override {
-        return static_cast<int64>(m_data.size());
+    int64_t get_size() override {
+        return static_cast<int64_t>(m_data.size());
     }
     
     void close() override {

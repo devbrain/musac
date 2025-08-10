@@ -11,7 +11,7 @@
 #include <musac/sdk/export_musac_sdk.h>
 
 namespace musac {
-    using from_float_converter_func_t = void(*)(uint8* dst, size_t dstBytes, const buffer<float>& src);
+    using from_float_converter_func_t = void(*)(uint8_t* dst, size_t dstBytes, const buffer<float>& src);
     MUSAC_SDK_EXPORT from_float_converter_func_t get_from_float_converter(audio_format fmt);
 }
 

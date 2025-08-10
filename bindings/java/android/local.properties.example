@@ -1,0 +1,5 @@
+# This file should be copied to local.properties and updated with your paths
+# Location of the Android SDK
+sdk.dir=/path/to/Android/Sdk
+# Location of the Android NDK (optional, will use SDK's NDK if not specified)
+# ndk.dir=/path/to/Android/Sdk/ndk/26.1.10909125

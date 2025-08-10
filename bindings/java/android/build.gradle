@@ -1,0 +1,79 @@
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion 34
+    buildToolsVersion "34.0.0"
+    ndkVersion "26.1.10909125"
+    
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 34
+        versionCode 1
+        versionName "1.0"
+        
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        
+        externalNativeBuild {
+            cmake {
+                cppFlags "-std=c++17 -fexceptions -frtti"
+                arguments "-DANDROID_STL=c++_shared",
+                         "-DANDROID_PLATFORM=android-21",
+                         "-DMUSAC_BUILD_BINDINGS=ON",
+                         "-DMUSAC_BUILD_JAVA_BINDING=ON"
+            }
+        }
+        
+        ndk {
+            // Specify the ABIs to build for
+            abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
+        }
+    }
+    
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            debuggable true
+            jniDebuggable true
+        }
+    }
+    
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+            version "3.22.1"
+        }
+    }
+    
+    sourceSets {
+        main {
+            java {
+                // Include the Java sources from parent directory
+                srcDirs '../src', 'src/main/java'
+            }
+            jniLibs {
+                srcDirs 'src/main/jniLibs'
+            }
+        }
+    }
+    
+    packagingOptions {
+        pickFirst 'lib/*/libc++_shared.so'
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}
+
+// Task to package the AAR
+task packageAAR(type: Copy) {
+    from "$buildDir/outputs/aar"
+    into "$projectDir/../../../build/android"
+    include "*.aar"
+}

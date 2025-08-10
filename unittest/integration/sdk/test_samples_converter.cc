@@ -32,7 +32,7 @@ TEST_SUITE("SDK::SamplesConverter") {
             uint8_t src[] = {0, 64, 128, 192, 255};
             float dst[5];
             
-            converter(dst, reinterpret_cast<const musac::uint8*>(src), 5);
+            converter(dst, reinterpret_cast<const uint8_t*>(src), 5);
             
             // U8: 0-255, 128 = silence
             // Float: -1.0 to 1.0, 0.0 = silence
@@ -47,7 +47,7 @@ TEST_SUITE("SDK::SamplesConverter") {
             uint8_t src[] = {0, 128, 255};
             float dst[3];
             
-            converter(dst, reinterpret_cast<const musac::uint8*>(src), 3);
+            converter(dst, reinterpret_cast<const uint8_t*>(src), 3);
             
             CHECK(dst[0] <= -0.99f);
             CHECK(std::abs(dst[1]) < 0.01f);
@@ -63,7 +63,7 @@ TEST_SUITE("SDK::SamplesConverter") {
             int16_t src[] = {-32768, -16384, 0, 16384, 32767};
             float dst[5];
             
-            converter(dst, reinterpret_cast<const musac::uint8*>(src), 5);
+            converter(dst, reinterpret_cast<const uint8_t*>(src), 5);
             
             CHECK(dst[0] == doctest::Approx(-1.0f));
             CHECK(dst[1] == doctest::Approx(-0.5f));
@@ -76,7 +76,7 @@ TEST_SUITE("SDK::SamplesConverter") {
             int16_t src[] = {-1, 0, 1};
             float dst[3];
             
-            converter(dst, reinterpret_cast<const musac::uint8*>(src), 3);
+            converter(dst, reinterpret_cast<const uint8_t*>(src), 3);
             
             CHECK(dst[0] < 0.0f);
             CHECK(dst[1] == 0.0f);
@@ -94,7 +94,7 @@ TEST_SUITE("SDK::SamplesConverter") {
             int32_t src[] = {INT32_MIN, INT32_MIN/2, 0, INT32_MAX/2, INT32_MAX};
             float dst[5];
             
-            converter(dst, reinterpret_cast<const musac::uint8*>(src), 5);
+            converter(dst, reinterpret_cast<const uint8_t*>(src), 5);
             
             CHECK(dst[0] == doctest::Approx(-1.0f));
             CHECK(dst[1] == doctest::Approx(-0.5f));
@@ -112,7 +112,7 @@ TEST_SUITE("SDK::SamplesConverter") {
             float src[] = {-1.0f, -0.5f, 0.0f, 0.5f, 1.0f};
             float dst[5];
             
-            converter(dst, reinterpret_cast<const musac::uint8*>(src), 5);
+            converter(dst, reinterpret_cast<const uint8_t*>(src), 5);
             
             // Should be a direct copy
             CHECK(dst[0] == src[0]);
@@ -126,7 +126,7 @@ TEST_SUITE("SDK::SamplesConverter") {
             float src[] = {-2.0f, 2.0f, -1.5f, 1.5f};
             float dst[4];
             
-            converter(dst, reinterpret_cast<const musac::uint8*>(src), 4);
+            converter(dst, reinterpret_cast<const uint8_t*>(src), 4);
             
             // Converter might clip or pass through
             // This depends on implementation
@@ -149,7 +149,7 @@ TEST_SUITE("SDK::SamplesConverter") {
             src[i] = static_cast<int16_t>(std::sin(phase) * 32767.0f);
         }
         
-        converter(dst.data(), reinterpret_cast<const musac::uint8*>(src.data()), sample_count);
+        converter(dst.data(), reinterpret_cast<const uint8_t*>(src.data()), sample_count);
         
         // Verify the sine wave is preserved
         for (size_t i = 0; i < sample_count; i++) {
@@ -176,7 +176,7 @@ TEST_SUITE("SDK::SamplesConverter") {
             int16_t src[1] = {1000};
             float dst[1] = {999.0f};
             
-            converter(dst, reinterpret_cast<const musac::uint8*>(src), 0);
+            converter(dst, reinterpret_cast<const uint8_t*>(src), 0);
             
             // Should not modify dst
             CHECK(dst[0] == 999.0f);

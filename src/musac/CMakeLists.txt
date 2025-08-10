@@ -41,12 +41,7 @@ set(MUSAC_SOURCES
         ${MUSAC_PROJECT_ROOT}/include/musac/audio_device_data.hh
 
 
-        resampler/resampler_speex.cc
-        resampler/resampler_speex.hh
-        resampler/speex/arch.h
-        resampler/speex/resample.c
-        resampler/speex/resample_sse.h
-        resampler/speex/speex_resampler.h
+
 )
 
 add_library(musac ${LIB_BUILD_TYPE} ${MUSAC_SOURCES})

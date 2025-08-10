@@ -19,6 +19,7 @@ private:
     bool m_initialized = false;
     std::map<uint32_t, SDL_AudioDeviceID> m_open_devices;
     std::map<uint32_t, audio_spec> m_device_specs;
+    std::map<uint32_t, float> m_device_gains;  // Track gain values even though SDL2 doesn't support them
     std::mutex m_devices_mutex;
     uint32_t m_next_handle = 1;
     
