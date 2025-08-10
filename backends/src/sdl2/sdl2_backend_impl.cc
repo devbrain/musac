@@ -153,7 +153,7 @@ namespace musac {
         // Prepare SDL audio spec
         SDL_AudioSpec wanted;
         SDL_zero(wanted);
-        wanted.freq = spec.freq;
+        wanted.freq = static_cast<int>(spec.freq);
         wanted.format = musac_to_sdl_format(spec.format);
         wanted.channels = spec.channels;
         wanted.samples = 4096; // SDL2 default buffer size
@@ -182,7 +182,7 @@ namespace musac {
         }
 
         // Fill obtained spec
-        obtained_spec.freq = obtained.freq;
+        obtained_spec.freq = static_cast<uint32_t>(obtained.freq);
         obtained_spec.format = sdl_to_musac_format(obtained.format);
         obtained_spec.channels = obtained.channels;
 

@@ -69,6 +69,9 @@ namespace musac {
             void create_stream_with_callback(
                 void (*callback)(void* userdata, uint8_t* stream, int len),
                 void* userdata);
+            
+            // Get final mixed output buffer for visualization
+            std::vector<float> get_output_buffer() const;
 
         private:
             // Constructor with backend

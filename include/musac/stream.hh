@@ -337,6 +337,7 @@ namespace musac {
 #endif
 
             static void audio_callback(uint8_t out[], unsigned int out_len);
+            static std::vector<float> get_final_output_buffer();
             static void set_audio_device_data(const audio_device_data& aud);
             [[nodiscard]] int get_token() const;
             static audio_mixer& get_global_mixer();

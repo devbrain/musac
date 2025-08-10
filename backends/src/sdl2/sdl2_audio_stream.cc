@@ -19,7 +19,7 @@ sdl2_audio_stream::sdl2_audio_stream(SDL_AudioDeviceID device_id, const audio_sp
     
     // Store the spec
     SDL_zero(m_spec);
-    m_spec.freq = spec.freq;
+    m_spec.freq = static_cast<int>(spec.freq);
     m_spec.channels = spec.channels;
     
     // Convert format
@@ -56,7 +56,7 @@ void sdl2_audio_stream::sdl_callback(void* userdata, Uint8* stream, int len) {
     auto* self = static_cast<sdl2_audio_stream*>(userdata);
     if (!self || !self->m_user_callback) {
         // Fill with silence if no callback
-        std::memset(stream, 0, len);
+        std::memset(stream, 0, static_cast<size_t>(len));
         return;
     }
     

@@ -373,4 +373,8 @@ pc_speaker_stream audio_device::create_pc_speaker_stream() {
     return pc_speaker_stream();
 }
 
+std::vector<float> audio_device::get_output_buffer() const {
+    return audio_stream::get_final_output_buffer();
+}
+
 } // namespace musac
