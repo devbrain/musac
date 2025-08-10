@@ -68,6 +68,8 @@ set(codecs_sources
         ${CODECS_INCLUDE}decoder_vorbis.hh
         decoder_mml.cc
         ${CODECS_INCLUDE}decoder_mml.hh
+        register_codecs.cc
+        ${CODECS_INCLUDE}register_codecs.hh
 
 
         cmf/fmdrv.c

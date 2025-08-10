@@ -5,6 +5,9 @@ set (sdk_sources
         ${MUSAC_PROJECT_ROOT}/include/musac/sdk/buffer.hh
         ${MUSAC_PROJECT_ROOT}/include/musac/sdk/decoder.hh
         decoder.cc
+        
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/decoders_registry.hh
+        decoders_registry.cc
 
         processor.cc
         ${MUSAC_PROJECT_ROOT}/include/musac/sdk/processor.hh

@@ -30,6 +30,12 @@
 #include "golden_data/punch_ogg.h"
 
 namespace {
+    // Helper template to call static accept method on decoder types
+    template<typename DecoderType>
+    bool callStaticAccept(musac::io_stream* stream) {
+        return DecoderType::accept(stream);
+    }
+    
     // Helper function to compare float arrays with tolerance
     bool compareFloatArrays(const float* expected, const float* actual, size_t count, float tolerance = 0.001f) {
         int failures = 0;
@@ -691,30 +697,41 @@ TEST_SUITE("Decoders::GoldenData") {
                 const uint8_t* data;
                 size_t size;
                 std::function<std::unique_ptr<musac::decoder>()> create_decoder;
+                std::function<bool(musac::io_stream*)> static_accept;
                 const char* name;
             };
             
             TestCase tests[] = {
                 { test16_aiff_input, test16_aiff_input_size,
-                  []() { return std::make_unique<musac::decoder_aiff>(); }, "AIFF" },
+                  []() { return std::make_unique<musac::decoder_aiff>(); },
+                  callStaticAccept<musac::decoder_aiff>, "AIFF" },
                 { file_1_voc_input, file_1_voc_input_size,
-                  []() { return std::make_unique<musac::decoder_voc>(); }, "VOC" },
+                  []() { return std::make_unique<musac::decoder_voc>(); },
+                  callStaticAccept<musac::decoder_voc>, "VOC" },
                 { soundcard_wav_input, soundcard_wav_input_size,
-                  []() { return std::make_unique<musac::decoder_drwav>(); }, "WAV" },
+                  []() { return std::make_unique<musac::decoder_drwav>(); },
+                  callStaticAccept<musac::decoder_drwav>, "WAV" },
                 { brix_cmf_input, brix_cmf_input_size,
-                  []() { return std::make_unique<musac::decoder_cmf>(); }, "CMF" },
+                  []() { return std::make_unique<musac::decoder_cmf>(); },
+                  callStaticAccept<musac::decoder_cmf>, "CMF" },
                 { simon_mid_input, simon_mid_input_size,
-                  []() { return std::make_unique<musac::decoder_seq>(); }, "MIDI" },
+                  []() { return std::make_unique<musac::decoder_seq>(); },
+                  callStaticAccept<musac::decoder_seq>, "MIDI" },
                 { doom_mus_input, doom_mus_input_size,
-                  []() { return std::make_unique<musac::decoder_seq>(); }, "MUS" },
+                  []() { return std::make_unique<musac::decoder_seq>(); },
+                  callStaticAccept<musac::decoder_seq>, "MUS" },
                 { doom_opb_input, doom_opb_input_size,
-                  []() { return std::make_unique<musac::decoder_opb>(); }, "OPB" },
+                  []() { return std::make_unique<musac::decoder_opb>(); },
+                  callStaticAccept<musac::decoder_opb>, "OPB" },
                 { vgm_vgz_input, vgm_vgz_input_size,
-                  []() { return std::make_unique<musac::decoder_vgm>(); }, "VGM" },
+                  []() { return std::make_unique<musac::decoder_vgm>(); },
+                  callStaticAccept<musac::decoder_vgm>, "VGM" },
                 { GCOMP1_XMI_input, GCOMP1_XMI_input_size,
-                  []() { return std::make_unique<musac::decoder_seq>(); }, "XMI" },
+                  []() { return std::make_unique<musac::decoder_seq>(); },
+                  callStaticAccept<musac::decoder_seq>, "XMI" },
                 { punch_ogg_input, punch_ogg_input_size,
-                  []() { return std::make_unique<musac::decoder_vorbis>(); }, "Vorbis" }
+                  []() { return std::make_unique<musac::decoder_vorbis>(); },
+                  callStaticAccept<musac::decoder_vorbis>, "Vorbis" }
             };
             
             for (const auto& test : tests) {
@@ -723,13 +740,14 @@ TEST_SUITE("Decoders::GoldenData") {
                 auto io = musac::io_from_memory(test.data, test.size);
                 REQUIRE(io != nullptr);
                 
-                auto decoder = test.create_decoder();
-                CHECK(decoder->accept(io.get()));
+                // Call static accept method
+                CHECK(test.static_accept(io.get()));
                 
                 // Verify stream position is restored
                 CHECK(io->tell() == 0);
                 
                 // Verify decoder can still open the file after accept
+                auto decoder = test.create_decoder();
                 CHECK_NOTHROW(decoder->open(io.get()));
                 CHECK(decoder->is_open());
             }
@@ -738,7 +756,7 @@ TEST_SUITE("Decoders::GoldenData") {
         SUBCASE("Decoders reject wrong formats") {
             // Test that each decoder rejects formats it shouldn't handle
             struct TestCase {
-                std::function<std::unique_ptr<musac::decoder>()> create_decoder;
+                std::function<bool(musac::io_stream*)> static_accept;
                 const char* decoder_name;
                 const uint8_t* wrong_data;
                 size_t wrong_size;
@@ -747,31 +765,31 @@ TEST_SUITE("Decoders::GoldenData") {
             
             TestCase cross_tests[] = {
                 // AIFF decoder should reject WAV
-                { []() { return std::make_unique<musac::decoder_aiff>(); }, "AIFF",
+                { callStaticAccept<musac::decoder_aiff>, "AIFF",
                   soundcard_wav_input, soundcard_wav_input_size, "WAV" },
                   
                 // WAV decoder should reject AIFF
-                { []() { return std::make_unique<musac::decoder_drwav>(); }, "WAV",
+                { callStaticAccept<musac::decoder_drwav>, "WAV",
                   test16_aiff_input, test16_aiff_input_size, "AIFF" },
                   
                 // VOC decoder should reject MIDI
-                { []() { return std::make_unique<musac::decoder_voc>(); }, "VOC",
+                { callStaticAccept<musac::decoder_voc>, "VOC",
                   simon_mid_input, simon_mid_input_size, "MIDI" },
                   
                 // CMF decoder should reject MUS
-                { []() { return std::make_unique<musac::decoder_cmf>(); }, "CMF",
+                { callStaticAccept<musac::decoder_cmf>, "CMF",
                   doom_mus_input, doom_mus_input_size, "MUS" },
                   
                 // OPB decoder should reject VGM
-                { []() { return std::make_unique<musac::decoder_opb>(); }, "OPB",
+                { callStaticAccept<musac::decoder_opb>, "OPB",
                   vgm_vgz_input, vgm_vgz_input_size, "VGM" },
                   
                 // VGM decoder should reject OPB
-                { []() { return std::make_unique<musac::decoder_vgm>(); }, "VGM",
+                { callStaticAccept<musac::decoder_vgm>, "VGM",
                   doom_opb_input, doom_opb_input_size, "OPB" },
                   
                 // Vorbis decoder should reject WAV
-                { []() { return std::make_unique<musac::decoder_vorbis>(); }, "Vorbis",
+                { callStaticAccept<musac::decoder_vorbis>, "Vorbis",
                   soundcard_wav_input, soundcard_wav_input_size, "WAV" }
             };
             
@@ -781,8 +799,8 @@ TEST_SUITE("Decoders::GoldenData") {
                 auto io = musac::io_from_memory(test.wrong_data, test.wrong_size);
                 REQUIRE(io != nullptr);
                 
-                auto decoder = test.create_decoder();
-                CHECK_FALSE(decoder->accept(io.get()));
+                // Call static accept method
+                CHECK_FALSE(test.static_accept(io.get()));
                 
                 // Verify stream position is restored even on rejection
                 CHECK(io->tell() == 0);
@@ -794,17 +812,16 @@ TEST_SUITE("Decoders::GoldenData") {
             auto io = musac::io_from_memory(soundcard_wav_input, soundcard_wav_input_size);
             REQUIRE(io != nullptr);
             
-            musac::decoder_drwav decoder;
-            
-            // Call accept multiple times
-            CHECK(decoder.accept(io.get()));
-            CHECK(decoder.accept(io.get()));
-            CHECK(decoder.accept(io.get()));
+            // Call static accept multiple times
+            CHECK(musac::decoder_drwav::accept(io.get()));
+            CHECK(musac::decoder_drwav::accept(io.get()));
+            CHECK(musac::decoder_drwav::accept(io.get()));
             
             // Stream position should still be at beginning
             CHECK(io->tell() == 0);
             
             // Decoder should still work
+            musac::decoder_drwav decoder;
             CHECK_NOTHROW(decoder.open(io.get()));
             CHECK(decoder.is_open());
         }
@@ -817,28 +834,34 @@ TEST_SUITE("Decoders::GoldenData") {
                 random_data[i] = static_cast<uint8_t>(i * 7 + 13);
             }
             
-            std::vector<std::unique_ptr<musac::decoder>> decoders;
-            decoders.push_back(std::make_unique<musac::decoder_aiff>());
-            decoders.push_back(std::make_unique<musac::decoder_voc>());
-            decoders.push_back(std::make_unique<musac::decoder_drwav>());
-            decoders.push_back(std::make_unique<musac::decoder_cmf>());
-            decoders.push_back(std::make_unique<musac::decoder_seq>());
-            decoders.push_back(std::make_unique<musac::decoder_opb>());
-            decoders.push_back(std::make_unique<musac::decoder_vgm>());
-            decoders.push_back(std::make_unique<musac::decoder_vorbis>());
+            struct TestCase {
+                std::function<bool(musac::io_stream*)> static_accept;
+                const char* name;
+            };
             
-            for (auto& decoder : decoders) {
-                INFO("Testing " << decoder->get_name() << " with invalid data");
+            TestCase decoders[] = {
+                { callStaticAccept<musac::decoder_aiff>, "AIFF" },
+                { callStaticAccept<musac::decoder_voc>, "VOC" },
+                { callStaticAccept<musac::decoder_drwav>, "WAV" },
+                { callStaticAccept<musac::decoder_cmf>, "CMF" },
+                { callStaticAccept<musac::decoder_seq>, "SEQ" },
+                { callStaticAccept<musac::decoder_opb>, "OPB" },
+                { callStaticAccept<musac::decoder_vgm>, "VGM" },
+                { callStaticAccept<musac::decoder_vorbis>, "Vorbis" }
+            };
+            
+            for (const auto& decoder : decoders) {
+                INFO("Testing " << decoder.name << " with invalid data");
                 
                 // Test with empty data
                 auto io_empty = musac::io_from_memory(empty_data, sizeof(empty_data));
-                CHECK_FALSE(decoder->accept(io_empty.get()));
+                CHECK_FALSE(decoder.static_accept(io_empty.get()));
                 CHECK(io_empty->tell() == 0);
                 
                 // Test with random data
                 auto io_random = musac::io_from_memory(random_data, sizeof(random_data));
                 // Most decoders should reject random data (some might have false positives)
-                [[maybe_unused]] bool accepted = decoder->accept(io_random.get());  // Just verify it doesn't crash
+                [[maybe_unused]] bool accepted = decoder.static_accept(io_random.get());  // Just verify it doesn't crash
                 CHECK(io_random->tell() == 0);  // Position should be restored
             }
         }

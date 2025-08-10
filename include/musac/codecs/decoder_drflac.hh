@@ -13,6 +13,9 @@ namespace musac {
             decoder_drflac();
             ~decoder_drflac() override;
 
+            // Static method to check if this decoder can handle the format
+            [[nodiscard]] static bool accept(io_stream* rwops);
+            
             [[nodiscard]] const char* get_name() const override;
             
             void open(io_stream* rwops) override;
@@ -23,7 +26,6 @@ namespace musac {
             bool seek_to_time(std::chrono::microseconds pos) override;
 
         protected:
-            [[nodiscard]] bool do_accept(io_stream* rwops) override;
             size_t do_decode(float* buf, size_t len, bool& callAgain) override;
 
         private:

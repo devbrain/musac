@@ -8,7 +8,6 @@
 #include <musac/audio_system.hh>
 #include <musac/audio_device.hh>
 #include <musac/test_data/loader.hh>
-#include "musac/audio_loader.hh"
 #include <musac/stream.hh>
 #include <musac/sdk/audio_backend.hh>
 #include <musac_backends/sdl3/sdl3_backend.hh>
@@ -30,8 +29,12 @@ int main(int argc, char* argv[]) {
     std::cout << "Using Null backend - no sound will be produced" << std::endl;
 #endif
 
-    // Initialize audio system with explicit backend
+    // Initialize test data loader (creates codec registry internally)
+    musac::test_data::loader::init();
+    
+    // Initialize audio system (without registry - test_data loader has its own)
     audio_system::init(backend);
+    
     // Enumerate devices using the backend
     auto devices = audio_device::enumerate_devices(backend, true);
     for (const auto& d : devices) {

@@ -4,6 +4,7 @@
 
 #include <musac/audio_system.hh>
 #include <musac/sdk/audio_backend.hh>
+#include <musac/sdk/decoders_registry.hh>
 #include <musac/audio_device.hh>
 #include <musac/stream.hh>
 #include <musac/error.hh>
@@ -23,6 +24,7 @@ namespace musac {
     
     // v2 backend
     static std::shared_ptr<audio_backend> s_backend_v2;
+    static std::shared_ptr<decoders_registry> s_decoders_registry;
     static std::mutex s_system_mutex;
     
     
@@ -58,15 +60,55 @@ namespace musac {
         return true;
     }
     
+    // Init with backend and registry
+    bool audio_system::init(std::shared_ptr<audio_backend> backend, 
+                           std::shared_ptr<decoders_registry> registry) {
+        std::lock_guard<std::mutex> lock(s_system_mutex);
+        
+        if (!backend) {
+            return false;
+        }
+        
+        // Store the v2 backend and registry
+        s_backend_v2 = backend;
+        s_decoders_registry = registry;
+        
+        // Initialize if not already initialized
+        if (!backend->is_initialized()) {
+            try {
+                backend->init();
+            } catch (const std::exception& e) {
+                s_backend_v2.reset();
+                s_decoders_registry.reset();
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
 
     std::shared_ptr<audio_backend> audio_system::get_backend() {
         std::lock_guard<std::mutex> lock(s_system_mutex);
         return s_backend_v2;
     }
     
+    const decoders_registry* audio_system::get_decoders_registry() {
+        std::lock_guard<std::mutex> lock(s_system_mutex);
+        return s_decoders_registry.get();
+    }
+    
+    void audio_system::set_decoders_registry(std::shared_ptr<decoders_registry> registry) {
+        std::lock_guard<std::mutex> lock(s_system_mutex);
+        s_decoders_registry = registry;
+    }
+    
     void audio_system::done() {
         close_audio_stream();
         close_audio_devices();
+        
+        // Clear the registry
+        s_decoders_registry.reset();
         
         // Shutdown v2 backend if present
         if (s_backend_v2) {

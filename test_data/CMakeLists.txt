@@ -44,6 +44,7 @@ target_include_directories(musac_test_data
 target_link_libraries(musac_test_data
         PUBLIC
         musac
+        musac_codecs
         PRIVATE
         magic_enum
 )

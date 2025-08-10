@@ -31,6 +31,9 @@ public:
     decoder_mml();
     ~decoder_mml() override;
     
+    // Static method to check if this decoder can handle the format
+    [[nodiscard]] static bool accept(io_stream* stream);
+    
     // Decoder interface
     [[nodiscard]] const char* get_name() const override;
     
@@ -45,7 +48,6 @@ public:
     [[nodiscard]] std::vector<std::string> get_warnings() const;
     
 protected:
-    [[nodiscard]] bool do_accept(io_stream* stream) override;
     size_t do_decode(float buf[], size_t len, bool& call_again) override;
     
 private:

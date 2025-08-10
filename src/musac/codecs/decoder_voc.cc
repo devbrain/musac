@@ -434,15 +434,28 @@ decoder_voc::decoder_voc() : m_pimpl(std::make_unique<impl>()) {}
 
 decoder_voc::~decoder_voc() = default;
 
-bool decoder_voc::do_accept(io_stream* rwops) {
-    // Check for Creative Voice File signature
-    uint8 signature[20];
-    
-    if (rwops->read(signature, sizeof(signature)) != sizeof(signature)) {
+bool decoder_voc::accept(io_stream* rwops) {
+    if (!rwops) {
         return false;
     }
     
-    return (std::memcmp(signature, "Creative Voice File\032", sizeof(signature)) == 0);
+    // Save current stream position
+    auto original_pos = rwops->tell();
+    if (original_pos < 0) {
+        return false;
+    }
+    
+    // Check for Creative Voice File signature
+    uint8 signature[20];
+    bool result = false;
+    
+    if (rwops->read(signature, sizeof(signature)) == sizeof(signature)) {
+        result = (std::memcmp(signature, "Creative Voice File\032", sizeof(signature)) == 0);
+    }
+    
+    // Restore original position
+    rwops->seek(original_pos, seek_origin::set);
+    return result;
 }
 
 const char* decoder_voc::get_name() const {

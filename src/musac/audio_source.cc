@@ -3,6 +3,7 @@
 //
 
 #include <musac/audio_source.hh>
+#include <musac/audio_system.hh>
 #include <musac/error.hh>
 #include <failsafe/failsafe.hh>
 #include <iostream>
@@ -20,6 +21,58 @@ musac::audio_source::audio_source(std::unique_ptr <decoder> decoder_obj,
 musac::audio_source::audio_source(std::unique_ptr <decoder> decoder_obj, std::unique_ptr<musac::io_stream> rwops)
     : m_rwops(std::move(rwops)),
       m_decoder(std::move(decoder_obj)) {
+}
+
+musac::audio_source::audio_source(std::unique_ptr<musac::io_stream> rwops, 
+                                  const decoders_registry* registry)
+    : m_rwops(std::move(rwops)) {
+    if (!m_rwops) {
+        THROW_RUNTIME("No IO stream provided to audio_source");
+    }
+    
+    // Use provided registry or get the global one from audio_system
+    const decoders_registry* reg = registry;
+    if (!reg) {
+        reg = audio_system::get_decoders_registry();
+        if (!reg) {
+            THROW_RUNTIME("No decoders registry available. Call audio_system::init() first or provide a registry.");
+        }
+    }
+    
+    // Find appropriate decoder for the stream
+    m_decoder = std::shared_ptr<decoder>(reg->find_decoder(m_rwops.get()));
+    if (!m_decoder) {
+        THROW_RUNTIME("No suitable decoder found for the audio format");
+    }
+}
+
+musac::audio_source::audio_source(std::unique_ptr<musac::io_stream> rwops,
+                                  std::unique_ptr<resampler> resampler_obj,
+                                  const decoders_registry* registry)
+    : m_rwops(std::move(rwops)),
+      m_resampler(std::move(resampler_obj)) {
+    if (!m_rwops) {
+        THROW_RUNTIME("No IO stream provided to audio_source");
+    }
+    
+    // Use provided registry or get the global one from audio_system
+    const decoders_registry* reg = registry;
+    if (!reg) {
+        reg = audio_system::get_decoders_registry();
+        if (!reg) {
+            THROW_RUNTIME("No decoders registry available. Call audio_system::init() first or provide a registry.");
+        }
+    }
+    
+    // Find appropriate decoder for the stream
+    m_decoder = std::shared_ptr<decoder>(reg->find_decoder(m_rwops.get()));
+    if (!m_decoder) {
+        THROW_RUNTIME("No suitable decoder found for the audio format");
+    }
+    
+    if (m_resampler) {
+        m_resampler->set_decoder(m_decoder);
+    }
 }
 
 musac::audio_source::audio_source(audio_source&& other) noexcept

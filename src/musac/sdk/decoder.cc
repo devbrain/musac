@@ -22,32 +22,6 @@ namespace musac {
         return m_pimpl->m_is_open;
     }
 
-    bool decoder::accept(io_stream* rwops) {
-        if (!rwops) {
-            return false;
-        }
-        
-        // Save current stream position
-        auto original_pos = rwops->tell();
-        if (original_pos < 0) {
-            return false;
-        }
-        
-        bool result = false;
-        try {
-            // Call the derived class implementation
-            result = do_accept(rwops);
-        } catch (...) {
-            // If do_accept throws, treat it as format not accepted
-            result = false;
-        }
-        
-        // Always restore original position
-        rwops->seek(original_pos, seek_origin::set);
-        
-        return result;
-    }
-
     // Conversion happens in-place.
     static constexpr void mono_to_stereo(float buf[], size_t len) {
         if (len < 1 || !buf) {

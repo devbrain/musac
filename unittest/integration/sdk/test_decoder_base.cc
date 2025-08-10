@@ -73,12 +73,13 @@ public:
         return "Test Decoder";
     }
     
-protected:
-    bool do_accept(musac::io_stream* /*rwops*/) override {
+    // Static accept method for test purposes
+    static bool accept(musac::io_stream* /*rwops*/) {
         // Test decoder accepts any input
         return true;
     }
     
+protected:
     size_t do_decode(float* buf, size_t len, bool& call_again) override {
         size_t available = m_data.size() - m_position;
         size_t to_copy = std::min(len, available);
