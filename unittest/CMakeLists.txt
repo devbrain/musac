@@ -65,8 +65,8 @@ add_executable(musac_unittest
         integration/core/test_audio_system_api.cc
         integration/core/test_buffer_shrinking.cc
         integration/core/test_stream_move.cc
-        integration/core/test_audio_device_v2.cc
-        integration/core/test_audio_system_v2.cc
+        integration/core/test_audio_device.cc
+        integration/core/test_audio_system.cc
         
         # Comprehensive thread safety tests (merged)
         integration/core/test_thread_safety_comprehensive.cc
@@ -83,15 +83,15 @@ add_executable(musac_unittest
         integration/sdk/test_audio_converter_comprehensive.cc
         
         # SDK unit tests
-        unit/sdk/test_audio_converter_v2.cc
+        unit/sdk/test_audio_converter.cc
         
         # PC Speaker and MML tests
         unit/core/test_mml_parser.cc
 
         # Backend integration tests
-        integration/backends/test_backend_v2_interface.cc
-        integration/backends/test_sdl3_backend_v2.cc
-        integration/backends/compile_test_backend_v2.cc
+        integration/backends/test_backend_interface.cc
+        integration/backends/test_sdl3_backend.cc
+        integration/backends/compile_test_backend.cc
 
         # Codec integration tests
         integration/codecs/test_decoder_aiff.cc

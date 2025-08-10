@@ -1,9 +1,9 @@
 #ifndef MUSAC_SDL3_AUDIO_STREAM_HH
 #define MUSAC_SDL3_AUDIO_STREAM_HH
 
-#include <musac/audio_stream_interface.hh>
+#include <musac/sdk/audio_stream_interface.hh>
 #include <musac/sdk/audio_format.hh>
-#include <SDL3/SDL.h>
+#include "sdl3.hh"
 #include <memory>
 
 namespace musac {

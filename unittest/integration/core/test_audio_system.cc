@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 #include <musac/audio_system.hh>
 #include <musac/audio_device.hh>
-#include <musac/backends/sdl3/sdl3_backend.hh>
+#include <musac_backends/sdl3/sdl3_backend.hh>
 #include <musac/sdk/audio_backend.hh>
 #include <musac/sdk/audio_format.hh>
 #include <memory>

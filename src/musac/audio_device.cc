@@ -1,8 +1,6 @@
 #include <musac/audio_device.hh>
-#include <musac/audio_stream_interface.hh>
+#include <musac/sdk/audio_stream_interface.hh>
 #include <musac/sdk/audio_backend.hh>
-#include <musac/backends/sdl3/sdl3_backend.hh>
-#include <musac/backends/null/null_backend.hh>
 #include <musac/stream.hh>
 #include <musac/pc_speaker_stream.hh>
 #include <musac/audio_device_data.hh>
@@ -12,7 +10,6 @@
 #include <vector>
 #include <memory>
 #include <mutex>
-#include <thread>
 #include <chrono>
 
 namespace musac {

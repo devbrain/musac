@@ -1,51 +1,57 @@
 set (sdk_sources
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/samples_converter.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/samples_converter.hh
         samples_converter.cc
 
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/buffer.hh
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/decoder.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/buffer.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/decoder.hh
         decoder.cc
 
         processor.cc
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/processor.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/processor.hh
 
         resampler.cc
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/resampler.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/resampler.hh
         from_float_converter.cc
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/from_float_converter.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/from_float_converter.hh
         
         # New core headers and sources
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/types.hh
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/audio_format.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/types.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/audio_format.hh
         audio_format.cc
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/io_stream.hh
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/endian.hh
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/audio_converter.hh
+
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/io_stream.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/endian.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/audio_converter.hh
+
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/audio_backend.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/audio_stream_interface.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/compiler.hh
+
         ${CMAKE_CURRENT_BINARY_DIR}/musac/sdk/musac_sdk_config.h
         io_stream.cc
         audio_converter.cc
         audio_converter_internal.cc
         
         # MML parser utility
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/mml_parser.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/mml_parser.hh
         mml_parser.cc
 )
 
 set(opl_sources
         opl/adlib_emu.cpp
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/adlib_emu.h
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/opl/adlib_emu.h
         opl/impl_opl.c
         opl/impl_opl.h
         opl/opl.cc
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/opl.hh
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/opl_command.h
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/opl/opl.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/opl/opl_command.h
         opl/opl_player.cc
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/opl_player.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/opl/opl_player.hh
         # New chip emulator interface
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/chip_emulator.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/opl/chip_emulator.hh
         opl/chip_emulator_impl.cc
         # Legacy compatibility header
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/opl/ymfm_chip.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/opl/ymfm_chip.hh
         # Internal YMFM sources (no longer in public headers)
         opl/ymfm/ymfm_adpcm.cpp
         opl/ymfm/ymfm_misc.cpp
@@ -60,9 +66,9 @@ set(opl_sources
 
 set(midi_sources
         # Public headers
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/midi/opl_midi_synth.hh
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/midi/opl_patches.hh
-        ${MUSAC_PROJECT_ROOT}/musac/sdk/midi/midi_sequence.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/midi/opl_midi_synth.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/midi/opl_patches.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/sdk/midi/midi_sequence.hh
         # Implementation files
         midi/opl_midi_synth.cc
         midi/opl_midi_synth_impl.cc
@@ -116,7 +122,7 @@ add_library(musac_sdk ${LIB_BUILD_TYPE}
 target_include_directories(musac_sdk
         PUBLIC
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
-            $<BUILD_INTERFACE:${MUSAC_PROJECT_ROOT}>
+            $<BUILD_INTERFACE:${MUSAC_PROJECT_ROOT}/include>
             $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
         PRIVATE

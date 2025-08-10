@@ -1,12 +1,12 @@
 #include <doctest/doctest.h>
-#include <musac/backends/sdl3/sdl3_backend.hh>
+#include <musac_backends/sdl3/sdl3_backend.hh>
 #include <musac/sdk/audio_backend.hh>
 #include <iostream>
 #include <thread>
 #include <chrono>
 
 TEST_SUITE("Backend::SDL3::Integration") {
-    TEST_CASE("SDL3 backend v2 creation") {
+    TEST_CASE("SDL3 backend creation") {
         auto backend = musac::create_sdl3_backend();
         CHECK(backend != nullptr);
         CHECK_FALSE(backend->is_initialized());

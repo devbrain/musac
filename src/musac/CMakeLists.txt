@@ -15,20 +15,20 @@ endif()
 # Define source files
 set(MUSAC_SOURCES
         audio_device.cc
-        ${MUSAC_PROJECT_ROOT}/musac/audio_device.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/audio_device.hh
         audio_system.cc
-        ${MUSAC_PROJECT_ROOT}/musac/audio_system.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/audio_system.hh
         audio_source.cc
-        ${MUSAC_PROJECT_ROOT}/musac/audio_source.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/audio_source.hh
         audio_loader.cc
-        ${MUSAC_PROJECT_ROOT}/musac/audio_loader.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/audio_loader.hh
 
 
         stream.cc
-        ${MUSAC_PROJECT_ROOT}/musac/stream.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/stream.hh
         
         pc_speaker_stream.cc
-        ${MUSAC_PROJECT_ROOT}/musac/pc_speaker_stream.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/pc_speaker_stream.hh
         pc_speaker_decoder.cc
         pc_speaker_decoder.hh
 
@@ -40,7 +40,7 @@ set(MUSAC_SOURCES
         callback_dispatcher.hh
         audio_mixer.cc
         audio_mixer.hh
-        ${MUSAC_PROJECT_ROOT}/musac/audio_device_data.hh
+        ${MUSAC_PROJECT_ROOT}/include/musac/audio_device_data.hh
 
 
         resampler/resampler_speex.cc
@@ -49,40 +49,15 @@ set(MUSAC_SOURCES
         resampler/speex/resample.c
         resampler/speex/resample_sse.h
         resampler/speex/speex_resampler.h
-
-        ${codecs_sources}
-        
-        # Audio abstraction interfaces
-        ${MUSAC_PROJECT_ROOT}/musac/audio_stream_interface.hh
 )
 
 add_library(musac ${LIB_BUILD_TYPE} ${MUSAC_SOURCES})
 
-# Null backend removed - using SDL3 with dummy driver for testing
-
-# Build SDL3 backend as separate library
-if(MUSAC_BUILD_SDL3_BACKEND)
-    add_subdirectory(backends/sdl3)
-endif()
 
 target_link_libraries(musac PUBLIC musac_codecs musac_sdk thirdparty::failsafe)
-
-# Define backend availability macros
-if(MUSAC_BUILD_NULL_BACKEND)
-    target_compile_definitions(musac PRIVATE MUSAC_HAS_NULL_BACKEND)
-endif()
-
-# Note: SDL3 backend is now separate, so we don't define MUSAC_HAS_SDL3_BACKEND here
-# Applications linking musac_backend_sdl3 will need to handle this
-
-# Set logger category for musac
 target_compile_definitions(musac PRIVATE LOGGER_DEFAULT_CATEGORY=musac)
 
-# Conditionally link SDL3
-if(MUSAC_USE_SDL3)
-    target_link_libraries(musac PRIVATE SDL3::SDL3)
-    target_compile_definitions(musac PRIVATE MUSAC_HAS_SDL3_BACKEND)
-endif()
+
 target_include_directories(musac
         PUBLIC 
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
@@ -103,42 +78,5 @@ if (MUSAC_BUILD_SHARED)
     generate_export_header(musac 
         EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/musac/${export_file_name}
     )
-endif()
-
-# For testing internal classes when building shared library
-if(MUSAC_BUILD_TESTS AND MUSAC_BUILD_SHARED)
-    # Create a static library with internal symbols for testing
-    add_library(musac_internal STATIC ${MUSAC_SOURCES})
-    
-    # Null backend removed - using SDL3 with dummy driver for testing
-    
-    # Add SDL3 backend sources conditionally
-    if(MUSAC_USE_SDL3)
-        target_sources(musac_internal PRIVATE
-            backends/sdl3/sdl3_audio_stream.cc
-            backends/sdl3/sdl3_audio_stream.hh
-            backends/sdl3/sdl3_backend.cc
-            backends/sdl3/sdl3_backend.hh
-            backends/sdl3/sdl3_backend_factory.cc
-        )
-    endif()
-    
-    target_link_libraries(musac_internal PUBLIC musac_codecs musac_sdk thirdparty::failsafe)
-    
-    if(MUSAC_USE_SDL3)
-        target_link_libraries(musac_internal PRIVATE SDL3::SDL3)
-        target_compile_definitions(musac_internal PRIVATE MUSAC_HAS_SDL3_BACKEND)
-    endif()
-    
-    target_include_directories(musac_internal
-            PUBLIC 
-                $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
-                $<BUILD_INTERFACE:${MUSAC_PROJECT_ROOT}>
-                $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-            PRIVATE 
-                ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-    
-    target_compile_definitions(musac_internal PRIVATE MUSAC_INTERNAL_TESTING)
 endif()
 

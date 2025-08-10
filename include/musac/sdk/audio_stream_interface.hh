@@ -2,8 +2,8 @@
 #define MUSAC_AUDIO_STREAM_INTERFACE_HH
 
 #include <cstddef>
+#include <musac/sdk/export_musac_sdk.h>
 #include <cstdint>
-#include <musac/export_musac.h>
 
 namespace musac {
 
@@ -11,7 +11,7 @@ namespace musac {
  * Abstract interface for audio streaming.
  * Implementations handle platform-specific audio streaming operations.
  */
-class MUSAC_EXPORT audio_stream_interface {
+class MUSAC_SDK_EXPORT audio_stream_interface {
 public:
     virtual ~audio_stream_interface() = default;
     

@@ -166,11 +166,11 @@ namespace musac {
         }
     }
 
-    float* audio_mixer::finalMixData() {
+    float* audio_mixer::final_mix_data() {
         return m_final_mix_buf.data();
     }
 
-    unsigned int audio_mixer::allocatedSamples() const {
+    std::size_t audio_mixer::allocated_samples() const {
         return m_allocated_samples;
     }
     
