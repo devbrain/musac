@@ -77,14 +77,15 @@ inline float swap_float_be(float x) {
     return is_big_endian ? x : swap_float(x);
 }
 
+    /*
 // Read macros for little-endian data
-#define READ_16LE(ptr) musac::swap16le(*reinterpret_cast<const musac::uint16_t*>(ptr))
-#define READ_32LE(ptr) musac::swap32le(*reinterpret_cast<const musac::uint32_t*>(ptr))
+#define MUSAC_READ_16LE(ptr) musac::swap16le(*reinterpret_cast<const musac::uint16_t*>(ptr))
+#define MUSAC_READ_32LE(ptr) musac::swap32le(*reinterpret_cast<const musac::uint32_t*>(ptr))
 
 // Write macros for little-endian data
-#define WRITE_16LE(ptr, val) (*reinterpret_cast<musac::uint16_t*>(ptr) = musac::swap16le(val))
-#define WRITE_32LE(ptr, val) (*reinterpret_cast<musac::uint32_t*>(ptr) = musac::swap32le(val))
-
+#define MUSAC_WRITE_16LE(ptr, val) (*reinterpret_cast<musac::uint16_t*>(ptr) = musac::swap16le(val))
+#define MUSAC_WRITE_32LE(ptr, val) (*reinterpret_cast<musac::uint32_t*>(ptr) = musac::swap32le(val))
+*/
 } // namespace musac
 
 #endif // MUSAC_SDK_ENDIAN_H

@@ -56,10 +56,9 @@ sdl2_audio_stream::~sdl2_audio_stream() {
         m_bound = false;
     }
     
-    // Unregister callback if we had one
-    if (m_user_callback && m_backend) {
-        m_backend->unregister_stream_callback(m_device_id);
-    }
+    // Don't unregister callback in destructor - this can cause use-after-free
+    // if backend is already destroyed. SDL will clean up callbacks when
+    // the device is closed anyway.
 }
 
 void sdl2_audio_stream::sdl_callback(void* userdata, Uint8* stream, int len) {

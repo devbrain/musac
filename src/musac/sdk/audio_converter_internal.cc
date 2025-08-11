@@ -339,13 +339,13 @@ buffer<uint8_t> resample_cubic(const uint8_t* data, size_t len,
             
             p1 = src_float[src_idx * channels + ch];
             
-            if (src_idx < src_frames - 1) {
+            if (src_idx + 1 < src_frames) {
                 p2 = src_float[(src_idx + 1) * channels + ch];
             } else {
                 p2 = src_float[(src_frames - 1) * channels + ch];
             }
             
-            if (src_idx < src_frames - 2) {
+            if (src_idx + 2 < src_frames) {
                 p3 = src_float[(src_idx + 2) * channels + ch];
             } else {
                 p3 = src_float[(src_frames - 1) * channels + ch];

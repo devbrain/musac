@@ -98,6 +98,9 @@ namespace musac {
             THROW_RUNTIME("Backend not initialized");
         }
 
+        // SDL2 audio functions may not be thread-safe, protect with mutex
+        std::lock_guard<std::mutex> lock(m_devices_mutex);
+        
         std::vector<device_info> devices;
 
         // Get device count
@@ -106,12 +109,20 @@ namespace musac {
         // Get the default device info using SDL_GetDefaultAudioInfo
         char* default_device_name = nullptr;
         SDL_AudioSpec default_spec;
+        SDL_zero(default_spec);  // Initialize the spec structure
+        
         int default_result = SDL_GetDefaultAudioInfo(&default_device_name, &default_spec, playback ? 0 : 1);
         
         std::string default_name_str;
         if (default_result == 0 && default_device_name) {
             default_name_str = default_device_name;
+            // Free immediately after copying to avoid any leaks
             SDL_free(default_device_name);
+            default_device_name = nullptr;
+        } else if (default_device_name) {
+            // Still free even if the call failed
+            SDL_free(default_device_name);
+            default_device_name = nullptr;
         }
         
         // Collect all devices
@@ -154,7 +165,7 @@ namespace musac {
         
         // If we found a default device that's not first, move it to the front
         if (default_index > 0) {
-            std::swap(devices[0], devices[default_index]);
+            std::swap(devices[0], devices[static_cast<std::size_t>(default_index)]);
             // Don't update the device IDs - they should remain as the original SDL indices
             // The IDs represent the actual SDL device indices, not our list positions
         }
