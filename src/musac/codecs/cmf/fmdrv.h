@@ -19,7 +19,30 @@
 #ifndef CMF_H
 #define CMF_H
 
-#define READ_16LE(p) ((uint16_t)(p)[0] | ((uint16_t)(p)[1] << 8))
+#include <stdint.h>
+#include <string.h>  /* for memcpy */
+
+/* Read 16-bit little-endian value from byte array */
+/* Endianness is detected by CMake and passed as MUSAC_LITTLE_ENDIAN or MUSAC_BIG_ENDIAN */
+static inline uint16_t read_16le(const uint8_t *p) {
+#ifdef MUSAC_LITTLE_ENDIAN
+    /* On little-endian hosts, we can read directly */
+    /* Use memcpy to avoid alignment issues and undefined behavior */
+    uint16_t value;
+    memcpy(&value, p, sizeof(value));
+    return value;
+#elif defined(MUSAC_BIG_ENDIAN)
+    /* On big-endian hosts, need to swap bytes */
+    return (uint16_t)p[0] | ((uint16_t)p[1] << 8);
+#else
+    /* Fallback: neither endianness defined - use safe portable method */
+    /* This ensures byte-by-byte reading in little-endian order */
+    return (uint16_t)p[0] | ((uint16_t)p[1] << 8);
+#endif
+}
+
+/* Macro wrapper for backward compatibility */
+#define READ_16LE(p) read_16le((const uint8_t *)(p))
 
 #if defined(__cplusplus)
 extern "C" {

@@ -56,6 +56,7 @@ namespace musac {
 	// ----------------------------------------------------------------------------
 	opl_midi_synth::impl::~impl()
 	{
+		delete m_sequence;  // Fix memory leak - delete the MIDI sequence
 		for (auto& opl : m_opl3)
 			delete opl;
 	}

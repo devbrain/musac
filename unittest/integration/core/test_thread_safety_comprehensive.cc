@@ -171,15 +171,21 @@ TEST_SUITE("ThreadSafety::Comprehensive::Integration") {
         std::atomic<bool> callback_running{false};
         std::atomic<int> callback_count{0};
         
+        // Create a struct on the stack to hold the pointers
+        struct CallbackData {
+            std::atomic<bool>* running;
+            std::atomic<int>* count;
+        } callback_data{&callback_running, &callback_count};
+        
         // Create initial stream with callback that tracks execution
         device.create_stream_with_callback(
             [](void* userdata, uint8_t*, int) {
-                auto* data = static_cast<std::pair<std::atomic<bool>*, std::atomic<int>*>*>(userdata);
-                data->first->store(true);
-                data->second->fetch_add(1);
+                auto* data = static_cast<CallbackData*>(userdata);
+                data->running->store(true);
+                data->count->fetch_add(1);
                 std::this_thread::sleep_for(std::chrono::microseconds(100));
             },
-            new std::pair<std::atomic<bool>*, std::atomic<int>*>(&callback_running, &callback_count)
+            &callback_data
         );
         
         // Wait for callback to start

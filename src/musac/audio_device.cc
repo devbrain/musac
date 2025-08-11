@@ -106,12 +106,14 @@ audio_device audio_device::open_device(
 // audio_device implementation
 struct audio_device::impl {
     // Order matters! Members are destroyed in reverse order of declaration
-    // 1. stream is destroyed first (may use device)
-    std::unique_ptr<audio_stream_interface> stream;
+    // Backend must be declared BEFORE stream so it's destroyed AFTER stream
     
-    // 2. For v2 backend path
+    // 1. For v2 backend path (destroyed last)
     std::shared_ptr<audio_backend> backend_v2;
     uint32_t device_handle_v2 = 0;
+    
+    // 2. stream is destroyed first (may use backend)
+    std::unique_ptr<audio_stream_interface> stream;
     
     // 3. Common members
     audio_spec spec;

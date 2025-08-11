@@ -110,6 +110,15 @@ target_link_libraries(musac_codecs PUBLIC musac_sdk thirdparty::failsafe)
 # Set logger category for codecs
 target_compile_definitions(musac_codecs PRIVATE LOGGER_DEFAULT_CATEGORY=musac::codecs)
 
+# Detect endianness at configure time
+include(TestBigEndian)
+test_big_endian(IS_BIG_ENDIAN)
+if(IS_BIG_ENDIAN)
+    target_compile_definitions(musac_codecs PRIVATE MUSAC_BIG_ENDIAN=1)
+else()
+    target_compile_definitions(musac_codecs PRIVATE MUSAC_LITTLE_ENDIAN=1)
+endif()
+
 if (MUSAC_BUILD_SHARED)
     set(CMAKE_CXX_VISIBILITY_PRESET hidden)
     set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
