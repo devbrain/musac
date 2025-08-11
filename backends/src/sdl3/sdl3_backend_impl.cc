@@ -2,6 +2,7 @@
 #include "sdl3_audio_stream.hh"
 #include <musac/sdk/audio_stream_interface.hh>
 #include <failsafe/failsafe.hh>
+#include <algorithm>
 
 namespace musac {
     // Anonymous namespace for helper functions
@@ -124,12 +125,12 @@ namespace musac {
         return m_initialized;
     }
 
-    std::vector <device_info_v2> sdl3_backend::enumerate_devices(bool playback) {
+    std::vector <device_info> sdl3_backend::enumerate_devices(bool playback) {
         if (!m_initialized) {
             THROW_RUNTIME("Backend not initialized");
         }
 
-        std::vector <device_info_v2> devices;
+        std::vector <device_info> devices;
 
         // Get device count
         int count = 0;
@@ -138,7 +139,43 @@ namespace musac {
             sdl_devices = SDL_GetAudioRecordingDevices(&count);
         }
 
+        // To find the actual default device, open the default device and get its name
+        std::string default_device_name;
+        SDL_AudioSpec dummy_spec;
+        SDL_zero(dummy_spec);
+        dummy_spec.freq = 44100;
+        dummy_spec.format = SDL_AUDIO_F32LE;
+        dummy_spec.channels = 2;
+        
+#if defined(MUSAC_COMPILER_GCC)
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wold-style-cast"
+# pragma GCC diagnostic ignored "-Wuseless-cast"
+#elif defined(MUSAC_COMPILER_CLANG)
+# pragma clang diagnostic push
+# pragma clang diagnostic ignored "-Wold-style-cast"
+#endif
+        SDL_AudioDeviceID test_default = SDL_OpenAudioDevice(
+            playback ? SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK : SDL_AUDIO_DEVICE_DEFAULT_RECORDING,
+            &dummy_spec
+        );
+#if defined(MUSAC_COMPILER_GCC)
+# pragma GCC diagnostic pop
+#elif defined(MUSAC_COMPILER_CLANG)
+# pragma clang diagnostic pop
+#endif
+        
+        if (test_default != 0) {
+            // Get the name of the device that was actually opened
+            const char* opened_name = SDL_GetAudioDeviceName(test_default);
+            if (opened_name) {
+                default_device_name = opened_name;
+            }
+            SDL_CloseAudioDevice(test_default);
+        }
+
         if (sdl_devices) {
+            // First, collect all devices
             for (size_t i = 0; i < static_cast <size_t>(count); i++) {
                 const char* name = SDL_GetAudioDeviceName(sdl_devices[i]);
                 if (!name) continue;
@@ -146,10 +183,11 @@ namespace musac {
                 // Get device format info
                 SDL_AudioSpec spec;
                 if (SDL_GetAudioDeviceFormat(sdl_devices[i], &spec, nullptr)) {
-                    device_info_v2 info;
+                    device_info info;
                     info.name = name;
                     info.id = std::to_string(sdl_devices[i]);
-                    info.is_default = (i == 0); // SDL3 typically returns default first
+                    // Check if this device name matches the default device name
+                    info.is_default = (!default_device_name.empty() && info.name == default_device_name);
                     info.channels = static_cast <channels_t>(spec.channels);
                     info.sample_rate = static_cast <sample_rate_t>(spec.freq);
                     devices.push_back(info);
@@ -158,9 +196,28 @@ namespace musac {
             SDL_free(sdl_devices);
         }
 
+        // If we found a default device, move it to the front
+        if (!default_device_name.empty()) {
+            auto default_it = std::find_if(devices.begin(), devices.end(),
+                [](const device_info& dev) { return dev.is_default; });
+            
+            if (default_it != devices.end() && default_it != devices.begin()) {
+                // Move the default device to the front
+                device_info default_device = *default_it;
+                devices.erase(default_it);
+                devices.insert(devices.begin(), default_device);
+            }
+        }
+        
+        // If no device was marked as default (name didn't match), mark the first one
+        if (!devices.empty() && std::none_of(devices.begin(), devices.end(),
+            [](const device_info& dev) { return dev.is_default; })) {
+            devices[0].is_default = true;
+        }
+
         // If no devices found, add a default entry
         if (devices.empty()) {
-            device_info_v2 info;
+            device_info info;
             info.name = playback ? "Default Playback" : "Default Recording";
             info.id = "default";
             info.is_default = true;
@@ -172,14 +229,14 @@ namespace musac {
         return devices;
     }
 
-    device_info_v2 sdl3_backend::get_default_device(bool playback) {
+    device_info sdl3_backend::get_default_device(bool playback) {
         auto devices = enumerate_devices(playback);
         if (!devices.empty()) {
             return devices[0]; // First device is typically default
         }
 
         // Return a fallback default
-        device_info_v2 info;
+        device_info info;
         info.name = playback ? "Default Playback" : "Default Recording";
         info.id = "default";
         info.is_default = true;

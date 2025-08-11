@@ -127,7 +127,7 @@ namespace musac::test {
     class mock_backend_v2_enhanced : public audio_backend {
         private:
             bool m_initialized{false};
-            std::map<uint32_t, device_info_v2> m_devices;
+            std::map<uint32_t, device_info> m_devices;
             std::map<uint32_t, audio_spec> m_device_specs;
             std::map<uint32_t, float> m_device_gains;
             std::map<uint32_t, bool> m_device_paused;
@@ -146,7 +146,7 @@ namespace musac::test {
             // Configurable behaviors
             std::function<void()> on_init;
             std::function<void()> on_shutdown;
-            std::function<std::vector<device_info_v2>(bool)> on_enumerate;
+            std::function<std::vector<device_info>(bool)> on_enumerate;
             std::function<uint32_t(const std::string&, const audio_spec*)> on_open_device;
             std::function<void(uint32_t)> on_close_device;
             std::function<std::unique_ptr<audio_stream_interface>(uint32_t, const audio_spec&, void(*)(void*, uint8_t*, int), void*)> on_create_stream;
@@ -159,7 +159,7 @@ namespace musac::test {
 
             mock_backend_v2_enhanced() {
                 // Setup default test devices
-                device_info_v2 default_device;
+                device_info default_device;
                 default_device.id = "mock_default";
                 default_device.name = "Mock Default Device";
                 default_device.channels = 2;
@@ -168,7 +168,7 @@ namespace musac::test {
                 // is_capture not in v2 API
                 m_devices[0] = default_device;
 
-                device_info_v2 secondary_device;
+                device_info secondary_device;
                 secondary_device.id = "mock_secondary";
                 secondary_device.name = "Mock Secondary Device";
                 secondary_device.channels = 2;
@@ -216,7 +216,7 @@ namespace musac::test {
                 return 16;  // Arbitrary limit for testing
             }
 
-            std::vector<device_info_v2> enumerate_devices(bool playback) override {
+            std::vector<device_info> enumerate_devices(bool playback) override {
                 enumerate_calls++;
                 if (!m_initialized) {
                     throw std::runtime_error("Backend not initialized");
@@ -228,7 +228,7 @@ namespace musac::test {
                     return on_enumerate(playback);
                 }
 
-                std::vector<device_info_v2> result;
+                std::vector<device_info> result;
                 // Since v2 API doesn't have is_capture, we return all devices for playback
                 // and empty for recording
                 if (playback) {
@@ -239,7 +239,7 @@ namespace musac::test {
                 return result;
             }
 
-            device_info_v2 get_default_device(bool playback) override {
+            device_info get_default_device(bool playback) override {
                 if (!m_initialized) {
                     throw std::runtime_error("Backend not initialized");
                 }
@@ -387,7 +387,7 @@ namespace musac::test {
                 create_stream_calls = 0;
             }
 
-            void add_test_device(const device_info_v2& device) {
+            void add_test_device(const device_info& device) {
                 std::lock_guard<std::mutex> lock(m_mutex);
                 m_devices[static_cast<uint32_t>(m_devices.size())] = device;
             }
@@ -414,7 +414,7 @@ namespace musac::test {
     }
 
     inline std::shared_ptr<mock_backend_v2_enhanced> create_backend_with_devices(
-        const std::vector<device_info_v2>& devices) {
+        const std::vector<device_info>& devices) {
 
         auto backend = std::make_shared<mock_backend_v2_enhanced>();
         backend->clear_test_devices();

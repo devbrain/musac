@@ -5,6 +5,8 @@
 #include <string>
 #include <algorithm>
 #include <cmath>
+#include <thread>
+#include <chrono>
 
 #include <musac/audio_device.hh>
 #include <musac/audio_system.hh>
@@ -30,7 +32,8 @@ class ImGuiPlayer {
 public:
     ImGuiPlayer() 
         : m_backend(nullptr)
-        , m_audio_device(nullptr) {
+        , m_audio_device(nullptr)
+        , m_selected_device(-1) {
         // Initialize test data
         musac::test_data::loader::init();
         
@@ -46,11 +49,24 @@ public:
         // Initialize audio system
         musac::audio_system::init(m_backend);
         
+        // Enumerate available devices
+        refresh_device_list();
+        
         // Open default audio device
-        m_audio_device = std::make_unique<musac::audio_device>(
-            musac::audio_device::open_default_device(m_backend));
-        m_audio_device->set_gain(1.0f);
-        m_audio_device->resume();
+        if (!m_devices.empty()) {
+            // Find the default device
+            for (size_t i = 0; i < m_devices.size(); ++i) {
+                if (m_devices[i].is_default) {
+                    m_selected_device = static_cast<int>(i);
+                    break;
+                }
+            }
+            if (m_selected_device == -1) {
+                m_selected_device = 0; // Use first device if no default found
+            }
+            
+            open_selected_device();
+        }
         
         // Prepare lists of music and sound effects
         // Manually iterate through all music_type enum values
@@ -88,6 +104,68 @@ public:
         
         ImGui::Text("This demo shows how Musac can mix multiple audio streams");
         ImGui::Text("You can play music and sound effects simultaneously");
+        ImGui::Separator();
+        
+        // Backend information
+        if (m_backend) {
+            ImGui::Text("Audio Backend: %s", m_backend->get_name().c_str());
+            ImGui::SameLine();
+            ImGui::TextColored(
+                m_backend->is_initialized() ? ImVec4(0.0f, 1.0f, 0.0f, 1.0f) : ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+                m_backend->is_initialized() ? "[Initialized]" : "[Not Initialized]"
+            );
+            
+            // Additional backend info
+            ImGui::Text("Supports Recording: %s", m_backend->supports_recording() ? "Yes" : "No");
+            ImGui::Text("Max Open Devices: %d", m_backend->get_max_open_devices());
+        } else {
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "No Audio Backend Available");
+        }
+        ImGui::Separator();
+        
+        // Audio device selection
+        ImGui::Text("Audio Device:");
+        ImGui::Indent();
+        
+        // Device selection combo box
+        const char* current_device_name = (m_selected_device >= 0 && m_selected_device < m_devices.size()) ?
+            m_devices[m_selected_device].name.c_str() : "None";
+        
+        if (ImGui::BeginCombo("Select Device", current_device_name)) {
+            for (size_t i = 0; i < m_devices.size(); ++i) {
+                bool is_selected = (m_selected_device == static_cast<int>(i));
+                std::string device_label = m_devices[i].name;
+                if (m_devices[i].is_default) {
+                    device_label += " (Default)";
+                }
+                
+                if (ImGui::Selectable(device_label.c_str(), is_selected)) {
+                    if (m_selected_device != static_cast<int>(i)) {
+                        m_selected_device = static_cast<int>(i);
+                        switch_device();
+                    }
+                }
+                
+                if (is_selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+        
+        ImGui::SameLine();
+        if (ImGui::Button("Refresh Devices")) {
+            refresh_device_list();
+        }
+        
+        // Show device info
+        if (m_audio_device) {
+            ImGui::Text("Sample Rate: %d Hz, Channels: %d", 
+                       m_audio_device->get_freq(), 
+                       m_audio_device->get_channels());
+        }
+        
+        ImGui::Unindent();
         ImGui::Separator();
         
         // Music section
@@ -207,10 +285,6 @@ public:
         int total_streams = (m_music_stream && m_music_stream->is_playing() ? 1 : 0) + active_sounds;
         ImGui::Text("Total Active Streams: %d", total_streams);
         
-        ImGui::Text("Audio Device: %s", m_audio_device->get_device_name().c_str());
-        ImGui::Text("Sample Rate: %d Hz", m_audio_device->get_freq());
-        ImGui::Text("Channels: %d", m_audio_device->get_channels());
-        
         ImGui::Unindent();
         ImGui::Separator();
         
@@ -327,8 +401,42 @@ private:
         );
     }
     
+    void refresh_device_list() {
+        m_devices = musac::audio_device::enumerate_devices(m_backend, true);
+    }
+    
+    void open_selected_device() {
+        if (m_selected_device < 0 || m_selected_device >= static_cast<int>(m_devices.size())) {
+            return;
+        }
+        
+        // Stop all streams before switching
+        stop_music();
+        stop_all_sounds();
+        
+        // Open the selected device
+        m_audio_device = std::make_unique<musac::audio_device>(
+            musac::audio_device::open_device(m_backend, m_devices[m_selected_device].id));
+        m_audio_device->set_gain(1.0f);
+        m_audio_device->resume();
+    }
+    
+    void switch_device() {
+        // Stop all audio before switching
+        stop_music();
+        stop_all_sounds();
+        
+        // Give audio system time to stop
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        
+        // Open the new device
+        open_selected_device();
+    }
+    
     std::shared_ptr<musac::audio_backend> m_backend;
     std::unique_ptr<musac::audio_device> m_audio_device;
+    std::vector<musac::device_info> m_devices;
+    int m_selected_device;
     
     std::vector<musac::test_data::music_type> m_music_types;
     std::vector<musac::test_data::music_type> m_sound_types;
@@ -461,7 +569,7 @@ int main(int argc, char* argv[]) {
 #ifdef IMGUI_USE_SDL3
         ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
 #else
-        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
+        ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), renderer);
 #endif
         SDL_RenderPresent(renderer);
     }

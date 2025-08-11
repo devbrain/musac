@@ -4,8 +4,8 @@
 #include <musac/audio_system.hh>
 #include <musac/audio_device.hh>
 #include <musac/stream.hh>
-#include <musac_backends/sdl3/sdl3_backend.hh>
 #include <musac/sdk/audio_backend.hh>
+#include "backend_selection.hh"
 #include <memory>
 #include <thread>
 #include <chrono>
@@ -21,9 +21,9 @@ namespace musac::test {
 
         public:
             audio_test_fixture_v2() {
-                // Create and initialize SDL3 backend with dummy driver for testing
+                // Create and initialize backend with dummy driver for testing
                 // The dummy driver is set via environment variable in test_main.cc
-                backend = std::shared_ptr <audio_backend>(create_sdl3_backend());
+                backend = test::create_backend();
                 audio_system::init(backend);
             }
 
@@ -64,7 +64,7 @@ namespace musac::test {
 
         public:
             explicit backend_guard(std::shared_ptr <audio_backend> backend = nullptr)
-                : m_backend(backend ? backend : std::shared_ptr <audio_backend>(create_sdl3_backend())) {
+                : m_backend(backend ? backend : test::create_backend()) {
                 if (m_backend) {
                     m_backend->init();
                 }
@@ -102,9 +102,9 @@ namespace musac::test {
 
     // Standalone helper functions for simple test conversions
 
-    // Initialize audio system with SDL3 backend (dummy driver) for testing
+    // Initialize audio system with backend (dummy driver) for testing
     inline std::shared_ptr <audio_backend> init_test_audio_system() {
-        std::shared_ptr <audio_backend> backend(create_sdl3_backend());
+        std::shared_ptr <audio_backend> backend = test::create_backend();
         audio_system::init(backend);
         return backend;
     }
@@ -141,8 +141,7 @@ namespace musac::test {
         std::shared_ptr <audio_backend> backend = nullptr,
         size_t duration_samples = 44100) {
         if (!backend) {
-            backend = std::shared_ptr <audio_backend>(create_sdl3_backend());
-            backend->init();
+            backend = test::create_initialized_backend();
         }
 
         auto device = audio_device::open_default_device(backend);

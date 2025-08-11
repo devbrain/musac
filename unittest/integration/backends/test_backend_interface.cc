@@ -13,7 +13,7 @@ class mock_backend_v2 : public audio_backend {
 private:
     bool m_initialized = false;
     std::string m_name;
-    std::vector<device_info_v2> m_devices;
+    std::vector<device_info> m_devices;
     std::map<uint32_t, audio_spec> m_open_devices;
     uint32_t m_next_handle = 1;
     
@@ -52,7 +52,7 @@ public:
     }
     
     // Device enumeration
-    std::vector<device_info_v2> enumerate_devices(bool /*playback*/) override {
+    std::vector<device_info> enumerate_devices(bool /*playback*/) override {
         if (!m_initialized) {
             throw std::runtime_error("Backend not initialized");
         }
@@ -60,7 +60,7 @@ public:
         return m_devices;
     }
     
-    device_info_v2 get_default_device(bool /*playback*/) override {
+    device_info get_default_device(bool /*playback*/) override {
         if (!m_initialized) {
             throw std::runtime_error("Backend not initialized");
         }

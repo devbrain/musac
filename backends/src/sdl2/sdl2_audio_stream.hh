@@ -10,9 +10,12 @@
 
 namespace musac {
 
+// Forward declaration
+class sdl2_backend;
+
 class sdl2_audio_stream : public audio_stream_interface {
 public:
-    sdl2_audio_stream(SDL_AudioDeviceID device_id, const audio_spec& spec,
+    sdl2_audio_stream(sdl2_backend* backend, SDL_AudioDeviceID device_id, const audio_spec& spec,
                      void (*callback)(void* userdata, uint8_t* stream, int len),
                      void* userdata);
     ~sdl2_audio_stream() override;
@@ -30,6 +33,7 @@ public:
 private:
     static void sdl_callback(void* userdata, Uint8* stream, int len);
     
+    sdl2_backend* m_backend;
     SDL_AudioDeviceID m_device_id;
     SDL_AudioSpec m_spec;
     void (*m_user_callback)(void* userdata, uint8_t* stream, int len);

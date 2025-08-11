@@ -16,7 +16,7 @@ option(MUSAC_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSan
 option(MUSAC_ENABLE_LTO "Enable link-time optimization" OFF)
 
 # Audio backend options
-option(MUSAC_BUILD_SDL3_BACKEND "Build SDL3 backend as separate library" ON)
+option(MUSAC_BUILD_SDL3_BACKEND "Build SDL3 backend as separate library" OFF)
 option(MUSAC_BUILD_SDL2_BACKEND "Build SDL2 backend as separate library" ON)
 
 # Option to enable/disable unit tests

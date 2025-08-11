@@ -4,7 +4,11 @@
 #include <musac/test_data/loader.hh>
 #include <musac/stream.hh>
 #include <musac/sdk/audio_backend.hh>
+#ifdef MUSAC_HAS_SDL3_BACKEND
 #include <musac_backends/sdl3/sdl3_backend.hh>
+#elif MUSAC_HAS_SDL2_BACKEND
+#include <musac_backends/sdl2/sdl2_backend.hh>
+#endif
 #include <musac/codecs/decoder_mml.hh>
 #include <chrono>
 #include <thread>
@@ -23,9 +27,12 @@ int main(int argc, char* argv[]) {
 #ifdef MUSAC_HAS_SDL3_BACKEND
         backend = create_sdl3_backend();
         std::cout << "Using SDL3 backend for audio output\n";
+#elif MUSAC_HAS_SDL2_BACKEND
+        backend = create_sdl2_backend();
+        std::cout << "Using SDL2 backend for audio output\n";
 #else
-        backend = create_null_backend_v2();
-        std::cout << "Using Null backend - no sound will be produced\n";
+        std::cerr << "No audio backend available\n";
+        return 1;
 #endif
         
         // Initialize audio system

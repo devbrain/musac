@@ -1,14 +1,16 @@
 #include "sdl2_audio_stream.hh"
+#include "sdl2_backend_impl.hh"
 #include <algorithm>
 #include <cstring>
 #include <failsafe/failsafe.hh>
 
 namespace musac {
 
-sdl2_audio_stream::sdl2_audio_stream(SDL_AudioDeviceID device_id, const audio_spec& spec,
+sdl2_audio_stream::sdl2_audio_stream(sdl2_backend* backend, SDL_AudioDeviceID device_id, const audio_spec& spec,
                                    void (*callback)(void* userdata, uint8_t* stream, int len),
                                    void* userdata)
-    : m_device_id(device_id)
+    : m_backend(backend)
+    , m_device_id(device_id)
     , m_user_callback(callback)
     , m_userdata(userdata)
     , m_bound(false)
@@ -36,20 +38,28 @@ sdl2_audio_stream::sdl2_audio_stream(SDL_AudioDeviceID device_id, const audio_sp
     }
     
     if (m_user_callback) {
-        // Callback mode - we need to set up SDL callback
-        // For SDL2, we need to close and reopen the device with callback
-        // This is a limitation of SDL2 - callbacks must be set at device open time
-        // For now, we'll use a buffer-based approach
-        m_buffer.resize(spec.freq * spec.channels * 4); // 1 second buffer
-        
-        // We can't directly set callbacks in SDL2 after device is opened
-        // So we'll use SDL_QueueAudio instead
-        m_use_queue_mode = true;
+        // Register the callback with the backend
+        m_backend->register_stream_callback(m_device_id, sdl_callback, this);
+        m_use_queue_mode = false;
     }
 }
 
 sdl2_audio_stream::~sdl2_audio_stream() {
-    unbind_from_device();
+    // Inline unbind_from_device logic to avoid virtual call
+    if (m_bound) {
+        // Clear any queued audio
+        if (m_use_queue_mode) {
+            SDL_ClearQueuedAudio(m_device_id);
+        }
+        // Pause the device
+        SDL_PauseAudioDevice(m_device_id, 1);
+        m_bound = false;
+    }
+    
+    // Unregister callback if we had one
+    if (m_user_callback && m_backend) {
+        m_backend->unregister_stream_callback(m_device_id);
+    }
 }
 
 void sdl2_audio_stream::sdl_callback(void* userdata, Uint8* stream, int len) {

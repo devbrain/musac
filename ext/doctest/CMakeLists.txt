@@ -25,7 +25,22 @@ if (NOT doctest_FOUND)
             GIT_PROGRESS TRUE
     )
 
-    FetchContent_MakeAvailable(doctest)
+    # Fetch the content first
+    FetchContent_GetProperties(doctest)
+    if(NOT doctest_POPULATED)
+        FetchContent_Populate(doctest)
+        
+        # Patch the CMakeLists.txt to fix deprecation warning
+        file(READ ${doctest_SOURCE_DIR}/CMakeLists.txt DOCTEST_CMAKE_CONTENT)
+        # Replace any version less than 3.10 with 3.10
+        string(REGEX REPLACE "cmake_minimum_required\\(VERSION [0-9]+\\.[0-9]+\\)" 
+                             "cmake_minimum_required(VERSION 3.10)" 
+                             DOCTEST_CMAKE_CONTENT "${DOCTEST_CMAKE_CONTENT}")
+        file(WRITE ${doctest_SOURCE_DIR}/CMakeLists.txt "${DOCTEST_CMAKE_CONTENT}")
+        
+        # Now add the subdirectory
+        add_subdirectory(${doctest_SOURCE_DIR} ${doctest_BINARY_DIR} EXCLUDE_FROM_ALL)
+    endif()
 endif ()
 
 # Export doctest for use in parent project

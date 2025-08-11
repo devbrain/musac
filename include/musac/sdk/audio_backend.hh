@@ -4,6 +4,7 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include <ostream>
 #include <musac/sdk/audio_format.hh>
 #include <musac/sdk/types.hh>
 #include <musac/sdk/audio_stream_interface.hh>
@@ -12,15 +13,32 @@
 namespace musac {
 
 /**
- * Device information structure (moved from audio_device_interface.hh)
+ * Device information structure for audio devices
  */
-struct device_info_v2 {
+struct device_info {
     std::string name;
     std::string id;
     bool is_default;
     channels_t channels;
     sample_rate_t sample_rate;
 };
+
+/**
+ * Stream output operator for device_info
+ * @param os Output stream
+ * @param info Device info to output
+ * @return Output stream reference
+ */
+inline std::ostream& operator<<(std::ostream& os, const device_info& info) {
+    os << "device_info{"
+       << "name=\"" << info.name << "\", "
+       << "id=\"" << info.id << "\", "
+       << "default=" << (info.is_default ? "true" : "false") << ", "
+       << "channels=" << static_cast<int>(info.channels) << ", "
+       << "sample_rate=" << info.sample_rate
+       << "}";
+    return os;
+}
 
 /**
  * Unified audio backend interface combining initialization and device management.
@@ -72,14 +90,14 @@ public:
      * @param playback If true, enumerate playback devices; if false, recording devices
      * @return Vector of available devices
      */
-    virtual std::vector<device_info_v2> enumerate_devices(bool playback) = 0;
+    virtual std::vector<device_info> enumerate_devices(bool playback) = 0;
     
     /**
      * Get the default device.
      * @param playback If true, get default playback device; if false, default recording device
      * @return Default device info
      */
-    virtual device_info_v2 get_default_device(bool playback) = 0;
+    virtual device_info get_default_device(bool playback) = 0;
     
     // ========================================================================
     // Device management
@@ -213,7 +231,7 @@ public:
      * Enumerate playback devices (convenience wrapper).
      * @return Vector of available playback devices
      */
-    std::vector<device_info_v2> enumerate_playback_devices() {
+    std::vector<device_info> enumerate_playback_devices() {
         return enumerate_devices(true);
     }
     
@@ -221,7 +239,7 @@ public:
      * Enumerate recording devices (convenience wrapper).
      * @return Vector of available recording devices
      */
-    std::vector<device_info_v2> enumerate_recording_devices() {
+    std::vector<device_info> enumerate_recording_devices() {
         return enumerate_devices(false);
     }
     
@@ -229,7 +247,7 @@ public:
      * Get the default playback device (convenience wrapper).
      * @return Default playback device info
      */
-    device_info_v2 get_default_playback_device() {
+    device_info get_default_playback_device() {
         return get_default_device(true);
     }
     
@@ -237,7 +255,7 @@ public:
      * Get the default recording device (convenience wrapper).
      * @return Default recording device info
      */
-    device_info_v2 get_default_recording_device() {
+    device_info get_default_recording_device() {
         return get_default_device(false);
     }
     
