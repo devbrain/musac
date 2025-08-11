@@ -117,8 +117,10 @@ void ImGuiPlayer::shutdown() {
 bool ImGuiPlayer::init_sdl() {
     // Initialize SDL
 #ifdef IMGUI_USE_SDL3
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD) != 0) {
+    // SDL3 returns SDL_TRUE (non-zero) on success
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD)) {
 #else
+    // SDL2 returns 0 on success
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
 #endif
         std::cerr << "Error: SDL_Init: " << SDL_GetError() << "\n";
