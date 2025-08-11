@@ -210,7 +210,7 @@ TEST_SUITE("AudioDevice::Unit") {
         
         SUBCASE("with_custom_device_list") {
             // Arrange: Create a custom device with non-standard configuration
-            device_info_v2 custom_device;
+            device_info custom_device;
             custom_device.id = "custom_device";
             custom_device.name = "Custom Test Device";
             custom_device.channels = 6;      // 5.1 surround

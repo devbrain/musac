@@ -10,7 +10,11 @@
 #include <musac/test_data/loader.hh>
 #include <musac/stream.hh>
 #include <musac/sdk/audio_backend.hh>
+#ifdef MUSAC_HAS_SDL3_BACKEND
 #include <musac_backends/sdl3/sdl3_backend.hh>
+#elif MUSAC_HAS_SDL2_BACKEND
+#include <musac_backends/sdl2/sdl2_backend.hh>
+#endif
 
 
 int main(int argc, char* argv[]) {
@@ -23,10 +27,13 @@ int main(int argc, char* argv[]) {
     // Use SDL3 backend for actual audio output
     backend = create_sdl3_backend();
     std::cout << "Using SDL3 backend for audio output" << std::endl;
+#elif MUSAC_HAS_SDL2_BACKEND
+    // Use SDL2 backend for actual audio output
+    backend = create_sdl2_backend();
+    std::cout << "Using SDL2 backend for audio output" << std::endl;
 #else
-    // Use Null backend for testing (no sound)
-    backend = create_null_backend_v2();
-    std::cout << "Using Null backend - no sound will be produced" << std::endl;
+    std::cerr << "No audio backend available" << std::endl;
+    return 1;
 #endif
 
     // Initialize test data loader (creates codec registry internally)

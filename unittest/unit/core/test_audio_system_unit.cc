@@ -135,7 +135,7 @@ TEST_SUITE("AudioSystem::Unit") {
         auto backend = std::make_shared<mock_backend_v2_enhanced>();
         
         // Add a second test device
-        device_info_v2 second_device;
+        device_info second_device;
         second_device.id = "test_device_2";
         second_device.name = "Test Device 2";
         second_device.channels = 4;

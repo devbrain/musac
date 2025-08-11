@@ -34,15 +34,6 @@ audio_device* get_active_audio_device() {
 }
 
 
-// Helper functions to convert between v1 and v2 device info
-static device_info to_v1_info(const device_info_v2& v2) {
-    return {v2.name, v2.id, v2.is_default, v2.channels, v2.sample_rate};
-}
-
-static device_info_v2 to_v2_info(const device_info& v1) {
-    return {v1.name, v1.id, v1.is_default, v1.channels, v1.sample_rate};
-}
-
 // Close all audio devices (called from audio_system::done)
 void close_audio_devices() {
     {
@@ -70,15 +61,7 @@ std::vector<device_info> audio_device::enumerate_devices(
         THROW_RUNTIME("Backend is not initialized");
     }
     
-    auto devices_v2 = backend->enumerate_devices(playback_devices);
-    std::vector<device_info> devices_v1;
-    devices_v1.reserve(devices_v2.size());
-    
-    for (const auto& dev : devices_v2) {
-        devices_v1.push_back(to_v1_info(dev));
-    }
-    
-    return devices_v1;
+    return backend->enumerate_devices(playback_devices);
 }
 
 audio_device audio_device::open_default_device(
@@ -92,7 +75,7 @@ audio_device audio_device::open_default_device(
         THROW_RUNTIME("Backend is not initialized");
     }
     
-    device_info_v2 info = backend->get_default_device(true);
+    device_info info = backend->get_default_device(true);
     return audio_device(backend, info, spec);
 }
 
@@ -160,7 +143,7 @@ audio_device::~audio_device() {
 // New v2 backend constructor
 audio_device::audio_device(
     std::shared_ptr<audio_backend> backend,
-    const device_info_v2& info, 
+    const device_info& info, 
     const audio_spec* desired_spec)
     : m_pimpl(std::make_unique<impl>()) {
     

@@ -11,11 +11,11 @@ public:
     std::string get_name() const override { return "test"; }
     bool is_initialized() const override { return false; }
     
-    std::vector<musac::device_info_v2> enumerate_devices(bool /*playback*/) override {
+    std::vector<musac::device_info> enumerate_devices(bool /*playback*/) override {
         return {};
     }
     
-    musac::device_info_v2 get_default_device(bool /*playback*/) override {
+    musac::device_info get_default_device(bool /*playback*/) override {
         return {};
     }
     

@@ -38,8 +38,8 @@ public:
     bool is_initialized() const override;
     
     // Device enumeration
-    std::vector<device_info_v2> enumerate_devices(bool playback) override;
-    device_info_v2 get_default_device(bool playback) override;
+    std::vector<device_info> enumerate_devices(bool playback) override;
+    device_info get_default_device(bool playback) override;
     
     // Device management
     uint32_t open_device(const std::string& device_id, 

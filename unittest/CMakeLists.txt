@@ -11,12 +11,12 @@ if (NOT TARGET doctest::doctest)
     message(FATAL_ERROR "doctest not available. Please ensure ext/doctest is included before unittest")
 endif()
 
-# Check that at least one backend is available
+# Check which backend to use based on build options
 set(MUSAC_TEST_BACKEND "")
-if(TARGET musac_backend_sdl3)
+if(MUSAC_BUILD_SDL3_BACKEND AND TARGET musac_backend_sdl3)
     set(MUSAC_TEST_BACKEND "musac_backend_sdl3")
     message(STATUS "Using SDL3 backend for core tests")
-elseif(TARGET musac_backend_sdl2)
+elseif(MUSAC_BUILD_SDL2_BACKEND AND TARGET musac_backend_sdl2)
     set(MUSAC_TEST_BACKEND "musac_backend_sdl2")
     message(STATUS "Using SDL2 backend for core tests")
 else()
@@ -126,6 +126,13 @@ endif ()
 if(MUSAC_TEST_BACKEND)
     target_link_libraries(musac_unittest PRIVATE ${MUSAC_TEST_BACKEND})
     target_compile_definitions(musac_unittest PRIVATE HAS_BACKEND_AVAILABLE)
+    
+    # Define which backend is being used
+    if(MUSAC_TEST_BACKEND STREQUAL "musac_backend_sdl3")
+        target_compile_definitions(musac_unittest PRIVATE MUSAC_HAS_SDL3_BACKEND)
+    elseif(MUSAC_TEST_BACKEND STREQUAL "musac_backend_sdl2")
+        target_compile_definitions(musac_unittest PRIVATE MUSAC_HAS_SDL2_BACKEND)
+    endif()
 endif()
 
 # Compile options

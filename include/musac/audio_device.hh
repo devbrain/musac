@@ -11,23 +11,13 @@
 #include <musac/export_musac.h>
 #include <musac/sdk/audio_format.hh>
 #include <musac/sdk/types.hh>
+#include <musac/sdk/audio_backend.hh>  // For device_info
 
 namespace musac {
-    // Device information structure (from v1, kept for compatibility)
-    struct device_info {
-        std::string name;
-        std::string id;
-        bool is_default;
-        channels_t channels;
-        sample_rate_t sample_rate;
-    };
-    
     // Forward declarations
     class audio_stream;
     class pc_speaker_stream;
     class audio_source;
-    class audio_backend;
-    struct device_info_v2;
 
     class MUSAC_EXPORT audio_device {
         public:
@@ -77,7 +67,7 @@ namespace musac {
             // Constructor with backend
             audio_device(
                 std::shared_ptr<audio_backend> backend,
-                const device_info_v2& info, 
+                const device_info& info, 
                 const audio_spec* spec);
             
             // For device switching

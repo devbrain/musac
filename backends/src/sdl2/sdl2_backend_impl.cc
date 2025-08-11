@@ -3,6 +3,7 @@
 #include <musac/sdk/audio_stream_interface.hh>
 #include <failsafe/failsafe.hh>
 #include <algorithm>
+#include <cstring>
 
 namespace musac {
     // Anonymous namespace for helper functions
@@ -74,6 +75,9 @@ namespace musac {
             }
             m_open_devices.clear();
             m_device_specs.clear();
+            m_device_gains.clear();
+            m_device_callbacks.clear();
+            m_device_name_to_handle.clear();
         }
 
         // Quit SDL audio subsystem
@@ -89,33 +93,75 @@ namespace musac {
         return m_initialized;
     }
 
-    std::vector<device_info_v2> sdl2_backend::enumerate_devices(bool playback) {
+    std::vector<device_info> sdl2_backend::enumerate_devices(bool playback) {
         if (!m_initialized) {
             THROW_RUNTIME("Backend not initialized");
         }
 
-        std::vector<device_info_v2> devices;
+        std::vector<device_info> devices;
 
         // Get device count
         int count = SDL_GetNumAudioDevices(playback ? 0 : 1);
         
+        // Get the default device info using SDL_GetDefaultAudioInfo
+        char* default_device_name = nullptr;
+        SDL_AudioSpec default_spec;
+        int default_result = SDL_GetDefaultAudioInfo(&default_device_name, &default_spec, playback ? 0 : 1);
+        
+        std::string default_name_str;
+        if (default_result == 0 && default_device_name) {
+            default_name_str = default_device_name;
+            SDL_free(default_device_name);
+        }
+        
+        // Collect all devices
         for (int i = 0; i < count; i++) {
             const char* name = SDL_GetAudioDeviceName(i, playback ? 0 : 1);
             if (!name) continue;
 
-            device_info_v2 info;
+            device_info info;
             info.name = name;
             info.id = std::to_string(i);
-            info.is_default = (i == 0); // SDL2 typically returns default first
+            info.is_default = false;
             // SDL2 doesn't provide device specs without opening, use defaults
             info.channels = 2;
             info.sample_rate = 44100;
             devices.push_back(info);
         }
 
+        // Find and mark the default device
+        int default_index = -1;
+        if (!default_name_str.empty()) {
+            for (size_t i = 0; i < devices.size(); ++i) {
+                if (devices[i].name == default_name_str) {
+                    devices[i].is_default = true;
+                    default_index = static_cast<int>(i);
+                    // Use the actual default device specs
+                    if (default_result == 0) {
+                        devices[i].channels = default_spec.channels;
+                        devices[i].sample_rate = static_cast<uint32_t>(default_spec.freq);
+                    }
+                    break;
+                }
+            }
+        }
+        
+        // If no match found but we have devices, mark first as default
+        if (default_index == -1 && !devices.empty()) {
+            devices[0].is_default = true;
+            default_index = 0;
+        }
+        
+        // If we found a default device that's not first, move it to the front
+        if (default_index > 0) {
+            std::swap(devices[0], devices[default_index]);
+            // Don't update the device IDs - they should remain as the original SDL indices
+            // The IDs represent the actual SDL device indices, not our list positions
+        }
+
         // If no devices found, add a default entry
         if (devices.empty()) {
-            device_info_v2 info;
+            device_info info;
             info.name = playback ? "Default Playback" : "Default Recording";
             info.id = "default";
             info.is_default = true;
@@ -127,14 +173,14 @@ namespace musac {
         return devices;
     }
 
-    device_info_v2 sdl2_backend::get_default_device(bool playback) {
+    device_info sdl2_backend::get_default_device(bool playback) {
         auto devices = enumerate_devices(playback);
         if (!devices.empty()) {
             return devices[0]; // First device is typically default
         }
 
         // Return a fallback default
-        device_info_v2 info;
+        device_info info;
         info.name = playback ? "Default Playback" : "Default Recording";
         info.id = "default";
         info.is_default = true;
@@ -150,6 +196,26 @@ namespace musac {
             THROW_RUNTIME("Backend not initialized");
         }
 
+        // Build a unique key for this device
+        std::string device_key = device_id.empty() ? "default" : device_id;
+        
+        // Check if we already have this device open
+        {
+            std::lock_guard<std::mutex> lock(m_devices_mutex);
+            auto it = m_device_name_to_handle.find(device_key);
+            if (it != m_device_name_to_handle.end()) {
+                // Device already open, return existing handle
+                uint32_t existing_handle = it->second;
+                
+                // Return the obtained spec from the existing device
+                auto spec_it = m_device_specs.find(existing_handle);
+                if (spec_it != m_device_specs.end()) {
+                    obtained_spec = spec_it->second;
+                    return existing_handle;
+                }
+            }
+        }
+
         // Prepare SDL audio spec
         SDL_AudioSpec wanted;
         SDL_zero(wanted);
@@ -157,16 +223,28 @@ namespace musac {
         wanted.format = musac_to_sdl_format(spec.format);
         wanted.channels = spec.channels;
         wanted.samples = 4096; // SDL2 default buffer size
-        wanted.callback = nullptr; // We'll use SDL_QueueAudio
-        wanted.userdata = nullptr;
+        
+        // Create callback data for this device
+        auto callback_data = std::make_unique<device_callback_data>();
+        wanted.callback = audio_callback;
+        wanted.userdata = callback_data.get();
 
         SDL_AudioSpec obtained;
         
         // Parse device name/index
         const char* device_name = nullptr;
         if (!device_id.empty() && device_id != "default") {
-            // In SDL2, we can pass device name directly
-            device_name = device_id.c_str();
+            // Device ID is an index string, convert to int and get the device name
+            try {
+                int device_index = std::stoi(device_id);
+                device_name = SDL_GetAudioDeviceName(device_index, 0); // 0 for playback
+                if (!device_name) {
+                    THROW_RUNTIME("Invalid device index: " + device_id);
+                }
+            } catch (const std::exception&) {
+                // If it's not a number, treat it as a device name
+                device_name = device_id.c_str();
+            }
         }
 
         SDL_AudioDeviceID sdl_device = SDL_OpenAudioDevice(
@@ -180,6 +258,10 @@ namespace musac {
         if (sdl_device == 0) {
             THROW_RUNTIME("Failed to open audio device: " + get_sdl_error());
         }
+        
+        // SDL2 opens devices with callbacks in a paused state
+        // Unpause it to match the expected behavior (devices should start unpaused)
+        SDL_PauseAudioDevice(sdl_device, 0);
 
         // Fill obtained spec
         obtained_spec.freq = static_cast<uint32_t>(obtained.freq);
@@ -194,6 +276,10 @@ namespace musac {
             m_open_devices[handle] = sdl_device;
             m_device_specs[handle] = obtained_spec;
             m_device_gains[handle] = 1.0f;  // Default gain
+            m_device_name_to_handle[device_key] = handle;  // Track device name to handle
+            
+            // Store callback data
+            m_device_callbacks[sdl_device] = std::move(callback_data);
         }
 
         return handle;
@@ -204,7 +290,21 @@ namespace musac {
         
         auto it = m_open_devices.find(device_handle);
         if (it != m_open_devices.end()) {
-            SDL_CloseAudioDevice(it->second);
+            SDL_AudioDeviceID sdl_device = it->second;
+            SDL_CloseAudioDevice(sdl_device);
+            
+            // Clean up callback data
+            m_device_callbacks.erase(sdl_device);
+            
+            // Remove from name-to-handle mapping
+            for (auto name_it = m_device_name_to_handle.begin(); name_it != m_device_name_to_handle.end(); ) {
+                if (name_it->second == device_handle) {
+                    name_it = m_device_name_to_handle.erase(name_it);
+                } else {
+                    ++name_it;
+                }
+            }
+            
             m_open_devices.erase(it);
             m_device_specs.erase(device_handle);
             m_device_gains.erase(device_handle);
@@ -301,7 +401,7 @@ namespace musac {
             THROW_RUNTIME("Invalid device handle");
         }
         
-        return std::make_unique<sdl2_audio_stream>(sdl_device, spec, callback, userdata);
+        return std::make_unique<sdl2_audio_stream>(this, sdl_device, spec, callback, userdata);
     }
 
     bool sdl2_backend::supports_recording() const {
@@ -319,6 +419,46 @@ namespace musac {
             return it->second;
         }
         return 0;
+    }
+    
+    void sdl2_backend::audio_callback(void* userdata, Uint8* stream, int len) {
+        auto* callback_data = static_cast<device_callback_data*>(userdata);
+        if (!callback_data) {
+            // Fill with silence if no callback data
+            std::memset(stream, 0, static_cast<size_t>(len));
+            return;
+        }
+        
+        std::lock_guard<std::mutex> lock(callback_data->mutex);
+        if (callback_data->callback) {
+            // Call the registered stream callback
+            callback_data->callback(callback_data->userdata, stream, len);
+        } else {
+            // Fill with silence if no callback registered
+            std::memset(stream, 0, static_cast<size_t>(len));
+        }
+    }
+    
+    void sdl2_backend::register_stream_callback(SDL_AudioDeviceID device_id,
+                                               void (*callback)(void* userdata, uint8_t* stream, int len),
+                                               void* userdata) {
+        std::lock_guard<std::mutex> lock(m_devices_mutex);
+        auto it = m_device_callbacks.find(device_id);
+        if (it != m_device_callbacks.end()) {
+            std::lock_guard<std::mutex> cb_lock(it->second->mutex);
+            it->second->callback = callback;
+            it->second->userdata = userdata;
+        }
+    }
+    
+    void sdl2_backend::unregister_stream_callback(SDL_AudioDeviceID device_id) {
+        std::lock_guard<std::mutex> lock(m_devices_mutex);
+        auto it = m_device_callbacks.find(device_id);
+        if (it != m_device_callbacks.end()) {
+            std::lock_guard<std::mutex> cb_lock(it->second->mutex);
+            it->second->callback = nullptr;
+            it->second->userdata = nullptr;
+        }
     }
 
 } // namespace musac

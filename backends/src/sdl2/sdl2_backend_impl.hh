@@ -20,8 +20,20 @@ private:
     std::map<uint32_t, SDL_AudioDeviceID> m_open_devices;
     std::map<uint32_t, audio_spec> m_device_specs;
     std::map<uint32_t, float> m_device_gains;  // Track gain values even though SDL2 doesn't support them
+    std::map<std::string, uint32_t> m_device_name_to_handle;  // Track device name to handle mapping
     std::mutex m_devices_mutex;
     uint32_t m_next_handle = 1;
+    
+    // Callback management for SDL2
+    struct device_callback_data {
+        void (*callback)(void* userdata, uint8_t* stream, int len) = nullptr;
+        void* userdata = nullptr;
+        std::mutex mutex;
+    };
+    std::map<SDL_AudioDeviceID, std::unique_ptr<device_callback_data>> m_device_callbacks;
+    
+    // Static callback that dispatches to the correct stream
+    static void audio_callback(void* userdata, Uint8* stream, int len);
     
     // Helper to convert SDL format to musac format
     static audio_format sdl_to_musac_format(SDL_AudioFormat sdl_fmt);
@@ -38,8 +50,8 @@ public:
     bool is_initialized() const override;
     
     // Device enumeration
-    std::vector<device_info_v2> enumerate_devices(bool playback) override;
-    device_info_v2 get_default_device(bool playback) override;
+    std::vector<device_info> enumerate_devices(bool playback) override;
+    device_info get_default_device(bool playback) override;
     
     // Device management
     uint32_t open_device(const std::string& device_id, 
@@ -70,8 +82,12 @@ public:
     bool supports_recording() const override;
     int get_max_open_devices() const override;
     
-    // SDL2-specific helper
+    // SDL2-specific helpers
     SDL_AudioDeviceID get_sdl_device(uint32_t handle) const;
+    void register_stream_callback(SDL_AudioDeviceID device_id, 
+                                 void (*callback)(void* userdata, uint8_t* stream, int len),
+                                 void* userdata);
+    void unregister_stream_callback(SDL_AudioDeviceID device_id);
 };
 
 } // namespace musac

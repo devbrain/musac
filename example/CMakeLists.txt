@@ -10,8 +10,8 @@ add_executable(test_mml_decoder
         test_mml_decoder.cc
 )
 
-# Link with SDL3 backend if available
-if(TARGET musac_backend_sdl3)
+# Link with appropriate SDL backend based on build options
+if(MUSAC_BUILD_SDL3_BACKEND AND TARGET musac_backend_sdl3)
     target_link_libraries(musac_ex PRIVATE musac musac_backend_sdl3 musac_test_data)
     target_compile_definitions(musac_ex PRIVATE MUSAC_HAS_SDL3_BACKEND)
     
@@ -20,14 +20,23 @@ if(TARGET musac_backend_sdl3)
     
     target_link_libraries(test_mml_decoder PRIVATE musac musac_backend_sdl3 musac_test_data)
     target_compile_definitions(test_mml_decoder PRIVATE MUSAC_HAS_SDL3_BACKEND)
+elseif(MUSAC_BUILD_SDL2_BACKEND AND TARGET musac_backend_sdl2)
+    target_link_libraries(musac_ex PRIVATE musac musac_backend_sdl2 musac_test_data)
+    target_compile_definitions(musac_ex PRIVATE MUSAC_HAS_SDL2_BACKEND)
+    
+    target_link_libraries(pc_speaker_example PRIVATE musac musac_backend_sdl2)
+    target_compile_definitions(pc_speaker_example PRIVATE MUSAC_HAS_SDL2_BACKEND)
+    
+    target_link_libraries(test_mml_decoder PRIVATE musac musac_backend_sdl2 musac_test_data)
+    target_compile_definitions(test_mml_decoder PRIVATE MUSAC_HAS_SDL2_BACKEND)
 else()
     target_link_libraries(musac_ex PRIVATE musac musac_test_data)
     target_link_libraries(pc_speaker_example PRIVATE musac)
     target_link_libraries(test_mml_decoder PRIVATE musac musac_test_data)
 endif()
 
-# ImGui player - only build if SDL backend is available
-if(TARGET musac_backend_sdl3 OR TARGET musac_backend_sdl2)
+# ImGui player - only build if SDL backend is being built
+if((MUSAC_BUILD_SDL3_BACKEND AND TARGET musac_backend_sdl3) OR (MUSAC_BUILD_SDL2_BACKEND AND TARGET musac_backend_sdl2))
     include(FetchContent)
     
     # Fetch ImGui
@@ -50,8 +59,8 @@ if(TARGET musac_backend_sdl3 OR TARGET musac_backend_sdl2)
     
     target_include_directories(imgui_lib PUBLIC ${imgui_SOURCE_DIR})
     
-    # Add SDL3 backend if available
-    if(TARGET musac_backend_sdl3)
+    # Add SDL3 backend if being built
+    if(MUSAC_BUILD_SDL3_BACKEND AND TARGET musac_backend_sdl3)
         target_sources(imgui_lib PRIVATE
             ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
             ${imgui_SOURCE_DIR}/backends/imgui_impl_sdlrenderer3.cpp
@@ -73,8 +82,8 @@ if(TARGET musac_backend_sdl3 OR TARGET musac_backend_sdl2)
         else()
             target_link_libraries(imgui_lib PUBLIC SDL3::SDL3)
         endif()
-    # Add SDL2 backend if SDL3 not available but SDL2 is
-    elseif(TARGET musac_backend_sdl2)
+    # Add SDL2 backend if being built and SDL3 is not
+    elseif(MUSAC_BUILD_SDL2_BACKEND AND TARGET musac_backend_sdl2)
         target_sources(imgui_lib PRIVATE
             ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl2.cpp
             ${imgui_SOURCE_DIR}/backends/imgui_impl_sdlrenderer2.cpp
@@ -103,7 +112,7 @@ if(TARGET musac_backend_sdl3 OR TARGET musac_backend_sdl2)
         imgui_player.cc
     )
     
-    if(TARGET musac_backend_sdl3)
+    if(MUSAC_BUILD_SDL3_BACKEND AND TARGET musac_backend_sdl3)
         target_link_libraries(imgui_player PRIVATE 
             musac 
             musac_backend_sdl3 
@@ -111,7 +120,7 @@ if(TARGET musac_backend_sdl3 OR TARGET musac_backend_sdl2)
             imgui_lib
         )
         target_compile_definitions(imgui_player PRIVATE MUSAC_HAS_SDL3_BACKEND)
-    elseif(TARGET musac_backend_sdl2)
+    elseif(MUSAC_BUILD_SDL2_BACKEND AND TARGET musac_backend_sdl2)
         target_link_libraries(imgui_player PRIVATE 
             musac 
             musac_backend_sdl2 

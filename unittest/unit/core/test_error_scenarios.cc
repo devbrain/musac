@@ -423,7 +423,7 @@ TEST_SUITE("ErrorScenarios::System") {
             spec2.freq = 192000;
             
             // Add a device with this format
-            device_info_v2 custom_device;
+            device_info custom_device;
             custom_device.id = "custom_hifi";
             custom_device.name = "Custom HiFi Device";
             custom_device.channels = 8;
