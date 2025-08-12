@@ -105,11 +105,10 @@ namespace musac {
         // Close all open devices
         {
             std::lock_guard <std::mutex> lock(m_devices_mutex);
-            for (const auto& [handle, sdl_id] : m_open_devices) {
-                SDL_CloseAudioDevice(sdl_id);
+            for (const auto& [handle, info] : m_devices) {
+                SDL_CloseAudioDevice(info.sdl_id);
             }
-            m_open_devices.clear();
-            m_device_specs.clear();
+            m_devices.clear();
         }
 
         // Quit SDL audio subsystem
@@ -283,8 +282,13 @@ namespace musac {
         uint32_t handle = 0; {
             std::lock_guard <std::mutex> lock(m_devices_mutex);
             handle = m_next_handle++;
-            m_open_devices[handle] = sdl_id;
-            m_device_specs[handle] = obtained_spec;
+            
+            // Create and populate device state
+            device_state& info = m_devices[handle];
+            info.sdl_id = sdl_id;
+            info.spec = obtained_spec;
+            info.gain = 1.0f;  // Default gain
+            info.is_muted = false;  // Default not muted
         }
 
         return handle;
@@ -293,11 +297,10 @@ namespace musac {
     void sdl3_backend::close_device(uint32_t device_handle) {
         std::lock_guard <std::mutex> lock(m_devices_mutex);
 
-        auto it = m_open_devices.find(device_handle);
-        if (it != m_open_devices.end()) {
-            SDL_CloseAudioDevice(it->second);
-            m_open_devices.erase(it);
-            m_device_specs.erase(device_handle);
+        auto it = m_devices.find(device_handle);
+        if (it != m_devices.end()) {
+            SDL_CloseAudioDevice(it->second.sdl_id);
+            m_devices.erase(it);
         }
         // Silently ignore invalid handles - this matches original behavior
         // and prevents crashes during cleanup
@@ -306,54 +309,54 @@ namespace musac {
     audio_format sdl3_backend::get_device_format(uint32_t device_handle) {
         std::lock_guard <std::mutex> lock(m_devices_mutex);
 
-        auto it = m_device_specs.find(device_handle);
-        if (it == m_device_specs.end()) {
+        auto it = m_devices.find(device_handle);
+        if (it == m_devices.end()) {
             THROW_RUNTIME("Invalid device handle");
         }
-        return it->second.format;
+        return it->second.spec.format;
     }
 
     sample_rate_t sdl3_backend::get_device_frequency(uint32_t device_handle) {
         std::lock_guard <std::mutex> lock(m_devices_mutex);
 
-        auto it = m_device_specs.find(device_handle);
-        if (it == m_device_specs.end()) {
+        auto it = m_devices.find(device_handle);
+        if (it == m_devices.end()) {
             THROW_RUNTIME("Invalid device handle");
         }
-        return it->second.freq;
+        return it->second.spec.freq;
     }
 
     channels_t sdl3_backend::get_device_channels(uint32_t device_handle) {
         std::lock_guard <std::mutex> lock(m_devices_mutex);
 
-        auto it = m_device_specs.find(device_handle);
-        if (it == m_device_specs.end()) {
+        auto it = m_devices.find(device_handle);
+        if (it == m_devices.end()) {
             THROW_RUNTIME("Invalid device handle");
         }
-        return it->second.channels;
+        return it->second.spec.channels;
     }
 
     float sdl3_backend::get_device_gain(uint32_t device_handle) {
         std::lock_guard <std::mutex> lock(m_devices_mutex);
 
-        auto it = m_open_devices.find(device_handle);
-        if (it == m_open_devices.end()) {
+        auto it = m_devices.find(device_handle);
+        if (it == m_devices.end()) {
             THROW_RUNTIME("Invalid device handle");
         }
 
-        float gain = SDL_GetAudioDeviceGain(it->second);
+        float gain = SDL_GetAudioDeviceGain(it->second.sdl_id);
         return gain;
     }
 
     void sdl3_backend::set_device_gain(uint32_t device_handle, float gain) {
         std::lock_guard <std::mutex> lock(m_devices_mutex);
 
-        auto it = m_open_devices.find(device_handle);
-        if (it == m_open_devices.end()) {
+        auto it = m_devices.find(device_handle);
+        if (it == m_devices.end()) {
             THROW_RUNTIME("Invalid device handle");
         }
 
-        if (!SDL_SetAudioDeviceGain(it->second, gain)) {
+        if (!SDL_SetAudioDeviceGain(it->second.sdl_id, gain)) {
             THROW_RUNTIME("Failed to set device gain: " + get_sdl_error());
         }
     }
@@ -361,34 +364,71 @@ namespace musac {
     bool sdl3_backend::pause_device(uint32_t device_handle) {
         std::lock_guard <std::mutex> lock(m_devices_mutex);
 
-        auto it = m_open_devices.find(device_handle);
-        if (it == m_open_devices.end()) {
+        auto it = m_devices.find(device_handle);
+        if (it == m_devices.end()) {
             return false;
         }
 
-        return SDL_PauseAudioDevice(it->second);
+        return SDL_PauseAudioDevice(it->second.sdl_id);
     }
 
     bool sdl3_backend::resume_device(uint32_t device_handle) {
         std::lock_guard <std::mutex> lock(m_devices_mutex);
 
-        auto it = m_open_devices.find(device_handle);
-        if (it == m_open_devices.end()) {
+        auto it = m_devices.find(device_handle);
+        if (it == m_devices.end()) {
             return false;
         }
 
-        return SDL_ResumeAudioDevice(it->second);
+        return SDL_ResumeAudioDevice(it->second.sdl_id);
     }
 
     bool sdl3_backend::is_device_paused(uint32_t device_handle) {
         std::lock_guard <std::mutex> lock(m_devices_mutex);
 
-        auto it = m_open_devices.find(device_handle);
-        if (it == m_open_devices.end()) {
+        auto it = m_devices.find(device_handle);
+        if (it == m_devices.end()) {
             THROW_RUNTIME("Invalid device handle");
         }
 
-        return SDL_AudioDevicePaused(it->second);
+        return SDL_AudioDevicePaused(it->second.sdl_id);
+    }
+
+    bool sdl3_backend::supports_mute() const {
+        return true; // SDL3 supports pause which we use for muting
+    }
+
+    bool sdl3_backend::mute_device(uint32_t device_handle) {
+        std::lock_guard<std::mutex> lock(m_devices_mutex);
+        auto it = m_devices.find(device_handle);
+        if (it != m_devices.end()) {
+            // Track mute state
+            it->second.is_muted = true;
+            // Use SDL pause to implement mute
+            return SDL_PauseAudioDevice(it->second.sdl_id);
+        }
+        return false;
+    }
+
+    bool sdl3_backend::unmute_device(uint32_t device_handle) {
+        std::lock_guard<std::mutex> lock(m_devices_mutex);
+        auto it = m_devices.find(device_handle);
+        if (it != m_devices.end()) {
+            // Clear mute state
+            it->second.is_muted = false;
+            // Resume audio playback
+            return SDL_ResumeAudioDevice(it->second.sdl_id);
+        }
+        return false;
+    }
+
+    bool sdl3_backend::is_device_muted(uint32_t device_handle) const {
+        std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_devices_mutex));
+        auto it = m_devices.find(device_handle);
+        if (it != m_devices.end()) {
+            return it->second.is_muted;
+        }
+        return false;
     }
 
     std::unique_ptr <audio_stream_interface> sdl3_backend::create_stream(
@@ -398,13 +438,13 @@ namespace musac {
         void* userdata) {
         std::lock_guard <std::mutex> lock(m_devices_mutex);
 
-        auto it = m_open_devices.find(device_handle);
-        if (it == m_open_devices.end()) {
+        auto it = m_devices.find(device_handle);
+        if (it == m_devices.end()) {
             THROW_RUNTIME("Invalid device handle");
         }
 
         // Create SDL3 audio stream using the SDL device ID
-        SDL_AudioDeviceID sdl_device = it->second;
+        SDL_AudioDeviceID sdl_device = it->second.sdl_id;
         return std::make_unique <sdl3_audio_stream>(sdl_device, spec, callback, userdata);
     }
 
@@ -420,10 +460,10 @@ namespace musac {
     SDL_AudioDeviceID sdl3_backend::get_sdl_device(uint32_t handle) const {
         std::lock_guard <std::mutex> lock(const_cast <std::mutex&>(m_devices_mutex));
 
-        auto it = m_open_devices.find(handle);
-        if (it == m_open_devices.end()) {
+        auto it = m_devices.find(handle);
+        if (it == m_devices.end()) {
             return 0;
         }
-        return it->second;
+        return it->second.sdl_id;
     }
 } // namespace musac

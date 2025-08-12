@@ -186,6 +186,47 @@ public:
     virtual bool is_device_paused(uint32_t device_handle) = 0;
     
     // ========================================================================
+    // Mute control
+    // ========================================================================
+    
+    /**
+     * Check if backend supports hardware/backend-level mute.
+     * @return true if mute is supported, false otherwise
+     */
+    virtual bool supports_mute() const { return false; }
+    
+    /**
+     * Mute audio output for a device.
+     * This should use the most efficient method available (hardware mute, pause, etc.)
+     * @param device_handle Device handle
+     * @return true on success, false on failure or if not supported
+     */
+    virtual bool mute_device(uint32_t device_handle) { 
+        (void)device_handle;
+        return false; 
+    }
+    
+    /**
+     * Unmute audio output for a device.
+     * @param device_handle Device handle
+     * @return true on success, false on failure or if not supported
+     */
+    virtual bool unmute_device(uint32_t device_handle) { 
+        (void)device_handle;
+        return false; 
+    }
+    
+    /**
+     * Check if device is muted.
+     * @param device_handle Device handle
+     * @return true if muted, false otherwise
+     */
+    virtual bool is_device_muted(uint32_t device_handle) const { 
+        (void)device_handle;
+        return false; 
+    }
+    
+    // ========================================================================
     // Stream creation
     // ========================================================================
     

@@ -301,4 +301,16 @@ namespace musac {
         
         return result;
     }
+    
+    void audio_mixer::mute_all() {
+        m_global_muted.store(true, std::memory_order_relaxed);
+    }
+    
+    void audio_mixer::unmute_all() {
+        m_global_muted.store(false, std::memory_order_relaxed);
+    }
+    
+    bool audio_mixer::is_all_muted() const {
+        return m_global_muted.load(std::memory_order_relaxed);
+    }
 }

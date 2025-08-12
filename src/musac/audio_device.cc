@@ -6,6 +6,7 @@
 #include <musac/audio_device_data.hh>
 #include <musac/sdk/from_float_converter.hh>
 #include <musac/error.hh>
+#include "audio_mixer.hh"
 #include <failsafe/failsafe.hh>
 #include <vector>
 #include <memory>
@@ -233,6 +234,48 @@ bool audio_device::is_paused() const {
 bool audio_device::resume() {
     if (m_pimpl->backend_v2 && m_pimpl->device_handle_v2) {
         return m_pimpl->backend_v2->resume_device(m_pimpl->device_handle_v2);
+    }
+    return false;
+}
+
+void audio_device::mute_all() {
+    if (m_pimpl->backend_v2 && m_pimpl->device_handle_v2) {
+        if (m_pimpl->backend_v2->supports_mute()) {
+            // Use backend-level mute for best efficiency
+            m_pimpl->backend_v2->mute_device(m_pimpl->device_handle_v2);
+            return;
+        }
+    }
+    // Fallback to mixer-level mute
+    audio_stream::get_global_mixer().mute_all();
+}
+
+void audio_device::unmute_all() {
+    if (m_pimpl->backend_v2 && m_pimpl->device_handle_v2) {
+        if (m_pimpl->backend_v2->supports_mute()) {
+            // Use backend-level unmute
+            m_pimpl->backend_v2->unmute_device(m_pimpl->device_handle_v2);
+            return;
+        }
+    }
+    // Fallback to mixer-level unmute
+    audio_stream::get_global_mixer().unmute_all();
+}
+
+bool audio_device::is_all_muted() const {
+    if (m_pimpl->backend_v2 && m_pimpl->device_handle_v2) {
+        if (m_pimpl->backend_v2->supports_mute()) {
+            // Check backend mute state
+            return m_pimpl->backend_v2->is_device_muted(m_pimpl->device_handle_v2);
+        }
+    }
+    // Check mixer-level mute state
+    return audio_stream::get_global_mixer().is_all_muted();
+}
+
+bool audio_device::has_hardware_mute() const {
+    if (m_pimpl->backend_v2) {
+        return m_pimpl->backend_v2->supports_mute();
     }
     return false;
 }

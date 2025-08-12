@@ -17,12 +17,6 @@ namespace musac {
 class sdl2_backend : public audio_backend {
 private:
     bool m_initialized = false;
-    std::map<uint32_t, SDL_AudioDeviceID> m_open_devices;
-    std::map<uint32_t, audio_spec> m_device_specs;
-    std::map<uint32_t, float> m_device_gains;  // Track gain values even though SDL2 doesn't support them
-    std::map<std::string, uint32_t> m_device_name_to_handle;  // Track device name to handle mapping
-    std::mutex m_devices_mutex;
-    uint32_t m_next_handle = 1;
     
     // Callback management for SDL2
     struct device_callback_data {
@@ -30,7 +24,19 @@ private:
         void* userdata = nullptr;
         std::mutex mutex;
     };
-    std::map<SDL_AudioDeviceID, std::unique_ptr<device_callback_data>> m_device_callbacks;
+    
+    // Aggregated device information
+    struct device_state {
+        SDL_AudioDeviceID sdl_id = 0;
+        audio_spec spec;
+        float gain = 1.0f;
+        bool is_muted = false;
+        std::unique_ptr<device_callback_data> callback_data;
+    };
+    
+    std::map<uint32_t, device_state> m_devices;  // All device info in one place
+    std::mutex m_devices_mutex;
+    uint32_t m_next_handle = 1;
     
     // Static callback that dispatches to the correct stream
     static void audio_callback(void* userdata, Uint8* stream, int len);
@@ -50,8 +56,8 @@ public:
     bool is_initialized() const override;
     
     // Device enumeration
-    std::vector<device_info> enumerate_devices(bool playback) override;
-    device_info get_default_device(bool playback) override;
+    std::vector<musac::device_info> enumerate_devices(bool playback) override;
+    musac::device_info get_default_device(bool playback) override;
     
     // Device management
     uint32_t open_device(const std::string& device_id, 
@@ -70,6 +76,12 @@ public:
     bool pause_device(uint32_t device_handle) override;
     bool resume_device(uint32_t device_handle) override;
     bool is_device_paused(uint32_t device_handle) override;
+    
+    // Mute control (using SDL pause as implementation)
+    bool supports_mute() const override;
+    bool mute_device(uint32_t device_handle) override;
+    bool unmute_device(uint32_t device_handle) override;
+    bool is_device_muted(uint32_t device_handle) const override;
     
     // Stream creation
     std::unique_ptr<audio_stream_interface> create_stream(
