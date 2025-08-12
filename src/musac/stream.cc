@@ -382,6 +382,11 @@ namespace musac {
             }
         } // in_use_guard released here
         
+        // Check if mixer is globally muted - if so, clear the buffer
+        if (impl::s_mixer.is_all_muted()) {
+            impl::s_mixer.set_zeros();
+        }
+        
         // Capture the final mixed output for visualization
         impl::s_mixer.capture_final_output(impl::s_mixer.m_final_mix_buf.data(), out_len_samples);
         

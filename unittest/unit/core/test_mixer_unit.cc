@@ -454,4 +454,71 @@ TEST_SUITE("Mixer::Unit") {
             CHECK(stream2.volume() == 0.0f);
         }
     }
+    
+    TEST_CASE("mixer_global_mute_functionality") {
+        // Arrange
+        auto backend = std::make_shared<mock_backend_v2_enhanced>();
+        backend->init();
+        auto device = audio_device::open_default_device(backend);
+        
+        SUBCASE("backend_mute_support") {
+            // Check if backend reports mute support
+            CHECK(device.has_hardware_mute() == false); // Mock backend doesn't support mute
+        }
+        
+        SUBCASE("device_mute_with_fallback") {
+            // Initially should not be muted
+            CHECK(device.is_all_muted() == false);
+            
+            // Mute through device (should fallback to mixer since mock backend doesn't support mute)
+            device.mute_all();
+            CHECK(device.is_all_muted() == true);
+            
+            // Unmute through device
+            device.unmute_all();
+            CHECK(device.is_all_muted() == false);
+        }
+        
+        SUBCASE("mute_affects_mixing") {
+            // Create and play a stream
+            auto source = create_mock_source(44100);
+            auto stream = device.create_stream(std::move(*source));
+            stream.open();
+            stream.set_volume(1.0f);
+            stream.play();
+            
+            // Stream should be playing
+            CHECK(stream.is_playing() == true);
+            CHECK(stream.volume() == 1.0f);
+            
+            // Mute all audio
+            device.mute_all();
+            
+            // Stream is still playing but audio is muted globally
+            CHECK(stream.is_playing() == true);
+            CHECK(stream.volume() == 1.0f); // Stream volume unchanged
+            CHECK(device.is_all_muted() == true);
+            
+            // Unmute
+            device.unmute_all();
+            CHECK(device.is_all_muted() == false);
+        }
+        
+        SUBCASE("multiple_mute_unmute_calls") {
+            // Multiple mute calls should be idempotent
+            device.mute_all();
+            device.mute_all();
+            device.mute_all();
+            CHECK(device.is_all_muted() == true);
+            
+            // Single unmute should unmute
+            device.unmute_all();
+            CHECK(device.is_all_muted() == false);
+            
+            // Multiple unmute calls should be idempotent
+            device.unmute_all();
+            device.unmute_all();
+            CHECK(device.is_all_muted() == false);
+        }
+    }
 }

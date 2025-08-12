@@ -49,6 +49,12 @@ namespace musac {
             bool is_paused() const;
             bool resume();
 
+            // Mute control (uses backend mute if available, fallback to mixer)
+            void mute_all();
+            void unmute_all();
+            bool is_all_muted() const;
+            bool has_hardware_mute() const;
+
             float get_gain() const;
             void set_gain(float v);
 

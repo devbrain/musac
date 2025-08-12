@@ -65,12 +65,20 @@ namespace musac {
             // Final output buffer access for visualization
             void capture_final_output(const float* buffer, size_t samples);
             [[nodiscard]] std::vector<float> get_final_output() const;
+            
+            // Global mute control (fallback when backend doesn't support mute)
+            void mute_all();
+            void unmute_all();
+            [[nodiscard]] bool is_all_muted() const;
 
         private:
             // Ring buffer for final output (for visualization)
             static constexpr size_t OUTPUT_BUFFER_SIZE = 8192;
             mutable std::vector<float> m_final_output_buffer;
             mutable std::atomic<size_t> m_output_write_pos{0};
+            
+            // Global mute state for mixer-level fallback
+            std::atomic<bool> m_global_muted{false};
             
         private:
             // Encapsulated stream management
