@@ -1,3 +1,9 @@
+/**
+ * @file audio_backend.hh
+ * @brief Platform audio backend interface
+ * @ingroup backends
+ */
+
 #ifndef MUSAC_SDK_AUDIO_BACKEND_V2_HH
 #define MUSAC_SDK_AUDIO_BACKEND_V2_HH
 
@@ -13,21 +19,28 @@
 namespace musac {
 
 /**
- * Device information structure for audio devices
+ * @struct device_info
+ * @brief Audio device information
+ * @ingroup backends
+ * 
+ * Contains information about an audio device including its
+ * capabilities and identification.
  */
 struct device_info {
-    std::string name;
-    std::string id;
-    bool is_default;
-    channels_t channels;
-    sample_rate_t sample_rate;
+    std::string name;           ///< Human-readable device name
+    std::string id;             ///< Unique device identifier
+    bool is_default;            ///< True if this is the default device
+    channels_t channels;        ///< Number of audio channels supported
+    sample_rate_t sample_rate;  ///< Native sample rate in Hz
 };
 
 /**
- * Stream output operator for device_info
+ * @brief Stream output operator for device_info
  * @param os Output stream
  * @param info Device info to output
  * @return Output stream reference
+ * 
+ * Formats device information for debugging output.
  */
 inline std::ostream& operator<<(std::ostream& os, const device_info& info) {
     os << "device_info{"
@@ -41,12 +54,54 @@ inline std::ostream& operator<<(std::ostream& os, const device_info& info) {
 }
 
 /**
- * Unified audio backend interface combining initialization and device management.
- * This interface merges the functionality of audio_backend and audio_device_interface
- * into a single, cohesive interface.
+ * @class audio_backend
+ * @brief Abstract interface for platform audio subsystems
+ * @ingroup backends
  * 
- * @note This is the v2 interface. The original audio_backend interface is preserved
- *       for backward compatibility during the migration period.
+ * The audio_backend interface provides a unified abstraction over
+ * platform-specific audio APIs like SDL, ALSA, CoreAudio, WASAPI, etc.
+ * Backends handle device management, audio callbacks, and data transfer.
+ * 
+ * ## Architecture
+ * 
+ * Backends are responsible for:
+ * - Initializing the audio subsystem
+ * - Enumerating and opening devices
+ * - Managing audio callbacks
+ * - Converting between musac and platform formats
+ * 
+ * ## Implementing a Backend
+ * 
+ * @code
+ * class my_backend : public audio_backend {
+ * public:
+ *     void init() override {
+ *         // Initialize platform API
+ *     }
+ *     
+ *     std::vector<device_info> enumerate_devices(bool playback) override {
+ *         // Query platform for devices
+ *     }
+ *     
+ *     uint32_t open_device(const std::string& id, 
+ *                         const audio_spec& spec,
+ *                         audio_spec& obtained) override {
+ *         // Open platform device
+ *         // Return unique handle
+ *     }
+ *     
+ *     // ... implement other methods
+ * };
+ * @endcode
+ * 
+ * ## Thread Safety
+ * 
+ * - init()/shutdown() must be called from main thread
+ * - Device operations are thread-safe after init()
+ * - Audio callbacks run on platform-specific threads
+ * 
+ * @note This is the v2 interface with unified device management
+ * @see SDL3Backend, SDL2Backend
  */
 class MUSAC_SDK_EXPORT audio_backend {
 public:

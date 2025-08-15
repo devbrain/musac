@@ -46,6 +46,10 @@ set(CODECS_INCLUDE ${MUSAC_PROJECT_ROOT}/include/musac/codecs/)
 set(codecs_sources
         decoder_aiff.cc
         ${CODECS_INCLUDE}decoder_aiff.hh
+        decoder_aiff_v2.cc
+        ${CODECS_INCLUDE}decoder_aiff_v2.hh
+        decoder_8svx.cc
+        ${CODECS_INCLUDE}decoder_8svx.hh
         decoder_cmf.cc
         ${CODECS_INCLUDE}decoder_cmf.hh
         decoder_drflac.cc
@@ -93,6 +97,23 @@ else ()
     set(LIB_BUILD_TYPE STATIC)
 endif ()
 
+set(LIBIFF_BUILD_SHARED ${MUSAC_BUILD_SHARED} CACHE INTERNAL "")
+set(LIBIFF_BUILD_FPIC ${MUSAC_BUILD_FPIC} CACHE INTERNAL "")
+set(LIBIFF_BUILD_DOCUMENTATION OFF CACHE INTERNAL "")
+set(LIBIFF_BUILD_EXAMPLES OFF CACHE INTERNAL "")
+set(LIBIFF_BUILD_TESTS OFF CACHE INTERNAL "")
+
+fetchcontent_declare(
+        LIBIFF_EXT
+        GIT_REPOSITORY "https://github.com/devbrain/libiff.git"
+        GIT_TAG master
+        GIT_PROGRESS TRUE
+        UPDATE_COMMAND ""
+        OVERRIDE_FIND_PACKAGE
+)
+
+fetchcontent_makeavailable(LIBIFF_EXT)
+
 add_library(musac_codecs ${LIB_BUILD_TYPE}
         ${codecs_sources}
         ${thirdparty}
@@ -105,7 +126,13 @@ target_include_directories(musac_codecs
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
-target_link_libraries(musac_codecs PUBLIC musac_sdk thirdparty::failsafe)
+target_link_libraries(musac_codecs
+        PUBLIC
+        musac_sdk
+        thirdparty::failsafe
+        PRIVATE
+        iff
+)
 
 # Set logger category for codecs
 target_compile_definitions(musac_codecs PRIVATE LOGGER_DEFAULT_CATEGORY=musac::codecs)

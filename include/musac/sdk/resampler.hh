@@ -1,3 +1,9 @@
+/**
+ * @file resampler.hh
+ * @brief Audio resampling interface
+ * @ingroup sdk_resampling
+ */
+
 // This is copyrighted software. More information is at the end of this file.
 #ifndef MUSAC_RESAMPLER
 #define MUSAC_RESAMPLER
@@ -8,122 +14,215 @@
 #include <musac/sdk/types.hh>
 namespace musac {
     class decoder;
-    /*!
-     * \brief Abstract base class for audio resamplers.
-     *
-     * This class receives audio from an Decoder and resamples it to the requested sample rate.
+    
+    /**
+     * @class resampler
+     * @brief Abstract base class for audio resamplers
+     * @ingroup sdk_resampling
+     * 
+     * The resampler class provides high-quality sample rate conversion
+     * for audio streams. It sits between decoders and the audio output,
+     * converting audio to match the device's sample rate.
+     * 
+     * ## Architecture
+     * 
+     * Resamplers work in a pipeline:
+     * 1. Decoder produces audio at original sample rate
+     * 2. Resampler converts to device sample rate
+     * 3. Audio device plays resampled audio
+     * 
+     * ## Quality vs Performance
+     * 
+     * Different resampler implementations offer various tradeoffs:
+     * - **Linear**: Fast but lower quality (good for real-time)
+     * - **Cubic**: Good balance of quality and performance
+     * - **Sinc**: Highest quality but computationally expensive
+     * 
+     * ## Implementation Guide
+     * 
+     * To create a custom resampler:
+     * 
+     * @code
+     * class my_resampler : public resampler {
+     * protected:
+     *     int adjust_for_output_spec(sample_rate_t dst_rate, 
+     *                               sample_rate_t src_rate,
+     *                               channels_t channels) override {
+     *         // Initialize resampling parameters
+     *         m_ratio = static_cast<double>(dst_rate) / src_rate;
+     *         return 0;
+     *     }
+     *     
+     *     void do_resampling(float dst[], const float src[],
+     *                       size_t& dst_len, size_t& src_len) override {
+     *         // Perform actual resampling
+     *         // Update dst_len and src_len with actual counts
+     *     }
+     *     
+     *     void do_discard_pending_samples() override {
+     *         // Clear internal buffers
+     *     }
+     * };
+     * @endcode
+     * 
+     * @see decoder, audio_source, audio_converter
      */
     class MUSAC_SDK_EXPORT resampler {
         public:
-            /*!
-             * \brief Constructs an audio resampler.
+            /**
+             * @brief Constructor
              */
             resampler();
 
+            /**
+             * @brief Virtual destructor
+             */
             virtual ~resampler();
 
             resampler(const resampler&) = delete;
             auto operator=(const resampler&) -> resampler& = delete;
 
-            /*! \brief Sets the decoder that is to be used as source.
-             *
-             * \param decoder
-             *  The decoder to use as source. Must not be null.
+            /**
+             * @brief Set the source decoder
+             * @param decoder Decoder to use as audio source (must not be null)
+             * 
+             * The resampler will read audio from this decoder and convert
+             * its sample rate to match the output specification.
              */
             void set_decoder(std::shared_ptr <decoder> decoder);
 
-            /*! \brief Sets the target sample rate, channels and chuck size.
-             *
-             * \param dst_rate Wanted sample rate.
-             *
-             * \param channels Wanted amount of channels.
-             *
-             * \param chunk_size
-             *  Specifies how many samples per channel to resample at most in each call to the resample()
-             *  function. It is recommended to set this to the same value that was used as buffer size in
-             *  the call to Aulib::init().
+            /**
+             * @brief Configure output specification
+             * @param dst_rate Target sample rate in Hz
+             * @param channels Number of output channels
+             * @param chunk_size Maximum samples per channel to process per call
+             * @return 0 on success, negative on error
+             * 
+             * Sets the target sample rate and channel configuration for
+             * resampling. The chunk_size should match your audio buffer
+             * size for optimal performance.
+             * 
+             * @note chunk_size is per channel, so stereo with chunk_size=512
+             *       means up to 1024 samples total
              */
             int set_spec(sample_rate_t dst_rate, channels_t channels, size_t chunk_size);
 
+            /**
+             * @brief Get current sample rate
+             * @return Target sample rate in Hz
+             */
             [[nodiscard]] unsigned int get_current_rate() const;
+            
+            /**
+             * @brief Get current channel count
+             * @return Number of channels
+             */
             [[nodiscard]] unsigned int get_current_channels() const;
+            
+            /**
+             * @brief Get current chunk size
+             * @return Maximum samples per channel per call
+             */
             [[nodiscard]] unsigned int get_current_chunk_size() const;
 
-            /*! \brief Fills an output buffer with resampled audio samples.
-             *
-             * \param dst Output buffer.
-             *
-             * \param dst_len Size of output buffer (amount of elements, not size in bytes.)
-             *
-             * \return The amount of samples that were stored in the buffer. This can be smaller than
-             *         'dstLen' if the decoder has no more samples left.
+            /**
+             * @brief Resample audio data
+             * @param[out] dst Output buffer for resampled audio
+             * @param dst_len Buffer size in samples (total, not per channel)
+             * @return Number of samples actually written
+             * 
+             * Reads audio from the decoder, resamples it to the target
+             * sample rate, and fills the output buffer. May return fewer
+             * samples than requested if the decoder reaches the end.
+             * 
+             * @note For stereo, samples are interleaved: L,R,L,R,...
              */
             std::size_t resample(float dst[], std::size_t dst_len);
 
-            /*! \brief Discards any samples that have not yet been retrieved with resample().
-             *
-             * This is especially useful after seeking the decoder to a different position and you want
-             * resample() to immediately give you samples from the new position rather than the ones from
-             * the old position that were previously resampled but not yet retrieved.
+            /**
+             * @brief Discard buffered samples
+             * 
+             * Clears any internally buffered samples that haven't been
+             * retrieved yet. Useful after seeking to ensure the next
+             * resample() call returns samples from the new position.
+             * 
+             * @code
+             * decoder->seek_to_time(30s);
+             * resampler->discard_pending_samples();  // Clear old samples
+             * resampler->resample(buffer, size);     // Get new samples
+             * @endcode
              */
             void discard_pending_samples();
 
         protected:
-            /*! \brief Change sample rate and amount of channels.
-             *
-             * This function must be implemented when subclassing. It is used to notify subclasses about
-             * changes in source and target sample rates, as well as the amount of channels in the audio.
-             *
-             * \param dst_rate Target sample rate (rate being resampled to.)
-             *
-             * \param src_rate Source sample rate (rate being resampled from.)
-             *
-             * \param channels Amount of channels in both the source as well as the target audio buffers.
+            /**
+             * @brief Configure resampling parameters
+             * @param dst_rate Target sample rate (Hz)
+             * @param src_rate Source sample rate (Hz)
+             * @param channels Number of channels
+             * @return 0 on success, negative on error
+             * 
+             * Called when sample rates or channel configuration changes.
+             * Subclasses must implement this to initialize their resampling
+             * engine with the new parameters.
+             * 
+             * @note Must be implemented by subclasses
              */
             virtual int adjust_for_output_spec(sample_rate_t dst_rate, sample_rate_t src_rate, channels_t channels) = 0;
 
-            /*! This function must be implemented when subclassing. It must resample
-             * the audio contained in 'src' containing 'srcLen' samples, and store the
-             * resulting samples in 'dst', which has a capacity of at most 'dstLen'
-             * samples.
-             *
-             * The 'src' buffer contains audio in either mono or stereo. Stereo is
-             * stored in interleaved format.
-             *
-             * The source and target sample rates, as well as the amount of channels
-             * that are to be used must be those that were specified in the last call
-             * to the adjustForOutputSpec() function.
-             *
-             * 'dstLen' and 'srcLen' are both input as well as output parameters. The
-             * function must set 'dstLen' to the amount of samples that were actually
-             * stored in 'dst', and 'srcLen' to the amount of samples that were
-             * actually used from 'src'. For example, if in the following call:
-             *
-             *      dstLen = 200;
-             *      srcLen = 100;
-             *      doResampling(dst, src, dstLen, srcLen);
-             *
-             * the function resamples 98 samples from 'src', resulting in 196 samples
-             * which are stored in 'dst', the function must set 'srcLen' to 98 and
-             * 'dstLen' to 196.
-             *
-             * So when implementing this function, you do not need to worry about using
-             * up all the available samples in 'src'. Simply resample as much audio
-             * from 'src' as you can in order to fill 'dst' as much as possible, and if
-             * there's anything left at the end that cannot be resampled, simply ignore
-             * it.
+            /**
+             * @brief Perform actual resampling
+             * @param[out] dst Destination buffer for resampled audio
+             * @param[in] src Source audio buffer
+             * @param[in,out] dst_len Input: buffer capacity, Output: samples written
+             * @param[in,out] src_len Input: available samples, Output: samples consumed
+             * 
+             * The core resampling function that subclasses must implement.
+             * Converts audio from source to target sample rate.
+             * 
+             * ## Implementation Requirements
+             * 
+             * - Read from src[] and write to dst[]
+             * - Audio is interleaved for stereo (L,R,L,R,...)
+             * - Update dst_len to actual samples written
+             * - Update src_len to actual samples consumed
+             * - May consume fewer samples than available
+             * - May produce fewer samples than buffer size
+             * 
+             * ## Example
+             * 
+             * @code
+             * void do_resampling(float dst[], const float src[],
+             *                   size_t& dst_len, size_t& src_len) override {
+             *     size_t src_consumed = 0;
+             *     size_t dst_produced = 0;
+             *     
+             *     while (src_consumed < src_len && dst_produced < dst_len) {
+             *         // Resample one frame
+             *         dst[dst_produced++] = interpolate(src, src_consumed);
+             *         src_consumed += m_step;
+             *     }
+             *     
+             *     dst_len = dst_produced;
+             *     src_len = src_consumed;
+             * }
+             * @endcode
+             * 
+             * @note Must be implemented by subclasses
              */
             virtual void do_resampling(float dst[], const float src[], std::size_t& dst_len, std::size_t& src_len) = 0;
 
-            /*! \brief Discard any internally held samples.
-             *
-             * This function must be implemented when subclassing. It should discard any internally held
-             * samples. Note that even if you don't actually buffer any samples in your subclass but are
-             * using some external resampling library that you delegate resampling to, that external
-             * resampler might be holding samples in an internal buffer. Those will need to be discarded as
-             * well.
-             *
-             * If none of the above applies, this can be implemented as an empty function.
+            /**
+             * @brief Clear internal buffers
+             * 
+             * Discards any samples held in internal buffers. Called when
+             * seeking or switching audio sources.
+             * 
+             * If your resampler doesn't buffer samples internally, this
+             * can be an empty implementation. If using an external library,
+             * ensure its buffers are also cleared.
+             * 
+             * @note Must be implemented by subclasses
              */
             virtual void do_discard_pending_samples() = 0;
 

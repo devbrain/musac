@@ -1,5 +1,7 @@
 #include <doctest/doctest.h>
 #include <musac/codecs/decoder_aiff.hh>
+#include <musac/codecs/decoder_aiff_v2.hh>
+#include <musac/codecs/decoder_8svx.hh>
 #include <musac/codecs/decoder_voc.hh>
 #include <musac/codecs/decoder_drwav.hh>
 #include <musac/codecs/decoder_cmf.hh>
@@ -19,6 +21,22 @@
 // Include generated test data headers
 // These are in the root of the build directory
 #include "golden_data/test_aiff_data.h"
+// Note: test16_aiff_v2.h would conflict with test_aiff_data.h (same source file)
+// So we use test24_aiff_v2.h for 24-bit and pondsong_ima4.h for IMA4
+#include "golden_data/test24_aiff_v2.h"
+#include "golden_data/pondsong_ima4.h"
+// Additional format tests
+#include "golden_data/test_12bit_pcm.h"
+#include "golden_data/test_32bit_pcm.h"
+#include "golden_data/test_ulaw.h"
+#include "golden_data/test_alaw.h"
+#include "golden_data/test_sowt.h"
+#include "golden_data/test_fl32.h"
+#include "golden_data/test_fl64.h"
+// 8SVX tests
+#include "golden_data/test_8svx_sample3.h"
+#include "golden_data/test_8svx_16124.h"
+#include "golden_data/test_8svx_distguit.h"
 #include "golden_data/test_voc_data.h"
 #include "golden_data/test_wav_data.h"
 #include "golden_data/test_cmf_data.h"
@@ -27,7 +45,8 @@
 #include "golden_data/test_opb_data.h"
 #include "golden_data/test_vgz_data.h"
 #include "golden_data/test_xmi_data.h"
-#include "golden_data/punch_ogg.h"
+// Golden data for test1.ogg (small Vorbis test file)
+#include "golden_data/test1_ogg.h"
 
 namespace {
     // Helper template to call static accept method on decoder types
@@ -123,6 +142,343 @@ TEST_SUITE("Decoders::GoldenData") {
                 // Compare what we got
                 CHECK(compareFloatArrays(test16_aiff_output, decoded.data(), decoded.size()));
             }
+        }
+    }
+    
+    // Note: Skipping AIFF v2 test with old decoder's golden data (test16_aiff_*)
+    // because the old decoder had bugs (wrong sample rate 44100 vs 48000, incomplete decoding).
+    // We have comprehensive golden data tests for AIFF v2 with correct data below.
+    
+    TEST_CASE("AIFF v2 Decoder - 24-bit PCM Golden Data Test") {
+        auto io = musac::io_from_memory(test_aiff_input, test_aiff_input_size);
+        REQUIRE(io != nullptr);
+        
+        musac::decoder_aiff_v2 decoder;
+        
+        SUBCASE("Opens correctly") {
+            CHECK_NOTHROW(decoder.open(io.get()));
+            CHECK(decoder.is_open());
+            CHECK(decoder.get_channels() == test_aiff_channels);
+            CHECK(decoder.get_rate() == test_aiff_rate);
+        }
+        
+        SUBCASE("Decodes to expected output") {
+            REQUIRE_NOTHROW(decoder.open(io.get()));
+            
+            auto decoded = decodeAll(decoder, test_aiff_channels);
+            
+            if (!test_aiff_output_limited) {
+                CHECK(decoded.size() == test_aiff_output_size);
+                CHECK(compareFloatArrays(test_aiff_output, decoded.data(), 
+                                       std::min(decoded.size(), test_aiff_output_size)));
+            } else {
+                CHECK(decoded.size() > 0);
+                CHECK(decoded.size() <= test_aiff_output_size);
+                CHECK(compareFloatArrays(test_aiff_output, decoded.data(), decoded.size()));
+            }
+        }
+    }
+    
+    TEST_CASE("AIFF v2 Decoder - IMA4 ADPCM Golden Data Test") {
+        auto io = musac::io_from_memory(PondSong_aiff_input, PondSong_aiff_input_size);
+        REQUIRE(io != nullptr);
+        
+        musac::decoder_aiff_v2 decoder;
+        
+        SUBCASE("Opens correctly") {
+            CHECK_NOTHROW(decoder.open(io.get()));
+            CHECK(decoder.is_open());
+            CHECK(decoder.get_channels() == PondSong_aiff_channels);
+            CHECK(decoder.get_rate() == PondSong_aiff_rate);
+        }
+        
+        SUBCASE("Decodes IMA4 to expected output") {
+            REQUIRE_NOTHROW(decoder.open(io.get()));
+            
+            // Decode limited samples for IMA4 (2 seconds worth)
+            auto decoded = decodeAll(decoder, PondSong_aiff_channels, PondSong_aiff_output_size);
+            
+            // IMA4 should produce reasonable output
+            CHECK(decoded.size() > 0);
+            // Allow for small overrun due to IMA4 block alignment (up to 1 block = 128 samples for stereo)
+            CHECK(decoded.size() <= PondSong_aiff_output_size + 128);
+            
+            // Compare with golden data - IMA4 may have slight variations
+            CHECK(compareFloatArrays(PondSong_aiff_output, decoded.data(), 
+                                   std::min(decoded.size(), PondSong_aiff_output_size), 0.01f));
+        }
+    }
+    
+    TEST_CASE("AIFF v2 Decoder - 12-bit PCM Golden Data Test") {
+        auto io = musac::io_from_memory(M1F1_int12_AFsp_aif_input, M1F1_int12_AFsp_aif_input_size);
+        REQUIRE(io != nullptr);
+        
+        musac::decoder_aiff_v2 decoder;
+        
+        SUBCASE("Opens correctly") {
+            CHECK_NOTHROW(decoder.open(io.get()));
+            CHECK(decoder.is_open());
+            CHECK(decoder.get_channels() == M1F1_int12_AFsp_aif_channels);
+            CHECK(decoder.get_rate() == M1F1_int12_AFsp_aif_rate);
+        }
+        
+        SUBCASE("Decodes 12-bit to expected output") {
+            REQUIRE_NOTHROW(decoder.open(io.get()));
+            
+            auto decoded = decodeAll(decoder, M1F1_int12_AFsp_aif_channels);
+            
+            if (!M1F1_int12_AFsp_aif_output_limited) {
+                CHECK(decoded.size() == M1F1_int12_AFsp_aif_output_size);
+            } else {
+                CHECK(decoded.size() > 0);
+                CHECK(decoded.size() <= M1F1_int12_AFsp_aif_output_size);
+            }
+            CHECK(compareFloatArrays(M1F1_int12_AFsp_aif_output, decoded.data(), 
+                                   std::min(decoded.size(), M1F1_int12_AFsp_aif_output_size)));
+        }
+    }
+    
+    TEST_CASE("AIFF v2 Decoder - 32-bit PCM Golden Data Test") {
+        auto io = musac::io_from_memory(M1F1_int32C_AFsp_aif_input, M1F1_int32C_AFsp_aif_input_size);
+        REQUIRE(io != nullptr);
+        
+        musac::decoder_aiff_v2 decoder;
+        
+        SUBCASE("Opens correctly") {
+            CHECK_NOTHROW(decoder.open(io.get()));
+            CHECK(decoder.is_open());
+            CHECK(decoder.get_channels() == M1F1_int32C_AFsp_aif_channels);
+            CHECK(decoder.get_rate() == M1F1_int32C_AFsp_aif_rate);
+        }
+        
+        SUBCASE("Decodes 32-bit to expected output") {
+            REQUIRE_NOTHROW(decoder.open(io.get()));
+            
+            auto decoded = decodeAll(decoder, M1F1_int32C_AFsp_aif_channels);
+            
+            if (!M1F1_int32C_AFsp_aif_output_limited) {
+                CHECK(decoded.size() == M1F1_int32C_AFsp_aif_output_size);
+            } else {
+                CHECK(decoded.size() > 0);
+                CHECK(decoded.size() <= M1F1_int32C_AFsp_aif_output_size);
+            }
+            CHECK(compareFloatArrays(M1F1_int32C_AFsp_aif_output, decoded.data(), 
+                                   std::min(decoded.size(), M1F1_int32C_AFsp_aif_output_size)));
+        }
+    }
+    
+    TEST_CASE("AIFF v2 Decoder - µ-law Golden Data Test") {
+        auto io = musac::io_from_memory(ulaw_aifc_input, ulaw_aifc_input_size);
+        REQUIRE(io != nullptr);
+        
+        musac::decoder_aiff_v2 decoder;
+        
+        SUBCASE("Opens correctly") {
+            CHECK_NOTHROW(decoder.open(io.get()));
+            CHECK(decoder.is_open());
+            CHECK(decoder.get_channels() == ulaw_aifc_channels);
+            CHECK(decoder.get_rate() == ulaw_aifc_rate);
+        }
+        
+        SUBCASE("Decodes µ-law to expected output") {
+            REQUIRE_NOTHROW(decoder.open(io.get()));
+            
+            auto decoded = decodeAll(decoder, ulaw_aifc_channels);
+            
+            CHECK(decoded.size() == ulaw_aifc_output_size);
+            CHECK(compareFloatArrays(ulaw_aifc_output, decoded.data(), decoded.size()));
+        }
+    }
+    
+    TEST_CASE("AIFF v2 Decoder - A-law Golden Data Test") {
+        auto io = musac::io_from_memory(alaw_aifc_input, alaw_aifc_input_size);
+        REQUIRE(io != nullptr);
+        
+        musac::decoder_aiff_v2 decoder;
+        
+        SUBCASE("Opens correctly") {
+            CHECK_NOTHROW(decoder.open(io.get()));
+            CHECK(decoder.is_open());
+            CHECK(decoder.get_channels() == alaw_aifc_channels);
+            CHECK(decoder.get_rate() == alaw_aifc_rate);
+        }
+        
+        SUBCASE("Decodes A-law to expected output") {
+            REQUIRE_NOTHROW(decoder.open(io.get()));
+            
+            auto decoded = decodeAll(decoder, alaw_aifc_channels);
+            
+            CHECK(decoded.size() == alaw_aifc_output_size);
+            CHECK(compareFloatArrays(alaw_aifc_output, decoded.data(), decoded.size()));
+        }
+    }
+    
+    TEST_CASE("AIFF v2 Decoder - sowt (little-endian) Golden Data Test") {
+        auto io = musac::io_from_memory(M1F1_int16s_AFsp_aif_input, M1F1_int16s_AFsp_aif_input_size);
+        REQUIRE(io != nullptr);
+        
+        musac::decoder_aiff_v2 decoder;
+        
+        SUBCASE("Opens correctly") {
+            CHECK_NOTHROW(decoder.open(io.get()));
+            CHECK(decoder.is_open());
+            CHECK(decoder.get_channels() == M1F1_int16s_AFsp_aif_channels);
+            CHECK(decoder.get_rate() == M1F1_int16s_AFsp_aif_rate);
+        }
+        
+        SUBCASE("Decodes sowt to expected output") {
+            REQUIRE_NOTHROW(decoder.open(io.get()));
+            
+            auto decoded = decodeAll(decoder, M1F1_int16s_AFsp_aif_channels);
+            
+            if (!M1F1_int16s_AFsp_aif_output_limited) {
+                CHECK(decoded.size() == M1F1_int16s_AFsp_aif_output_size);
+            } else {
+                CHECK(decoded.size() > 0);
+                CHECK(decoded.size() <= M1F1_int16s_AFsp_aif_output_size);
+            }
+            CHECK(compareFloatArrays(M1F1_int16s_AFsp_aif_output, decoded.data(), 
+                                   std::min(decoded.size(), M1F1_int16s_AFsp_aif_output_size)));
+        }
+    }
+    
+    TEST_CASE("AIFF v2 Decoder - 32-bit float Golden Data Test") {
+        auto io = musac::io_from_memory(M1F1_float32C_AFsp_aif_input, M1F1_float32C_AFsp_aif_input_size);
+        REQUIRE(io != nullptr);
+        
+        musac::decoder_aiff_v2 decoder;
+        
+        SUBCASE("Opens correctly") {
+            CHECK_NOTHROW(decoder.open(io.get()));
+            CHECK(decoder.is_open());
+            CHECK(decoder.get_channels() == M1F1_float32C_AFsp_aif_channels);
+            CHECK(decoder.get_rate() == M1F1_float32C_AFsp_aif_rate);
+        }
+        
+        SUBCASE("Decodes fl32 to expected output") {
+            REQUIRE_NOTHROW(decoder.open(io.get()));
+            
+            auto decoded = decodeAll(decoder, M1F1_float32C_AFsp_aif_channels);
+            
+            if (!M1F1_float32C_AFsp_aif_output_limited) {
+                CHECK(decoded.size() == M1F1_float32C_AFsp_aif_output_size);
+            } else {
+                CHECK(decoded.size() > 0);
+                CHECK(decoded.size() <= M1F1_float32C_AFsp_aif_output_size);
+            }
+            CHECK(compareFloatArrays(M1F1_float32C_AFsp_aif_output, decoded.data(), 
+                                   std::min(decoded.size(), M1F1_float32C_AFsp_aif_output_size)));
+        }
+    }
+    
+    TEST_CASE("AIFF v2 Decoder - 64-bit float Golden Data Test") {
+        auto io = musac::io_from_memory(M1F1_float64C_AFsp_aif_input, M1F1_float64C_AFsp_aif_input_size);
+        REQUIRE(io != nullptr);
+        
+        musac::decoder_aiff_v2 decoder;
+        
+        SUBCASE("Opens correctly") {
+            CHECK_NOTHROW(decoder.open(io.get()));
+            CHECK(decoder.is_open());
+            CHECK(decoder.get_channels() == M1F1_float64C_AFsp_aif_channels);
+            CHECK(decoder.get_rate() == M1F1_float64C_AFsp_aif_rate);
+        }
+        
+        SUBCASE("Decodes fl64 to expected output") {
+            REQUIRE_NOTHROW(decoder.open(io.get()));
+            
+            auto decoded = decodeAll(decoder, M1F1_float64C_AFsp_aif_channels);
+            
+            if (!M1F1_float64C_AFsp_aif_output_limited) {
+                CHECK(decoded.size() == M1F1_float64C_AFsp_aif_output_size);
+            } else {
+                CHECK(decoded.size() > 0);
+                CHECK(decoded.size() <= M1F1_float64C_AFsp_aif_output_size);
+            }
+            CHECK(compareFloatArrays(M1F1_float64C_AFsp_aif_output, decoded.data(), 
+                                   std::min(decoded.size(), M1F1_float64C_AFsp_aif_output_size)));
+        }
+    }
+    
+    TEST_CASE("8SVX Decoder - sample3 Golden Data Test") {
+        auto io = musac::io_from_memory(sample3_8svx_input, sample3_8svx_input_size);
+        REQUIRE(io != nullptr);
+        
+        musac::decoder_8svx decoder;
+        
+        SUBCASE("Opens correctly") {
+            CHECK_NOTHROW(decoder.open(io.get()));
+            CHECK(decoder.is_open());
+            CHECK(decoder.get_channels() == sample3_8svx_channels);
+            CHECK(decoder.get_rate() == sample3_8svx_rate);
+        }
+        
+        SUBCASE("Decodes to expected output") {
+            REQUIRE_NOTHROW(decoder.open(io.get()));
+            
+            // 8SVX sample3 is large, so it's limited
+            auto decoded = decodeAll(decoder, sample3_8svx_channels, sample3_8svx_output_size);
+            
+            CHECK(decoded.size() > 0);
+            CHECK(decoded.size() <= sample3_8svx_output_size);
+            CHECK(compareFloatArrays(sample3_8svx_output, decoded.data(), 
+                                   std::min(decoded.size(), sample3_8svx_output_size)));
+        }
+    }
+    
+    TEST_CASE("8SVX Decoder - 16124 Golden Data Test") {
+        auto io = musac::io_from_memory(file_16124_8svx_input, file_16124_8svx_input_size);
+        REQUIRE(io != nullptr);
+        
+        musac::decoder_8svx decoder;
+        
+        SUBCASE("Opens correctly") {
+            CHECK_NOTHROW(decoder.open(io.get()));
+            CHECK(decoder.is_open());
+            CHECK(decoder.get_channels() == file_16124_8svx_channels);
+            CHECK(decoder.get_rate() == file_16124_8svx_rate);
+        }
+        
+        SUBCASE("Decodes to expected output") {
+            REQUIRE_NOTHROW(decoder.open(io.get()));
+            
+            // 16124 is also large, so it's limited
+            auto decoded = decodeAll(decoder, file_16124_8svx_channels, file_16124_8svx_output_size);
+            
+            CHECK(decoded.size() > 0);
+            CHECK(decoded.size() <= file_16124_8svx_output_size);
+            CHECK(compareFloatArrays(file_16124_8svx_output, decoded.data(), 
+                                   std::min(decoded.size(), file_16124_8svx_output_size)));
+        }
+    }
+    
+    TEST_CASE("8SVX Decoder - DistGuit Golden Data Test") {
+        auto io = musac::io_from_memory(DistGuit_Gliss_8svx_input, DistGuit_Gliss_8svx_input_size);
+        REQUIRE(io != nullptr);
+        
+        musac::decoder_8svx decoder;
+        
+        SUBCASE("Opens correctly") {
+            CHECK_NOTHROW(decoder.open(io.get()));
+            CHECK(decoder.is_open());
+            CHECK(decoder.get_channels() == DistGuit_Gliss_8svx_channels);
+            CHECK(decoder.get_rate() == DistGuit_Gliss_8svx_rate);
+        }
+        
+        SUBCASE("Decodes to expected output") {
+            REQUIRE_NOTHROW(decoder.open(io.get()));
+            
+            auto decoded = decodeAll(decoder, DistGuit_Gliss_8svx_channels, 
+                                    DistGuit_Gliss_8svx_output_limited ? DistGuit_Gliss_8svx_output_size : 0);
+            
+            if (!DistGuit_Gliss_8svx_output_limited) {
+                CHECK(decoded.size() == DistGuit_Gliss_8svx_output_size);
+            } else {
+                CHECK(decoded.size() > 0);
+                CHECK(decoded.size() <= DistGuit_Gliss_8svx_output_size);
+            }
+            CHECK(compareFloatArrays(DistGuit_Gliss_8svx_output, decoded.data(), 
+                                   std::min(decoded.size(), DistGuit_Gliss_8svx_output_size)));
         }
     }
     
@@ -345,7 +701,7 @@ TEST_SUITE("Decoders::GoldenData") {
     }
     
     TEST_CASE("Vorbis Decoder - Golden Data Test") {
-        auto io = musac::io_from_memory(punch_ogg_input, punch_ogg_input_size);
+        auto io = musac::io_from_memory(test1_ogg_input, test1_ogg_input_size);
         REQUIRE(io != nullptr);
         
         musac::decoder_vorbis decoder;
@@ -353,25 +709,25 @@ TEST_SUITE("Decoders::GoldenData") {
         SUBCASE("Opens correctly") {
             CHECK_NOTHROW(decoder.open(io.get()));
             CHECK(decoder.is_open());
-            CHECK(decoder.get_channels() == punch_ogg_channels);
-            CHECK(decoder.get_rate() == punch_ogg_rate);
+            CHECK(decoder.get_channels() == test1_ogg_channels);
+            CHECK(decoder.get_rate() == test1_ogg_rate);
         }
         
         SUBCASE("Decodes to expected output") {
             REQUIRE_NOTHROW(decoder.open(io.get()));
             
             // Since Vorbis is lossy, we need a higher tolerance
-            auto decoded = decodeAll(decoder, punch_ogg_channels, punch_ogg_output_size);
+            auto decoded = decodeAll(decoder, test1_ogg_channels, test1_ogg_output_size);
             
             // For limited outputs, check we get the expected amount
-            if (punch_ogg_output_limited) {
-                CHECK(decoded.size() == punch_ogg_output_size);
-                CHECK(compareFloatArrays(punch_ogg_output, decoded.data(), 
-                                       std::min(decoded.size(), punch_ogg_output_size), 0.01f));
+            if (test1_ogg_output_limited) {
+                CHECK(decoded.size() == test1_ogg_output_size);
+                CHECK(compareFloatArrays(test1_ogg_output, decoded.data(), 
+                                       std::min(decoded.size(), test1_ogg_output_size), 0.01f));
             } else {
                 CHECK(decoded.size() > 0);
-                CHECK(compareFloatArrays(punch_ogg_output, decoded.data(), 
-                                       std::min(decoded.size(), punch_ogg_output_size), 0.01f));
+                CHECK(compareFloatArrays(test1_ogg_output, decoded.data(), 
+                                       std::min(decoded.size(), test1_ogg_output_size), 0.01f));
             }
         }
     }
@@ -395,7 +751,7 @@ TEST_SUITE("Decoders::GoldenData") {
                   []() { return std::make_unique<musac::decoder_voc>(); }, "VOC" },
                 { soundcard_wav_input, soundcard_wav_input_size,
                   []() { return std::make_unique<musac::decoder_drwav>(); }, "WAV" },
-                { punch_ogg_input, punch_ogg_input_size,
+                { test1_ogg_input, test1_ogg_input_size,
                   []() { return std::make_unique<musac::decoder_vorbis>(); }, "Vorbis" }
             };
             
@@ -474,10 +830,10 @@ TEST_SUITE("Decoders::GoldenData") {
               []() { return std::make_unique<musac::decoder_seq>(); }, "XMI",
               GCOMP1_XMI_channels, GCOMP1_XMI_rate,
               GCOMP1_XMI_output, GCOMP1_XMI_output_size, GCOMP1_XMI_output_limited },
-            { punch_ogg_input, punch_ogg_input_size,
+            { test1_ogg_input, test1_ogg_input_size,
               []() { return std::make_unique<musac::decoder_vorbis>(); }, "Vorbis",
-              punch_ogg_channels, punch_ogg_rate,
-              punch_ogg_output, punch_ogg_output_size, punch_ogg_output_limited }
+              test1_ogg_channels, test1_ogg_rate,
+              test1_ogg_output, test1_ogg_output_size, test1_ogg_output_limited }
         };
         
         for (const auto& test : tests) {
@@ -731,7 +1087,7 @@ TEST_SUITE("Decoders::GoldenData") {
                 { GCOMP1_XMI_input, GCOMP1_XMI_input_size,
                   []() { return std::make_unique<musac::decoder_seq>(); },
                   callStaticAccept<musac::decoder_seq>, "XMI" },
-                { punch_ogg_input, punch_ogg_input_size,
+                { test1_ogg_input, test1_ogg_input_size,
                   []() { return std::make_unique<musac::decoder_vorbis>(); },
                   callStaticAccept<musac::decoder_vorbis>, "Vorbis" }
             };

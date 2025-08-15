@@ -1,3 +1,9 @@
+/**
+ * @file sdl3_backend_impl.hh
+ * @brief SDL3 backend implementation
+ * @ingroup sdl3_backend
+ */
+
 #ifndef MUSAC_SDL3_BACKEND_V2_HH
 #define MUSAC_SDL3_BACKEND_V2_HH
 
@@ -10,10 +16,38 @@
 
 namespace musac {
 
-
 /**
- * SDL3 implementation of the unified audio backend interface.
- * This backend provides full device management and audio streaming using SDL3.
+ * @class sdl3_backend
+ * @brief SDL3 implementation of the audio backend interface
+ * @ingroup sdl3_backend
+ * 
+ * This class provides a complete implementation of the audio_backend
+ * interface using SDL3's modern audio subsystem. It leverages SDL3's
+ * improved audio architecture for better performance and reliability.
+ * 
+ * ## Key Differences from SDL2 Backend
+ * 
+ * - **Audio Streams**: Uses SDL3's stream API instead of device callbacks
+ * - **Device Management**: Improved device lifecycle handling
+ * - **Format Support**: Extended format support including 24-bit audio
+ * - **Performance**: Optimized for lower latency and CPU usage
+ * 
+ * ## Implementation Details
+ * 
+ * - **Handle Mapping**: Maps musac handles to SDL3 device IDs
+ * - **Stream Management**: Each device can have multiple streams
+ * - **Format Conversion**: Leverages SDL3's built-in converters
+ * - **Thread Safety**: Fine-grained locking for better concurrency
+ * 
+ * ## SDL3 Audio Architecture
+ * 
+ * SDL3 introduces a new audio architecture:
+ * 1. Devices represent physical audio endpoints
+ * 2. Streams provide data paths to devices
+ * 3. Improved callback system with timing guarantees
+ * 
+ * @note This is an internal implementation class. Users should
+ *       create instances via create_sdl3_backend().
  */
 class sdl3_backend : public audio_backend {
 private:

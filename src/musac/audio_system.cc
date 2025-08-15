@@ -152,10 +152,10 @@ namespace musac {
             if (format_conversion_needed) {
                 LOG_INFO("audio_system", "Format conversion will be performed during device switch");
                 LOG_INFO("audio_system", "Current: ", current_device->get_freq(), " Hz, ", 
-                         current_device->get_channels(), " ch, format ", 
+                         static_cast<int>(current_device->get_channels()), " ch, format ",
                          current_device->get_format());
                 LOG_INFO("audio_system", "New: ", new_device.get_freq(), " Hz, ", 
-                         new_device.get_channels(), " ch, format ", 
+                         static_cast<int>(new_device.get_channels()), " ch, format ",
                          new_device.get_format());
             }
             

@@ -1,3 +1,9 @@
+/**
+ * @file sdl2_backend_impl.hh
+ * @brief SDL2 backend implementation
+ * @ingroup sdl2_backend
+ */
+
 #ifndef MUSAC_SDL2_BACKEND_IMPL_HH
 #define MUSAC_SDL2_BACKEND_IMPL_HH
 
@@ -11,8 +17,29 @@
 namespace musac {
 
 /**
- * SDL2 implementation of the unified audio backend interface.
- * This backend provides full device management and audio streaming using SDL2.
+ * @class sdl2_backend
+ * @brief SDL2 implementation of the audio backend interface
+ * @ingroup sdl2_backend
+ * 
+ * This class provides a complete implementation of the audio_backend
+ * interface using SDL2's audio subsystem. It manages device lifecycle,
+ * audio callbacks, and format conversion between musac and SDL2.
+ * 
+ * ## Implementation Details
+ * 
+ * - **Device Management**: Maps musac handles to SDL2 device IDs
+ * - **Callback System**: Bridges SDL2 callbacks to musac streams
+ * - **Format Conversion**: Automatic conversion between formats
+ * - **Thread Safety**: Mutex-protected device operations
+ * 
+ * ## SDL2 Integration
+ * 
+ * The backend uses SDL2's audio subsystem but does not require
+ * SDL_Init(SDL_INIT_AUDIO) to be called beforehand - it manages
+ * SDL2 audio initialization internally.
+ * 
+ * @note This is an internal implementation class. Users should
+ *       create instances via create_sdl2_backend().
  */
 class sdl2_backend : public audio_backend {
 private:
