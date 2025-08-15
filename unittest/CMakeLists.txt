@@ -84,6 +84,8 @@ add_executable(musac_unittest
 
         # Codec integration tests
         integration/codecs/test_decoder_aiff.cc
+        integration/codecs/test_decoder_aiff_v2.cc
+        integration/codecs/test_decoder_8svx.cc
         integration/codecs/test_decoder_voc.cc
         integration/codecs/test_decoder_wav.cc
         integration/codecs/test_decoders_with_golden_data.cc
@@ -142,4 +144,41 @@ target_compile_options(musac_unittest PRIVATE ${MUSAC_WARNING_FLAGS})
 if (TARGET musac_internal)
     target_compile_definitions(musac_unittest PRIVATE MUSAC_INTERNAL_TESTING)
 endif()
+
+# ============================================
+# Standalone AIFF/8SVX Tester
+# ============================================
+# This is a separate test program for debugging and polishing
+# the new AIFF and 8SVX decoders before integration
+
+add_executable(test_aiff_standalone 
+    ${CMAKE_SOURCE_DIR}/tests/test_aiff_standalone.cc
+)
+
+target_link_libraries(test_aiff_standalone
+    PRIVATE
+    musac_codecs
+    musac_sdk
+    iff
+    thirdparty::failsafe
+)
+
+target_include_directories(test_aiff_standalone
+    PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_BINARY_DIR}  # For generated export headers
+)
+
+# Use C++20 for filesystem support
+set_target_properties(test_aiff_standalone PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED ON
+)
+
+target_compile_options(test_aiff_standalone PRIVATE ${MUSAC_WARNING_FLAGS})
+
+# Add to test suite
+add_test(NAME aiff_standalone_test 
+    COMMAND test_aiff_standalone ${CMAKE_SOURCE_DIR}/samples
+)
 

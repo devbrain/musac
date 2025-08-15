@@ -9,7 +9,8 @@
 #include <cctype>
 #include <musac/sdk/io_stream.hh>
 
-#include <musac/codecs/decoder_aiff.hh>
+#include <musac/codecs/decoder_aiff_v2.hh>
+#include <musac/codecs/decoder_8svx.hh>
 #include <musac/codecs/decoder_voc.hh>
 #include <musac/codecs/decoder_drwav.hh>
 #include <musac/codecs/decoder_modplug.hh>
@@ -82,8 +83,10 @@ std::unique_ptr<decoder> create_decoder(const std::string& filename) {
     std::string ext = filename.substr(filename.find_last_of('.') + 1);
     std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
     
-    if (ext == "aiff") {
-        return std::make_unique<decoder_aiff>();
+    if (ext == "aiff" || ext == "aif" || ext == "aifc") {
+        return std::make_unique<decoder_aiff_v2>();
+    } else if (ext == "8svx" || ext == "iff") {
+        return std::make_unique<decoder_8svx>();
     } else if (ext == "voc") {
         return std::make_unique<decoder_voc>();
     } else if (ext == "wav") {
@@ -191,9 +194,13 @@ bool process_file(const std::string& filename, TestData& test_data) {
     size_t file_size = input_file.tellg();
     input_file.seekg(0, std::ios::beg);
     
+    // Read the full file first (needed for decoder to work)
     test_data.input.resize(file_size);
     input_file.read(reinterpret_cast<char*>(test_data.input.data()), file_size);
     input_file.close();
+    
+    // For 8SVX files, we'll truncate the input after decoding
+    bool should_truncate_8svx = (ext == "8svx" && file_size > 200000);
     
     // Create decoder
     auto dec = create_decoder(filename);
@@ -248,6 +255,97 @@ bool process_file(const std::string& filename, TestData& test_data) {
     }
     
     stream->close();
+    
+    // Truncate 8SVX input data if it's too large
+    if (should_truncate_8svx && test_data.output_limited) {
+        // For 8SVX, find BODY chunk and truncate it
+        // We need: header + enough BODY data for 2 seconds
+        const size_t samples_needed = test_data.limit_samples;
+        
+        // Find BODY chunk
+        size_t body_offset = 0;
+        for (size_t i = 0; i < test_data.input.size() - 8; i++) {
+            if (test_data.input[i] == 'B' && test_data.input[i+1] == 'O' &&
+                test_data.input[i+2] == 'D' && test_data.input[i+3] == 'Y') {
+                body_offset = i;
+                break;
+            }
+        }
+        
+        if (body_offset > 0) {
+            // Keep header + BODY chunk ID + size + limited audio data
+            size_t new_body_size = samples_needed;
+            size_t new_total_size = body_offset + 8 + new_body_size;
+            
+            if (new_total_size < test_data.input.size()) {
+                // Update BODY chunk size
+                test_data.input[body_offset + 4] = (new_body_size >> 24) & 0xFF;
+                test_data.input[body_offset + 5] = (new_body_size >> 16) & 0xFF;
+                test_data.input[body_offset + 6] = (new_body_size >> 8) & 0xFF;
+                test_data.input[body_offset + 7] = new_body_size & 0xFF;
+                
+                // Update FORM chunk size
+                uint32_t form_size = new_total_size - 8;
+                test_data.input[4] = (form_size >> 24) & 0xFF;
+                test_data.input[5] = (form_size >> 16) & 0xFF;
+                test_data.input[6] = (form_size >> 8) & 0xFF;
+                test_data.input[7] = form_size & 0xFF;
+                
+                // Truncate input
+                test_data.input.resize(new_total_size);
+                std::cout << "Truncated 8SVX input from " << file_size 
+                          << " to " << new_total_size << " bytes\n";
+            }
+        }
+    }
+    
+    // Truncate large AIFF files (especially IMA4 compressed like PondSong.aiff)
+    if ((ext == "aiff" || ext == "aif" || ext == "aifc") && file_size > 500000 && test_data.output_limited) {
+        // Find SSND chunk and truncate it
+        size_t ssnd_offset = 0;
+        for (size_t i = 0; i < test_data.input.size() - 8; i++) {
+            if (test_data.input[i] == 'S' && test_data.input[i+1] == 'S' &&
+                test_data.input[i+2] == 'N' && test_data.input[i+3] == 'D') {
+                ssnd_offset = i;
+                break;
+            }
+        }
+        
+        if (ssnd_offset > 0) {
+            // For IMA4, each block is 34 bytes per channel and produces 64 samples per channel
+            // For 2 seconds of stereo at 44100Hz, we need 88200 samples per channel
+            // That's 1379 blocks (88200/64) = 46886 bytes per channel = 93772 bytes total
+            // Add some padding for block alignment
+            const size_t data_offset = 8; // offset + blocksize fields in SSND
+            const size_t header_size = ssnd_offset + 8 + data_offset;
+            const size_t max_audio_data = 100 * 1024; // 100KB should be enough for 2 seconds
+            const size_t new_total_size = header_size + max_audio_data;
+            
+            if (new_total_size < test_data.input.size()) {
+                // Update SSND chunk size
+                uint32_t new_ssnd_size = max_audio_data + data_offset;
+                test_data.input[ssnd_offset + 4] = (new_ssnd_size >> 24) & 0xFF;
+                test_data.input[ssnd_offset + 5] = (new_ssnd_size >> 16) & 0xFF;
+                test_data.input[ssnd_offset + 6] = (new_ssnd_size >> 8) & 0xFF;
+                test_data.input[ssnd_offset + 7] = new_ssnd_size & 0xFF;
+                
+                // Update FORM chunk size
+                uint32_t form_size = new_total_size - 8;
+                test_data.input[4] = (form_size >> 24) & 0xFF;
+                test_data.input[5] = (form_size >> 16) & 0xFF;
+                test_data.input[6] = (form_size >> 8) & 0xFF;
+                test_data.input[7] = form_size & 0xFF;
+                
+                // Truncate input
+                test_data.input.resize(new_total_size);
+                std::cout << "Truncated AIFF input from " << file_size 
+                          << " to " << new_total_size << " bytes\n";
+            }
+        } else {
+            std::cout << "Warning: Could not find SSND chunk in AIFF file\n";
+        }
+    }
+    
     return true;
 }
 

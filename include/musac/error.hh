@@ -1,3 +1,9 @@
+/**
+ * @file error.hh
+ * @brief Exception hierarchy for error handling
+ * @ingroup error_handling
+ */
+
 // This is copyrighted software. More information is at the end of this file.
 #pragma once
 
@@ -7,10 +13,76 @@
 namespace musac {
 
 /**
+ * @defgroup error_handling Error Handling
+ * @ingroup core
+ * @brief Exception classes and error handling utilities
+ * 
+ * The musac library uses exception-based error handling with a well-defined
+ * hierarchy of exception types. This allows for precise error handling and
+ * recovery strategies.
+ * 
+ * ## Exception Hierarchy
+ * 
+ * ```
+ * std::runtime_error
+ *   └── musac_error (base for all musac exceptions)
+ *       ├── device_error (audio device issues)
+ *       ├── format_error (format/conversion issues)
+ *       ├── decoder_error (decoding failures)
+ *       ├── codec_error (codec-specific issues)
+ *       ├── io_error (I/O operations)
+ *       ├── resource_error (resource allocation)
+ *       └── state_error (invalid state)
+ * ```
+ * 
+ * ## Error Handling Patterns
+ * 
+ * @code
+ * try {
+ *     audio_device device;
+ *     device.open_default_device();
+ *     
+ *     auto source = audio_loader::load("music.mp3");
+ *     auto stream = device.create_stream(std::move(source));
+ *     stream->play();
+ *     
+ * } catch (const device_error& e) {
+ *     // Handle device-specific errors
+ *     std::cerr << "Device error: " << e.what() << '\n';
+ *     // Try fallback device...
+ *     
+ * } catch (const decoder_error& e) {
+ *     // Handle format/decoding errors
+ *     std::cerr << "Cannot decode file: " << e.what() << '\n';
+ *     
+ * } catch (const musac_error& e) {
+ *     // Catch any other musac error
+ *     std::cerr << "Audio error: " << e.what() << '\n';
+ *     
+ * } catch (const std::exception& e) {
+ *     // Catch non-musac errors
+ *     std::cerr << "Unexpected error: " << e.what() << '\n';
+ * }
+ * @endcode
+ * 
+ * @{
+ */
+
+/**
+ * @class musac_error
  * @brief Base exception class for all musac errors
  * 
  * All musac-specific exceptions derive from this class, making it easy
  * to catch all musac errors with a single catch block.
+ * 
+ * @code
+ * try {
+ *     // musac operations...
+ * } catch (const musac_error& e) {
+ *     // Handles all musac exceptions
+ *     log_error("Audio subsystem error: {}", e.what());
+ * }
+ * @endcode
  */
 class musac_error : public std::runtime_error {
 public:
@@ -109,6 +181,8 @@ class state_error : public musac_error {
 public:
     using musac_error::musac_error;
 };
+
+/** @} */ // end of error_handling group
 
 } // namespace musac
 
