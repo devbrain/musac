@@ -1,0 +1,40 @@
+﻿Digital Audio Sound Interface Kit file (.DSM) format specification
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Reverse engineering write-up version 0.1 (2024-10-31 🎃)
+
+A little-endian format, uses parapointers (X shl 4 for real offset) so data mostly aligns to 0x10.
+
+Values below are unsigned, numbers hexadecimal.
+
+offset	[length]<shortname>		description
+00	[4]	"DSM\x10"
+04	[20]	name, 0-padded
+25	[1]	"\x1A" (EOF)
+26	[1]ord	orderlist positions
+27	[1]irec	instrument records, always 1F, real number calculated down below
+28	[1]ptn	patterns
+30	[80]		orderlist
+B0	[irec*2]		parapointers to instruments
+B0+irec*2	[ptn*2]		parapointers to patterns
+
+Instrument records follow, each 40 long:
+	+00	[4]	"DSI\x10"
+	+04	[20]	name, 0-padded
+	+24	[2]	parapointer to sample record
+	+26	[2]	sample length
+	+28	[2]	loop start (can be zero of course)
+	+2A	[2]	loop end (can easly be zero, must mean a full sample is played no-loop)
+	+2C	[1]	flags? panning? Bit 7 analysed separately, anyway
+	+2D	[1]	= 20. panning?
+	+2E	[1]	volume within 40
+	+2F	[1]	= 0. ???
+
+Patterns follow.
+Each pattern begins with an uint16 value that denotes the length of the following chunk. Chunks are 10-aligned.
+
+Samples follow.
+The last sample's length isn't aligned to 10.
+
+
+--Kae
+Telegram @kaens

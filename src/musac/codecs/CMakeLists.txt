@@ -140,11 +140,22 @@ kaitai_generate_cpp(KAITAI_AIFF_SOURCES
     OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/kaitai_generated
 )
 
+# Generate 8SVX chunk parsers
+kaitai_generate_cpp(KAITAI_8SVX_SOURCES 
+    ${CMAKE_CURRENT_SOURCE_DIR}/8svx/kaitai/esvx_chunks.ksy
+    NAMESPACE musac_kaitai
+    OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/kaitai_generated
+)
+
 # Add generated sources to codec sources
 list(APPEND codecs_sources ${KAITAI_AIFF_SOURCES})
+list(APPEND codecs_sources ${KAITAI_8SVX_SOURCES})
 
 # Create a library for Kaitai-generated parsers
-add_library(musac_kaitai_parsers OBJECT ${KAITAI_AIFF_SOURCES})
+add_library(musac_kaitai_parsers OBJECT 
+    ${KAITAI_AIFF_SOURCES} 
+    ${KAITAI_8SVX_SOURCES}
+)
 target_link_libraries(musac_kaitai_parsers PUBLIC Kaitai::Runtime)
 target_include_directories(musac_kaitai_parsers PUBLIC 
     ${CMAKE_CURRENT_BINARY_DIR}/kaitai_generated

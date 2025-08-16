@@ -7,6 +7,7 @@
 #include <musac/codecs/decoder_drflac.hh>
 #include <musac/codecs/decoder_vorbis.hh>
 #include <musac/codecs/decoder_aiff.hh>
+#include <musac/codecs/decoder_8svx.hh>
 #include <musac/codecs/decoder_modplug.hh>
 #include <musac/codecs/decoder_voc.hh>
 #include <musac/codecs/decoder_seq.hh>
@@ -84,6 +85,13 @@ void register_all_codecs(decoders_registry& registry) {
         decoder_voc::accept,
         []() { return std::make_unique<decoder_voc>(); },
         25
+    );
+    
+    // 8SVX - Amiga 8-bit Sampled Voice
+    registry.register_decoder(
+        decoder_8svx::accept,
+        []() { return std::make_unique<decoder_8svx>(); },
+        23
     );
     
     // CMF - Creative Music File
