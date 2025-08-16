@@ -48,6 +48,20 @@ set(codecs_sources
         ${CODECS_INCLUDE}decoder_aiff.hh
         decoder_aiff_v2.cc
         ${CODECS_INCLUDE}decoder_aiff_v2.hh
+        decoder_aiff_v3.cc
+        ${CODECS_INCLUDE}decoder_aiff_v3.hh
+        
+        # AIFF refactored components
+        aiff/aiff_container.cc
+        ${CODECS_INCLUDE}aiff/aiff_container.hh
+        ${CODECS_INCLUDE}aiff/aiff_codec_base.hh
+        aiff/aiff_codec_factory.cc
+        ${CODECS_INCLUDE}aiff/aiff_codec_factory.hh
+        aiff/codecs/pcm_codec.cc
+        aiff/codecs/ima4_codec.cc
+        aiff/codecs/float_codec.cc
+        aiff/codecs/g711_codec.cc
+        
         decoder_8svx.cc
         ${CODECS_INCLUDE}decoder_8svx.hh
         decoder_cmf.cc
