@@ -14,6 +14,9 @@
 #include <iff/chunk_reader.hh>
 #include <iff/fourcc.hh>
 
+#include "kaitai_generated/esvx_chunks.h"
+#include <kaitai/kaitaistream.h>
+
 #include <algorithm>
 #include <cstring>
 #include <vector>
@@ -39,21 +42,6 @@ enum SVXCompression : uint8_t {
     COMP_NONE = 0,        // No compression
     COMP_FIB_DELTA = 1    // Fibonacci-delta encoding
 };
-
-// Helper to swap endianness
-template<typename T>
-T swap_endian(T value) {
-    union {
-        T value;
-        uint8_t bytes[sizeof(T)];
-    } src, dst;
-    
-    src.value = value;
-    for (size_t i = 0; i < sizeof(T); ++i) {
-        dst.bytes[i] = src.bytes[sizeof(T) - 1 - i];
-    }
-    return dst.value;
-}
 
 // Fibonacci-delta decompression
 class FibonacciDeltaDecoder {
@@ -200,25 +188,35 @@ struct decoder_8svx::impl {
     }
     
     void handle_vhdr_chunk(const iff::chunk_event& event) {
-        // Read VHDR data (all fields are big-endian)
-        event.reader->read(&m_vhdr.one_shot_hi_samples, 4);
-        event.reader->read(&m_vhdr.repeat_hi_samples, 4);
-        event.reader->read(&m_vhdr.samples_per_hi_cycle, 4);
-        event.reader->read(&m_vhdr.samples_per_sec, 2);
-        event.reader->read(&m_vhdr.octave_count, 1);
-        event.reader->read(&m_vhdr.compression, 1);
-        event.reader->read(&m_vhdr.volume, 4);
+        // Use Kaitai to parse VHDR chunk
+        std::vector<uint8_t> chunk_data(event.header.size);
+        size_t bytes_read = event.reader->read(chunk_data.data(), event.header.size);
+        if (bytes_read != event.header.size) {
+            THROW_RUNTIME("Failed to read VHDR chunk");
+        }
         
-        // Convert from big-endian
-        m_vhdr.one_shot_hi_samples = swap_endian(m_vhdr.one_shot_hi_samples);
-        m_vhdr.repeat_hi_samples = swap_endian(m_vhdr.repeat_hi_samples);
-        m_vhdr.samples_per_hi_cycle = swap_endian(m_vhdr.samples_per_hi_cycle);
-        m_vhdr.samples_per_sec = swap_endian(m_vhdr.samples_per_sec);
-        m_vhdr.volume = swap_endian(m_vhdr.volume);
+        // Create Kaitai stream from buffer
+        std::string data_str(reinterpret_cast<const char*>(chunk_data.data()), chunk_data.size());
+        kaitai::kstream ks(data_str);
         
-        // Validate compression type
-        if (m_vhdr.compression > COMP_FIB_DELTA) {
-            THROW_RUNTIME("Unsupported 8SVX compression type: ", (int)m_vhdr.compression);
+        try {
+            musac_kaitai::esvx_chunks_t::vhdr_chunk_t vhdr(&ks);
+            
+            // Copy parsed data to our structure
+            m_vhdr.one_shot_hi_samples = vhdr.one_shot_hi_samples();
+            m_vhdr.repeat_hi_samples = vhdr.repeat_hi_samples();
+            m_vhdr.samples_per_hi_cycle = vhdr.samples_per_hi_cycle();
+            m_vhdr.samples_per_sec = vhdr.samples_per_sec();
+            m_vhdr.octave_count = vhdr.octave_count();
+            m_vhdr.compression = static_cast<uint8_t>(vhdr.compression());
+            m_vhdr.volume = vhdr.volume();
+            
+            // Validate compression type
+            if (m_vhdr.compression > COMP_FIB_DELTA) {
+                THROW_RUNTIME("Unsupported 8SVX compression type: ", (int)m_vhdr.compression);
+            }
+        } catch (const std::exception& e) {
+            THROW_RUNTIME("Failed to parse VHDR chunk with Kaitai: ", e.what());
         }
     }
     

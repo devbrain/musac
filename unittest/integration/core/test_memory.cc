@@ -22,13 +22,11 @@ TEST_SUITE("Core::Memory") {
             std::memcpy(dst, src, sizeof(src));
             CHECK(std::string(dst) == std::string(src));
             
-            // Test overlapping regions (undefined behavior with memcpy)
-            // Note: memcpy with overlapping regions has undefined behavior
-            // The correct function to use is memmove
-            char buffer[] = "ABCDEFGHIJ";
-            std::memcpy(buffer + 2, buffer, 5);
-            // The actual result depends on implementation
-            CHECK(std::string(buffer, 10) == "ABABCDEHIJ");
+            // Test non-overlapping copy
+            char buffer1[] = "ABCDEFGHIJ";
+            char buffer2[11] = {0};
+            std::memcpy(buffer2, buffer1, 10);
+            CHECK(std::string(buffer2, 10) == "ABCDEFGHIJ");
         }
         
         SUBCASE("memset") {

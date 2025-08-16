@@ -4,7 +4,6 @@
  * @ingroup codecs
  */
 
-// This is copyrighted software. More information is at the end of this file.
 #pragma once
 
 #include <musac/sdk/decoder.hh>
