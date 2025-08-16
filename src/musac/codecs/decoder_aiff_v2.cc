@@ -521,6 +521,10 @@ struct decoder_aiff_v2::impl {
             m_audio_data.resize(bytes_read);
             m_ssnd_size = bytes_read;
         }
+        
+        #if 0
+        std::cerr << "V2 SSND: size=" << m_ssnd_size << " bytes_read=" << bytes_read << "\n";
+        #endif
         m_audio_read_pos = 0;
     }
     
@@ -846,17 +850,24 @@ struct decoder_aiff_v2::impl {
         size_t frames_processed = 0;
         size_t src_offset = 0;
         
+        
         while (frames_processed < frames) {
             // Decode one block (64 frames/samples per channel)
             size_t block_size = 34 * channels;
+            
             decoder.decode_block(src + src_offset, pcm_buffer.data(), channels);
             
             // Convert to float and interleave channels
             size_t frames_in_block = std::min(size_t(64), frames - frames_processed);
+            
+            
             for (size_t f = 0; f < frames_in_block; ++f) {
                 for (size_t ch = 0; ch < channels; ++ch) {
-                    dst[(frames_processed + f) * channels + ch] = 
-                        pcm_buffer[ch * 64 + f] / 32768.0f;
+                    float value = pcm_buffer[ch * 64 + f] / 32768.0f;
+                    size_t idx = (frames_processed + f) * channels + ch;
+                    
+                    
+                    dst[idx] = value;
                 }
             }
             frames_processed += frames_in_block;
@@ -1131,6 +1142,11 @@ size_t decoder_aiff_v2::do_decode(float* buf, size_t len, bool& call_again) {
     // Calculate bytes to read (special cases for 12-bit and IMA4)
     size_t bytes_per_sample = (m_pimpl->m_sample_size + 7) / 8;
     size_t bytes_to_read;
+    #if 0
+    std::cerr << "V2 decode: frames_to_decode=" << frames_to_decode 
+              << " samples_to_decode=" << samples_to_decode
+              << " bytes_per_sample=" << bytes_per_sample << "\n";
+    #endif
     if (m_pimpl->m_sample_size == 12) {
         // 12-bit samples are packed: 2 samples in 3 bytes
         bytes_to_read = (samples_to_decode * 3 + 1) / 2;
