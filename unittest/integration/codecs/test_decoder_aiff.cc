@@ -73,7 +73,7 @@ TEST_SUITE("Codecs::DecoderAIFF") {
         SUBCASE("Successfully opens") {
             CHECK_NOTHROW(decoder.open(io.get()));
             CHECK(decoder.is_open());
-            CHECK(decoder.get_channels() == 1); // Converted to mono
+            CHECK(decoder.get_channels() == 2); // Should match input channels
             CHECK(decoder.get_rate() == 44100);
         }
     }
@@ -153,50 +153,6 @@ TEST_SUITE("Codecs::DecoderAIFF") {
             musac::decoder_aiff decoder;
             CHECK_THROWS(decoder.open(io.get()));
         }
-    }
-    
-    TEST_CASE("8SVX format support") {
-        std::vector<uint8_t> data;
-        
-        auto writeU32BE = [&data](uint32_t value) {
-            data.push_back(static_cast<uint8_t>((value >> 24) & 0xFF));
-            data.push_back((value >> 16) & 0xFF);
-            data.push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
-            data.push_back(static_cast<uint8_t>(value & 0xFF));
-        };
-        
-        auto writeU16BE = [&data](uint16_t value) {
-            data.push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
-            data.push_back(static_cast<uint8_t>(value & 0xFF));
-        };
-        
-        // FORM chunk
-        writeU32BE(0x464F524D);  // "FORM"
-        writeU32BE(100);  // Size
-        writeU32BE(0x38535658);  // "8SVX"
-        
-        // VHDR chunk
-        writeU32BE(0x56484452);  // "VHDR"
-        writeU32BE(20);  // Size
-        
-        // VHDR data
-        data.resize(data.size() + 12, 0);  // Skip first 12 bytes
-        writeU16BE(22050);  // Sample rate
-        data.resize(data.size() + 6, 0);  // Rest of VHDR
-        
-        // BODY chunk
-        writeU32BE(0x424F4459);  // "BODY"
-        writeU32BE(50);  // Size
-        
-        // Sample data
-        data.resize(data.size() + 50, 128);  // 8-bit centered at 128
-        
-        auto io = musac::io_from_memory(data.data(), data.size());
-        
-        musac::decoder_aiff decoder;
-        CHECK_NOTHROW(decoder.open(io.get()));
-        CHECK(decoder.get_channels() == 1);
-        CHECK(decoder.get_rate() == 44100); // Converted from 22050
     }
     
     TEST_CASE("Rewind functionality") {

@@ -46,10 +46,6 @@ set(CODECS_INCLUDE ${MUSAC_PROJECT_ROOT}/include/musac/codecs/)
 set(codecs_sources
         decoder_aiff.cc
         ${CODECS_INCLUDE}decoder_aiff.hh
-        decoder_aiff_v2.cc
-        ${CODECS_INCLUDE}decoder_aiff_v2.hh
-        decoder_aiff_v3.cc
-        ${CODECS_INCLUDE}decoder_aiff_v3.hh
         
         # AIFF refactored components
         aiff/aiff_container.cc
@@ -128,6 +124,34 @@ fetchcontent_declare(
 
 fetchcontent_makeavailable(LIBIFF_EXT)
 
+# Include Kaitai support
+list(APPEND CMAKE_MODULE_PATH ${MUSAC_PROJECT_ROOT}/cmake)
+include(FindKaitai)
+
+# Generate C++ from Kaitai specifications (required for AIFF v3)
+if(NOT KAITAI_FOUND)
+    message(FATAL_ERROR "Kaitai compiler not found. It is required for AIFF v3 decoder.")
+endif()
+
+# Generate AIFF chunk parsers
+kaitai_generate_cpp(KAITAI_AIFF_SOURCES 
+    ${CMAKE_CURRENT_SOURCE_DIR}/aiff/kaitai/aiff_chunks.ksy
+    NAMESPACE musac_kaitai
+    OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/kaitai_generated
+)
+
+# Add generated sources to codec sources
+list(APPEND codecs_sources ${KAITAI_AIFF_SOURCES})
+
+# Create a library for Kaitai-generated parsers
+add_library(musac_kaitai_parsers OBJECT ${KAITAI_AIFF_SOURCES})
+target_link_libraries(musac_kaitai_parsers PUBLIC Kaitai::Runtime)
+target_include_directories(musac_kaitai_parsers PUBLIC 
+    ${CMAKE_CURRENT_BINARY_DIR}/kaitai_generated
+)
+
+message(STATUS "Kaitai support enabled for AIFF decoder")
+
 add_library(musac_codecs ${LIB_BUILD_TYPE}
         ${codecs_sources}
         ${thirdparty}
@@ -146,6 +170,12 @@ target_link_libraries(musac_codecs
         thirdparty::failsafe
         PRIVATE
         iff
+)
+
+# Link Kaitai runtime (always required)
+target_link_libraries(musac_codecs PRIVATE Kaitai::Runtime)
+target_include_directories(musac_codecs PRIVATE 
+    ${CMAKE_CURRENT_BINARY_DIR}/kaitai_generated
 )
 
 # Set logger category for codecs
