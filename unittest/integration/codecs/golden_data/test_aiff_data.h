@@ -5,7 +5,7 @@
 
 // Test data generated from: ../data/test16.aiff
 // Channels: 1
-// Sample rate: 44100 Hz
+// Sample rate: 48000 Hz (actual rate in file)
 
 const uint8_t test16_aiff_input[] = {
     0x46, 0x4f, 0x52, 0x4d, 0x00, 0x01, 0x77, 0x50, 0x41, 0x49, 0x46, 0x46, 0x43, 0x4f, 0x4d, 0x54, 
@@ -6534,5 +6534,5 @@ const float test16_aiff_output[] = {
 const size_t test16_aiff_output_size = 4096;
 
 const unsigned int test16_aiff_channels = 1;
-const unsigned int test16_aiff_rate = 44100;
-const bool test16_aiff_output_limited = false;
+const unsigned int test16_aiff_rate = 48000;
+const bool test16_aiff_output_limited = true;  // Golden data truncated to 4096 samples

@@ -1,408 +1,363 @@
-//
-// Created by igor on 3/18/25.
-//
-
 #include <musac/codecs/decoder_aiff.hh>
-#include <musac/sdk/samples_converter.hh>
-#include <musac/sdk/audio_format.hh>
-#include <musac/sdk/audio_converter.hh>
+#include <stdexcept>
+#include <musac/codecs/aiff/aiff_container.hh>
+#include <musac/codecs/aiff/aiff_codec_factory.hh>
+#include <musac/codecs/aiff/aiff_codec_base.hh>
 #include <musac/error.hh>
-#include <failsafe/failsafe.hh>
-#include <algorithm>
-#include <cstring>
+#include <musac/sdk/io_stream.hh>
+#include <iff/fourcc.hh>
 #include <vector>
+#include <cmath>
 
 namespace musac {
 
-// Helper function to convert audio samples and return a vector
-static std::vector<uint8_t> convert_audio_samples_to_vector(
-    const audio_spec& src_spec, const uint8_t* src_data, size_t src_len,
-    const audio_spec& dst_spec) {
-    // Use new audio converter API
-    buffer<uint8_t> converted = audio_converter::convert(src_spec, src_data, src_len, dst_spec);
-    // Copy to vector (until we refactor to use buffer throughout)
-    return std::vector<uint8_t>(converted.begin(), converted.end());
-}
-
-// AIFF format constants (big-endian)
-static constexpr uint32_t FORM = 0x464f524d;  // "FORM"
-static constexpr uint32_t AIFF = 0x41494646;  // "AIFF"
-static constexpr uint32_t SSND = 0x53534e44;  // "SSND"
-static constexpr uint32_t COMM = 0x434f4d4d;  // "COMM"
-static constexpr uint32_t _8SVX = 0x38535658; // "8SVX"
-static constexpr uint32_t VHDR = 0x56484452;  // "VHDR"
-static constexpr uint32_t BODY = 0x424f4459;  // "BODY"
-
-struct decoder_aiff::impl {
-    io_stream* m_rwops = nullptr;
-    audio_spec m_spec = {};
-    std::vector<uint8_t> m_buffer;
-    size_t m_total_samples = 0;
-    size_t m_consumed = 0;
-    to_float_converter_func_t m_converter = nullptr;
+// Implementation class
+class decoder_aiff::impl {
+public:
+    impl() 
+        : m_io(nullptr)
+        , m_all_data_loaded(false) {
+    }
     
-    // Convert SANE 80-bit float to uint32_t
-    static uint32_t SANE_to_uint32(const uint8_t* sanebuf) {
-        // Is the frequency outside of what we can represent with uint32_t?
-        if ((sanebuf[0] & 0x80) || (sanebuf[0] <= 0x3F) || (sanebuf[0] > 0x40)
-            || (sanebuf[0] == 0x40 && sanebuf[1] > 0x1C)) {
+    ~impl() = default;
+    
+    void open(io_stream* io) {
+        if (!io) {
+            throw std::runtime_error("No IO stream provided");
+        }
+        
+        // Reset any previous state
+        m_container.reset();
+        m_codec.reset();
+        
+        m_io = io;
+        
+        // Create and parse container
+        m_container = std::make_unique<aiff::aiff_container>(io);
+        m_container->parse();
+        
+        // Get codec parameters
+        auto params = m_container->get_codec_params();
+        
+        // Create appropriate codec
+        m_codec = aiff::aiff_codec_factory::create(
+            m_container->get_compression_type(),
+            params
+        );
+        
+        // For IMA4, load ALL data at once like V2 does
+        if (m_container->get_compression_type() == iff::fourcc("ima4")) {
+            // Load entire SSND data into memory for IMA4
+            const auto& ssnd = m_container->get_ssnd_data();
+            m_read_buffer.resize(ssnd.data_size);
+            
+            // Seek to beginning and read all audio data
+            m_container->seek_to_frame(0);
+            size_t bytes_read = m_container->read_audio_data(m_read_buffer.data(), ssnd.data_size);
+            if (bytes_read != ssnd.data_size) {
+                throw std::runtime_error("Failed to read complete IMA4 data");
+            }
+            
+            m_all_data_loaded = true;
+            m_data_read_position = 0;
+            
+            
+            // Reset to beginning for subsequent reads
+            m_container->seek_to_frame(0);
+        } else {
+            // For other formats, use chunked reading
+            // Size it for reasonable chunks (e.g., 1 second of audio)
+            size_t buffer_size = params.sample_rate * params.channels * 4;
+            m_read_buffer.resize(buffer_size);
+            m_all_data_loaded = false;
+        }
+        // Successfully opened
+        // Note: set_is_open is called from the base class
+    }
+    
+    const char* get_name() const {
+        if (m_codec) {
+            return m_codec->name();
+        }
+        return "AIFF";
+    }
+    
+    sample_rate_t get_rate() const {
+        if (!m_container) return 0;
+        return static_cast<sample_rate_t>(m_container->get_comm_data().sample_rate);
+    }
+    
+    channels_t get_channels() const {
+        if (!m_container) return 0;
+        return m_container->get_comm_data().num_channels;
+    }
+    
+    std::chrono::microseconds duration() const {
+        if (!m_container) {
+            return std::chrono::microseconds(0);
+        }
+        
+        const auto& comm = m_container->get_comm_data();
+        if (comm.sample_rate <= 0) {
+            return std::chrono::microseconds(0);
+        }
+        
+        // Calculate duration from frames and sample rate
+        double seconds = static_cast<double>(comm.num_sample_frames) / comm.sample_rate;
+        return std::chrono::microseconds(static_cast<int64_t>(seconds * 1000000.0));
+    }
+    
+    bool rewind() {
+        if (!m_container) return false;
+        
+        // Reset container position
+        bool result = m_container->seek_to_frame(0);
+        
+        // Reset codec state
+        if (m_codec) {
+            m_codec->reset();
+        }
+        
+        // Reset read position for pre-loaded data
+        if (m_all_data_loaded) {
+            m_data_read_position = 0;
+        }
+        
+        return result;
+    }
+    
+    bool seek_to_time(std::chrono::microseconds time) {
+        if (!m_container) return false;
+        
+        const auto& comm = m_container->get_comm_data();
+        if (comm.sample_rate <= 0) return false;
+        
+        // Convert time to sample position
+        double seconds = time.count() / 1000000.0;
+        uint64_t sample_position = static_cast<uint64_t>(seconds * comm.sample_rate);
+        
+        // For block-based codecs, align to block boundary
+        if (m_codec) {
+            size_t block_align = m_codec->get_block_align();
+            if (block_align > 1) {
+                sample_position = (sample_position / block_align) * block_align;
+            }
+        }
+        
+        // Seek in container
+        bool result = m_container->seek_to_frame(sample_position);
+        
+        // Reset codec state for seeking
+        if (m_codec && result) {
+            m_codec->reset();
+        }
+        
+        // Update read position for pre-loaded IMA4 data
+        if (m_all_data_loaded && comm.compression_type == iff::fourcc("ima4")) {
+            // Calculate byte position for IMA4
+            size_t blocks = sample_position / 64;
+            m_data_read_position = blocks * 34 * comm.num_channels;
+        }
+        
+        return result;
+    }
+    
+    size_t decode(float* buf, size_t len, bool& call_again) {
+        if (!m_container || !m_codec) {
+            call_again = false;
             return 0;
         }
-
-        return ((sanebuf[2] << 23) | (sanebuf[3] << 15) | (sanebuf[4] << 7)
-            | (sanebuf[5] >> 1)) >> (29 - sanebuf[1]);
+        
+        // CRITICAL: Respect the output buffer size to prevent buffer overruns
+        // Convert from samples to frames based on channel count
+        const auto& comm = m_container->get_comm_data();
+        const auto& ssnd = m_container->get_ssnd_data();
+        
+        // Special handling for IMA4 - use pre-loaded data like V2
+        if (m_all_data_loaded && comm.compression_type == iff::fourcc("ima4")) {
+            // Calculate frames remaining based on our position in the loaded data
+            size_t blocks_consumed = m_data_read_position / (34 * comm.num_channels);
+            size_t frames_consumed = blocks_consumed * 64;
+            size_t frames_remaining = comm.num_sample_frames - frames_consumed;
+            size_t frames_to_decode = std::min(len / comm.num_channels, frames_remaining);
+            size_t samples_to_decode = frames_to_decode * comm.num_channels;
+            
+            // Calculate bytes to decode
+            size_t bytes_needed = m_codec->get_input_bytes_for_samples(samples_to_decode);
+            size_t bytes_available = m_read_buffer.size() - m_data_read_position;
+            size_t bytes_to_decode = std::min(bytes_needed, bytes_available);
+            
+            if (bytes_to_decode == 0) {
+                call_again = false;
+                return 0;
+            }
+            
+            // Decode from pre-loaded buffer - pass ALL remaining data like V2 does
+            // V2 passes pointer to current position and lets the decoder process what it needs
+            size_t samples_decoded = m_codec->decode(
+                m_read_buffer.data() + m_data_read_position,
+                bytes_to_decode,
+                buf,
+                samples_to_decode
+            );
+            
+            // Update position in pre-loaded data
+            m_data_read_position += bytes_to_decode;
+            
+            // Update container's frame position to match
+            size_t blocks_decoded = bytes_to_decode / (34 * comm.num_channels);
+            m_container->seek_to_frame(m_container->get_current_frame() + blocks_decoded * 64);
+            
+            call_again = (samples_decoded > 0) && (m_data_read_position < m_read_buffer.size());
+            
+            return samples_decoded;
+        }
+        
+        // Original chunked reading code for non-IMA4 formats
+        size_t frames_remaining = comm.num_sample_frames - m_container->get_current_frame();
+        
+        // For G.711 with malformed files (like the test data), we need to limit
+        // based on actual data size using the same calculation as v2
+        if (comm.compression_type == iff::fourcc("ULAW") || comm.compression_type == iff::fourcc("ulaw") ||
+            comm.compression_type == iff::fourcc("ALAW") || comm.compression_type == iff::fourcc("alaw")) {
+            // Calculate how many frames we can actually decode from available data
+            size_t bytes_per_sample = (comm.sample_size + 7) / 8;  // Use COMM sample_size like v2
+            size_t actual_frames = ssnd.data_size / (bytes_per_sample * comm.num_channels);
+            if (m_container->get_current_frame() < actual_frames) {
+                size_t actual_remaining = actual_frames - m_container->get_current_frame();
+                frames_remaining = std::min(frames_remaining, actual_remaining);
+            } else {
+                frames_remaining = 0;  // No more data
+            }
+        }
+        
+        size_t frames_to_decode = std::min(len / comm.num_channels, frames_remaining);
+        size_t samples_to_decode = frames_to_decode * comm.num_channels;
+        
+        // Ensure we don't decode more than the output buffer can hold
+        if (samples_to_decode > len) {
+            samples_to_decode = len;
+            frames_to_decode = samples_to_decode / comm.num_channels;
+        }
+        
+        // Calculate how many compressed bytes we need for these samples
+        size_t bytes_needed = m_codec->get_input_bytes_for_samples(samples_to_decode);
+        
+        // Don't read more than our buffer can hold
+        if (bytes_needed > m_read_buffer.size()) {
+            bytes_needed = m_read_buffer.size();
+        }
+        
+        // Read compressed audio data from container
+        size_t bytes_read = m_container->read_audio_data(
+            m_read_buffer.data(), 
+            bytes_needed
+        );
+        
+        if (bytes_read == 0) {
+            call_again = false;
+            return 0;
+        }
+        
+        // Decode to float samples
+        // Pass the actual limit (samples_to_decode) not the full buffer size (len)
+        size_t samples_decoded = m_codec->decode(
+            m_read_buffer.data(),
+            bytes_read,
+            buf,
+            samples_to_decode  // CRITICAL: Use calculated limit, not full buffer size
+        );
+        
+        // Check if we have more data
+        // We should check against the frame count, but also handle case where
+        // actual data is less than what COMM chunk claims
+        // If we got no data or decoded no samples, we're done
+        call_again = (samples_decoded > 0) && 
+                     (m_container->get_current_frame() < m_container->get_total_frames());
+        
+        return samples_decoded;
     }
     
-    bool load_aiff() {
-        if (!m_rwops) {
-            return false;
-        }
+    
+    static bool accept(io_stream* io) {
+        if (!io) return false;
         
-        // Seek to beginning
-        m_rwops->seek( 0, musac::seek_origin::set);
+        // Save position
+        auto pos = io->tell();
         
-        // Read AIFF magic header
-        uint32_t FORMchunk;
-        uint32_t chunk_length;
-        uint32_t AIFFmagic;
+        // Check for FORM....AIFF or FORM....AIFC
+        char magic[12];
+        bool result = false;
         
-        if (!read_u32be(m_rwops, &FORMchunk) ||
-            !read_u32be(m_rwops, &chunk_length)) {
-            THROW_RUNTIME("Failed to read AIFF header");
-        }
-        
-        if (chunk_length == AIFF) { // The FORMchunk has already been read
-            AIFFmagic = chunk_length;
-            chunk_length = FORMchunk;
-            FORMchunk = FORM;
-        } else {
-            if (!read_u32be(m_rwops, &AIFFmagic)) {
-                THROW_RUNTIME("Failed to read AIFF magic");
-            }
-        }
-        
-        if ((FORMchunk != FORM) || ((AIFFmagic != AIFF) && (AIFFmagic != _8SVX))) {
-            THROW_RUNTIME("Unrecognized file type (not AIFF nor 8SVX)");
-        }
-        
-        // Parse chunks
-        bool found_SSND = false;
-        bool found_COMM = false;
-        bool found_VHDR = false;
-        bool found_BODY = false;
-        int64_t data_start = 0;
-        uint32_t data_length = 0;
-        uint16_t channels = 0;
-        uint32_t numsamples = 0;
-        uint16_t samplesize = 0;
-        uint32_t frequency = 0;
-        
-        while (true) {
-            uint32_t chunk_type;
-            uint32_t chunk_len;
-            
-            if (!read_u32be(m_rwops, &chunk_type) ||
-                !read_u32be(m_rwops, &chunk_len)) {
-                break;
-            }
-            
-            int64_t next_chunk = m_rwops->tell() + chunk_len;
-            
-            // Paranoia to avoid infinite loops
-            if (chunk_len == 0) {
-                break;
-            }
-            
-            switch (chunk_type) {
-                case SSND: {
-                    found_SSND = true;
-                    uint32_t offset, blocksize;
-                    if (!read_u32be(m_rwops, &offset) ||
-                        !read_u32be(m_rwops, &blocksize)) {
-                        THROW_RUNTIME("Failed to read SSND chunk");
-                    }
-                    data_start = m_rwops->tell() + offset;
-                    data_length = chunk_len - 8 - offset;
-                    break;
+        if (io->read(magic, 12) == 12) {
+            if (std::memcmp(magic, "FORM", 4) == 0) {
+                if (std::memcmp(magic + 8, "AIFF", 4) == 0 ||
+                    std::memcmp(magic + 8, "AIFC", 4) == 0) {
+                    result = true;
                 }
-                
-                case COMM: {
-                    found_COMM = true;
-                    if (!read_u16be(m_rwops, &channels) ||
-                        !read_u32be(m_rwops, &numsamples) ||
-                        !read_u16be(m_rwops, &samplesize)) {
-                        THROW_RUNTIME("Failed to read COMM chunk");
-                    }
-                    
-                    uint8_t sane_freq[10];
-                    if (m_rwops->read( sane_freq, sizeof(sane_freq)) != sizeof(sane_freq)) {
-                        THROW_RUNTIME("Bad AIFF sample frequency");
-                    }
-                    frequency = SANE_to_uint32(sane_freq);
-                    if (frequency == 0) {
-                        THROW_RUNTIME("Bad AIFF sample frequency");
-                    }
-                    break;
-                }
-                
-                case VHDR: {
-                    found_VHDR = true;
-                    uint16_t frequency16;
-                    // Skip first 12 bytes
-                    m_rwops->seek( 12, musac::seek_origin::cur);
-                    if (!read_u16be(m_rwops, &frequency16)) {
-                        THROW_RUNTIME("Failed to read VHDR chunk");
-                    }
-                    channels = 1;
-                    samplesize = 8;
-                    frequency = frequency16;
-                    break;
-                }
-                
-                case BODY: {
-                    found_BODY = true;
-                    numsamples = chunk_len;
-                    data_start = m_rwops->tell();
-                    data_length = chunk_len;
-                    break;
-                }
-                
-                default:
-                    break;
-            }
-            
-            // a 0 pad byte can be stored for any odd-length chunk
-            if (chunk_len & 1) {
-                next_chunk++;
-            }
-            
-            // Seek to next chunk
-            if (m_rwops->seek( next_chunk, musac::seek_origin::set) == -1) {
-                break;
             }
         }
         
-        // Validate we have necessary chunks
-        if (AIFFmagic == AIFF) {
-            if (!found_SSND) {
-                THROW_RUNTIME("Bad AIFF (no SSND chunk)");
-            }
-            if (!found_COMM) {
-                THROW_RUNTIME("Bad AIFF (no COMM chunk)");
-            }
-        } else if (AIFFmagic == _8SVX) {
-            if (!found_VHDR) {
-                THROW_RUNTIME("Bad 8SVX (no VHDR chunk)");
-            }
-            if (!found_BODY) {
-                THROW_RUNTIME("Bad 8SVX (no BODY chunk)");
-            }
-        }
+        // Restore position
+        io->seek(pos, seek_origin::set);
         
-        // Setup audio spec
-        std::memset(&m_spec, 0, sizeof(m_spec));
-        m_spec.freq = frequency;
-        m_spec.channels = channels;
-        
-        switch (samplesize) {
-            case 8:
-                m_spec.format = audio_format::s8;
-                break;
-            case 16:
-                m_spec.format = audio_format::s16be;
-                break;
-            default:
-                THROW_RUNTIME("Unsupported AIFF samplesize: ", samplesize);
-        }
-        
-        // Calculate total size and allocate buffer
-        // Check for overflow
-        size_t bytes_per_sample = samplesize / 8;
-        if (bytes_per_sample == 0) {
-            THROW_RUNTIME("Invalid sample size");
-        }
-        
-        // Check for overflow in multiplication
-        if (numsamples > 0 && channels > SIZE_MAX / numsamples) {
-            THROW_RUNTIME("Sample count overflow");
-        }
-        size_t total_samples = channels * numsamples;
-        if (total_samples > SIZE_MAX / bytes_per_sample) {
-            THROW_RUNTIME("Total size overflow");
-        }
-        
-        size_t total_size = total_samples * bytes_per_sample;
-        if (data_length > 0 && data_length < total_size) {
-            total_size = data_length;
-        }
-        
-        // Calculate final size that's a multiple of samplesize
-        total_size &= ~(bytes_per_sample - 1);
-        
-        // Resize buffer only once to final size
-        m_buffer.resize(total_size);
-        
-        // Read audio data
-        m_rwops->seek( data_start, musac::seek_origin::set);
-        if (m_rwops->read( m_buffer.data(), total_size) != total_size) {
-            THROW_RUNTIME("Unable to read audio data");
-        }
-        
-        // Convert to standard format (S16 mono 44100Hz) as expected by tests
-        audio_spec dst_spec = { audio_s16sys, 1, 44100 };
-        
-        try {
-            // First try to convert to target format
-            m_buffer = convert_audio_samples_to_vector(m_spec, m_buffer.data(), m_buffer.size(), dst_spec);
-        } catch (const std::exception&) {
-            // If conversion fails, try intermediate conversion
-            if (m_spec.format == audio_format::s16be || m_spec.format == audio_format::s8) {
-                // Convert to S16LE first, then resample if needed
-                audio_spec intermediate_spec = m_spec;
-                intermediate_spec.format = audio_format::s16le;
-                
-                try {
-                    std::vector<uint8_t> temp_buffer = convert_audio_samples_to_vector(
-                        m_spec, m_buffer.data(), m_buffer.size(), intermediate_spec);
-                    
-                    // Now convert from intermediate to final format
-                    try {
-                        m_buffer = convert_audio_samples_to_vector(
-                            intermediate_spec, temp_buffer.data(), temp_buffer.size(), dst_spec);
-                    } catch (const std::exception&) {
-                        // If still failing, just keep intermediate format
-                        m_buffer = temp_buffer;
-                        dst_spec = intermediate_spec;
-                    }
-                } catch (const std::exception&) {
-                    THROW_RUNTIME("Failed to convert audio samples");
-                }
-            } else {
-                THROW_RUNTIME("Failed to convert audio samples");
-            }
-        }
-        
-        m_spec = dst_spec;
-        m_total_samples = m_buffer.size() / (audio_format_byte_size(m_spec.format) * m_spec.channels);
-        
-        m_converter = get_to_float_conveter(m_spec.format);
-        
-        return true;
+        return result;
     }
+    
+private:
+    io_stream* m_io;
+    
+    std::unique_ptr<aiff::aiff_container> m_container;
+    std::unique_ptr<aiff::aiff_codec_base> m_codec;
+    std::vector<uint8_t> m_read_buffer;
+    
+    // For IMA4: load all data at once like V2
+    bool m_all_data_loaded;
+    size_t m_data_read_position;
 };
 
-decoder_aiff::decoder_aiff() : m_pimpl(std::make_unique<impl>()) {}
+// Public interface implementation
+decoder_aiff::decoder_aiff() 
+    : m_pimpl(std::make_unique<impl>()) {
+}
 
 decoder_aiff::~decoder_aiff() = default;
 
-bool decoder_aiff::accept(io_stream* rwops) {
-    if (!rwops) {
-        return false;
-    }
-    
-    // Save current stream position
-    auto original_pos = rwops->tell();
-    if (original_pos < 0) {
-        return false;
-    }
-    
-    // Check for AIFF or 8SVX format
-    uint32_t magic1, magic2;
-    bool result = false;
-    
-    // Read first 4 bytes (should be "FORM")
-    if (read_u32be(rwops, &magic1) && magic1 == FORM) {
-        // Skip file size (4 bytes)
-        if (rwops->seek(4, seek_origin::cur) >= 0) {
-            // Read format type (should be "AIFF" or "8SVX")
-            if (read_u32be(rwops, &magic2)) {
-                result = (magic2 == AIFF || magic2 == _8SVX);
-            }
-        }
-    }
-    
-    // Restore original position
-    rwops->seek(original_pos, seek_origin::set);
-    return result;
+void decoder_aiff::open(io_stream* io) {
+    m_pimpl->open(io);
+    set_is_open(true);
 }
 
 const char* decoder_aiff::get_name() const {
-    return "AIFF";
-}
-
-void decoder_aiff::open(io_stream* rwops) {
-    m_pimpl->m_rwops = rwops;
-    
-    if (!m_pimpl->load_aiff()) {
-        THROW_RUNTIME("Failed to load AIFF file");
-    }
-    set_is_open(true);
-    m_pimpl->m_consumed = 0;
-}
-
-channels_t decoder_aiff::get_channels() const {
-    return m_pimpl->m_spec.channels;
+    return m_pimpl->get_name();
 }
 
 sample_rate_t decoder_aiff::get_rate() const {
-    return m_pimpl->m_spec.freq;
+    return m_pimpl->get_rate();
 }
 
-bool decoder_aiff::rewind() {
-    m_pimpl->m_consumed = 0;
-    return true;
+channels_t decoder_aiff::get_channels() const {
+    return m_pimpl->get_channels();
 }
 
 std::chrono::microseconds decoder_aiff::duration() const {
-    if (!is_open() || m_pimpl->m_spec.freq == 0) {
-        return std::chrono::microseconds(0);
-    }
-    
-    // Calculate duration from total samples and sample rate
-    // total_samples is already adjusted for number of channels
-    double duration_seconds = static_cast<double>(m_pimpl->m_total_samples) / 
-                             static_cast<double>(m_pimpl->m_spec.freq);
-    
-    return std::chrono::microseconds(
-        static_cast<int64_t>(duration_seconds * 1'000'000)
-    );
+    return m_pimpl->duration();
 }
 
-bool decoder_aiff::seek_to_time(std::chrono::microseconds pos) {
-    if (!is_open() || m_pimpl->m_spec.freq == 0) {
-        return false;
-    }
-    
-    // Convert time position to sample position
-    double seconds = pos.count() / 1'000'000.0;
-    size_t target_sample = static_cast<size_t>(
-        seconds * static_cast<double>(m_pimpl->m_spec.freq)
-    );
-    
-    // Clamp to valid range
-    if (target_sample >= m_pimpl->m_total_samples) {
-        target_sample = m_pimpl->m_total_samples;
-    }
-    
-    // Set the new position
-    m_pimpl->m_consumed = target_sample;
-    
-    return true;
+bool decoder_aiff::rewind() {
+    return m_pimpl->rewind();
+}
+
+bool decoder_aiff::seek_to_time(std::chrono::microseconds time) {
+    return m_pimpl->seek_to_time(time);
+}
+
+bool decoder_aiff::accept(io_stream* io) {
+    return impl::accept(io);
 }
 
 size_t decoder_aiff::do_decode(float* buf, size_t len, bool& call_again) {
-    auto remains = m_pimpl->m_total_samples - m_pimpl->m_consumed;
-    auto take = std::min(remains, (size_t)len);
-    
-    if (take > 0) {
-        // m_buffer contains int16_t samples stored as bytes
-        const uint8_t* sample_ptr = m_pimpl->m_buffer.data() + (m_pimpl->m_consumed * sizeof(int16_t));
-        m_pimpl->m_converter(buf, sample_ptr, take);
-        m_pimpl->m_consumed += take;
-    }
-    
-    call_again = false;
-    return take;
+    return m_pimpl->decode(buf, len, call_again);
 }
 
 } // namespace musac

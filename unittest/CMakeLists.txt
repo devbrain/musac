@@ -84,7 +84,6 @@ add_executable(musac_unittest
 
         # Codec integration tests
         integration/codecs/test_decoder_aiff.cc
-        integration/codecs/test_decoder_aiff_v2.cc
         integration/codecs/test_decoder_8svx.cc
         integration/codecs/test_decoder_voc.cc
         integration/codecs/test_decoder_wav.cc

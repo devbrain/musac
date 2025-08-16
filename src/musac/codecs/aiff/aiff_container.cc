@@ -1,6 +1,8 @@
 #include <musac/codecs/aiff/aiff_container.hh>
 #include <musac/error.hh>
 #include <iff/endian.hh>
+#include "kaitai_generated/aiff_chunks.h"
+#include <kaitai/kaitaistream.h>
 #include <cstring>
 #include <stdexcept>
 #include <algorithm>
@@ -121,76 +123,106 @@ void aiff_container::parse_form_header() {
 }
 
 void aiff_container::parse_comm_chunk(const chunk_info& chunk) {
+    // Always use Kaitai for parsing COMM chunk contents
     m_io->seek(chunk.offset, seek_origin::set);
     
-    // Read COMM chunk data (must be packed to avoid padding)
-    #pragma pack(push, 1)
-    struct {
-        uint16_t num_channels;
-        uint32_t num_sample_frames;
-        uint16_t sample_size;
-        uint8_t sample_rate[10];
-    } comm;
-    #pragma pack(pop)
-    
-    if (m_io->read(&comm, sizeof(comm)) != sizeof(comm)) {
+    // Read chunk data into buffer
+    std::vector<uint8_t> chunk_data(chunk.size);
+    if (m_io->read(chunk_data.data(), chunk.size) != chunk.size) {
         throw std::runtime_error("Failed to read COMM chunk");
     }
     
-    m_comm.num_channels = iff::swap16be(comm.num_channels);
-    m_comm.num_sample_frames = iff::swap32be(comm.num_sample_frames);
-    m_comm.sample_size = iff::swap16be(comm.sample_size);
-    m_comm.sample_rate = convert_extended_to_double(comm.sample_rate);
+    // Create Kaitai stream from buffer
+    std::string data_str(reinterpret_cast<const char*>(chunk_data.data()), chunk_data.size());
+    kaitai::kstream ks(data_str);
     
-    // Debug: Log what we read
-    #if 0  // Disable debug output
-    std::cerr << "COMM chunk: channels=" << m_comm.num_channels 
-              << " frames=" << m_comm.num_sample_frames
-              << " size=" << m_comm.sample_size
-              << " rate=" << m_comm.sample_rate << "\n";
-    std::cerr << "Extended bytes: ";
-    for (int i = 0; i < 10; ++i) {
-        std::cerr << std::hex << (int)comm.sample_rate[i] << " ";
-    }
-    std::cerr << std::dec << "\n";
-    #endif
-    
-    // For AIFC, read compression type
-    if (m_is_aifc && chunk.size > 18) {
-        m_comm.compression_type = read_fourcc();
-        
-        #if 0  // Disable debug output
-        std::cerr << "Compression type: " << m_comm.compression_type.to_string() 
-                  << " (" << m_comm.compression_type[0] << m_comm.compression_type[1] 
-                  << m_comm.compression_type[2] << m_comm.compression_type[3] << ")\n";
-        #endif
-        
-        // Read compression name (Pascal string)
-        uint8_t name_len;
-        if (m_io->read(&name_len, 1) == 1 && name_len > 0) {
-            std::vector<char> name(name_len + 1, 0);
-            m_io->read(name.data(), name_len);
-            m_comm.compression_name = name.data();
+    try {
+        if (m_is_aifc) {
+            // Parse as AIFC COMM chunk (with compression fields)
+            musac_kaitai::aiff_chunks_t::comm_chunk_aifc_t comm(&ks);
+            
+            m_comm.num_channels = comm.num_channels();
+            m_comm.num_sample_frames = comm.num_sample_frames();
+            m_comm.sample_size = comm.sample_size();
+            
+            // Convert extended float using existing function
+            if (comm.sample_rate()) {
+                // Reconstruct the 80-bit IEEE extended float
+                uint8_t extended[10];
+                uint16_t exp = comm.sample_rate()->exponent();
+                uint64_t mant = comm.sample_rate()->mantissa();
+                
+                extended[0] = (exp >> 8) & 0xFF;
+                extended[1] = exp & 0xFF;
+                for (int i = 0; i < 8; i++) {
+                    extended[2 + i] = (mant >> (56 - i * 8)) & 0xFF;
+                }
+                
+                m_comm.sample_rate = convert_extended_to_double(extended);
+            }
+            
+            // Get compression info
+            m_comm.compression_type = iff::fourcc(comm.compression_type().c_str());
+            if (comm.compression_name()) {
+                m_comm.compression_name = comm.compression_name()->text();
+            }
+        } else {
+            // Parse as regular AIFF COMM chunk (no compression fields)
+            musac_kaitai::aiff_chunks_t::comm_chunk_aiff_t comm(&ks);
+            
+            m_comm.num_channels = comm.num_channels();
+            m_comm.num_sample_frames = comm.num_sample_frames();
+            m_comm.sample_size = comm.sample_size();
+            
+            // Convert extended float using existing function
+            if (comm.sample_rate()) {
+                // Reconstruct the 80-bit IEEE extended float
+                uint8_t extended[10];
+                uint16_t exp = comm.sample_rate()->exponent();
+                uint64_t mant = comm.sample_rate()->mantissa();
+                
+                extended[0] = (exp >> 8) & 0xFF;
+                extended[1] = exp & 0xFF;
+                for (int i = 0; i < 8; i++) {
+                    extended[2 + i] = (mant >> (56 - i * 8)) & 0xFF;
+                }
+                
+                m_comm.sample_rate = convert_extended_to_double(extended);
+            }
+            
+            m_comm.compression_type = COMP_NONE;
         }
-    } else if (!m_is_aifc) {
-        m_comm.compression_type = COMP_NONE;
+    } catch (const std::exception& e) {
+        throw std::runtime_error(std::string("Failed to parse COMM chunk with Kaitai: ") + e.what());
     }
 }
 
 void aiff_container::parse_ssnd_chunk(const chunk_info& chunk) {
+    // Always use Kaitai for parsing SSND chunk header
     m_io->seek(chunk.offset, seek_origin::set);
     
-    // Read SSND header
-    uint32_t offset, block_size;
-    m_io->read(&offset, 4);
-    m_io->read(&block_size, 4);
+    // Read just the SSND header (8 bytes), not the audio data
+    std::vector<uint8_t> header_data(8);
+    if (m_io->read(header_data.data(), 8) != 8) {
+        throw std::runtime_error("Failed to read SSND chunk header");
+    }
     
-    m_ssnd.data_offset = iff::swap32be(offset);
-    m_ssnd.block_size = iff::swap32be(block_size);
-    m_ssnd.data_size = chunk.size - 8;  // Subtract header size
+    // Create Kaitai stream from header buffer
+    std::string data_str(reinterpret_cast<const char*>(header_data.data()), header_data.size());
+    kaitai::kstream ks(data_str);
     
-    // Calculate absolute offset to audio data
-    m_audio_data_offset = chunk.offset + 8 + m_ssnd.data_offset;
+    try {
+        musac_kaitai::aiff_chunks_t::ssnd_chunk_t ssnd(&ks);
+        
+        m_ssnd.data_offset = ssnd.offset();
+        m_ssnd.block_size = ssnd.block_size();
+        m_ssnd.data_size = chunk.size - 8;  // Subtract header size
+        
+        // Calculate absolute offset to audio data
+        m_audio_data_offset = chunk.offset + 8 + m_ssnd.data_offset;
+    } catch (const std::exception& e) {
+        throw std::runtime_error(std::string("Failed to parse SSND chunk with Kaitai: ") + e.what());
+    }
 }
 
 iff::fourcc aiff_container::read_fourcc() {
@@ -202,6 +234,7 @@ iff::fourcc aiff_container::read_fourcc() {
     // Use from_bytes which is designed for 4-byte arrays
     return iff::fourcc::from_bytes(id);
 }
+
 
 double aiff_container::convert_extended_to_double(const uint8_t* extended) {
     // Convert 80-bit IEEE extended precision to double
@@ -344,6 +377,41 @@ bool aiff_container::seek_to_frame(uint64_t frame_position) {
     }
     
     m_current_frame = frame_position;
+    
+    // Actually seek the IO stream to the correct position
+    // Calculate byte position for the target frame
+    uint64_t byte_position = 0;
+    
+    if (m_comm.compression_type == COMP_IMA4) {
+        // IMA4: 34 bytes per 64 frames per channel
+        uint64_t blocks = frame_position / 64;
+        byte_position = blocks * 34 * m_comm.num_channels;
+    } else if (m_comm.compression_type == COMP_ULAW || m_comm.compression_type == COMP_ulaw ||
+               m_comm.compression_type == COMP_ALAW || m_comm.compression_type == COMP_alaw) {
+        // G.711 compression: 1 byte per sample
+        byte_position = frame_position * 1 * m_comm.num_channels;
+    } else {
+        // Uncompressed: direct calculation
+        if (m_comm.sample_size == 12) {
+            // 12-bit samples: 2 samples in 3 bytes
+            uint64_t sample_pairs = frame_position / 2;
+            uint64_t odd_sample = frame_position % 2;
+            byte_position = (sample_pairs * 3 + odd_sample * 2) * m_comm.num_channels;
+        } else {
+            size_t bytes_per_sample = (m_comm.sample_size + 7) / 8;
+            byte_position = frame_position * bytes_per_sample * m_comm.num_channels;
+        }
+    }
+    
+    // Don't seek past end of audio data
+    if (byte_position > m_ssnd.data_size) {
+        byte_position = m_ssnd.data_size;
+    }
+    
+    // Seek to the absolute position in the file
+    size_t abs_position = m_audio_data_offset + byte_position;
+    m_io->seek(abs_position, seek_origin::set);
+    
     return true;
 }
 
