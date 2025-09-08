@@ -288,3 +288,38 @@ message(STATUS "  Configuration complete!")
 message(STATUS "========================================")
 message(STATUS "")
 
+# ============================================================================
+# Installation and Packaging
+# ============================================================================
+
+# Configure package config files
+include(CMakePackageConfigHelpers)
+
+# Generate the config file from template
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/musacConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/musacConfig.cmake"
+    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/musac"
+)
+
+# Generate the version file
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/musacConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+# Install the config and version files
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/musacConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/musacConfigVersion.cmake"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/musac"
+)
+
+# Export targets
+install(EXPORT musacTargets
+    FILE musacTargets.cmake
+    NAMESPACE musac::
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/musac"
+)
+

@@ -156,3 +156,20 @@ target_compile_options(musac_backend_sdl2 PRIVATE ${MUSAC_WARNING_FLAGS})
 if (MUSAC_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
+
+# Installation targets
+install(TARGETS musac_backend_sdl2
+    EXPORT musacTargets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+# Backend headers are installed by SDL3 backend (shared headers)
+# Only install export header if not already installed by SDL3 backend
+if(MUSAC_BUILD_SHARED AND NOT MUSAC_BUILD_SDL3_BACKEND)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/export_musac_backend_sdl2.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/musac
+    )
+endif()

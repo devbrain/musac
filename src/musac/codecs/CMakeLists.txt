@@ -216,3 +216,25 @@ if (MUSAC_BUILD_SHARED)
 
     generate_export_header(musac_codecs EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/musac/codecs/${export_file_name})
 endif ()
+
+# Installation targets
+install(TARGETS musac_codecs
+    EXPORT musacTargets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+# Install codec headers
+install(DIRECTORY ${MUSAC_PROJECT_ROOT}/include/musac/codecs
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/musac
+    FILES_MATCHING PATTERN "*.hh" PATTERN "*.h"
+)
+
+# Install generated export header if shared build
+if(MUSAC_BUILD_SHARED)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/musac/codecs/export_musac_codecs.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/musac/codecs
+    )
+endif()

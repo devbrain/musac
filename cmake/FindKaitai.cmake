@@ -18,7 +18,7 @@ if(NOT KAITAI_COMPILER OR NOT EXISTS ${KAITAI_COMPILER})
     message(STATUS "Downloading portable Kaitai Struct compiler...")
     
     # Download the universal release that includes everything
-    set(KAITAI_VERSION "0.10")
+    set(KAITAI_VERSION "0.11")
     set(KAITAI_COMPILER_URL "https://github.com/kaitai-io/kaitai_struct_compiler/releases/download/${KAITAI_VERSION}/kaitai-struct-compiler-${KAITAI_VERSION}.zip")
     
     FetchContent_Declare(
@@ -55,10 +55,17 @@ else()
 endif()
 
 # Fetch C++ runtime library
+# IMPORTANT: Using master branch for 0.11 support
+# The Kaitai compiler 0.11 generates code that requires runtime 0.11+
+# However, as of December 2024, the runtime 0.11 hasn't been tagged yet
+# Once 0.11 is released, update GIT_TAG from "master" to "0.11"
+# 
+# Note: Version 0.10 had a bug where it generated std::string("ASCII") 
+# instead of "ASCII" for encoding parameters in bytes_to_str() calls
 FetchContent_Declare(
     kaitai_cpp_runtime
     GIT_REPOSITORY https://github.com/kaitai-io/kaitai_struct_cpp_stl_runtime.git
-    GIT_TAG        0.10.1
+    GIT_TAG        master
     GIT_SHALLOW    TRUE
 )
 
