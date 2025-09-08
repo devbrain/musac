@@ -69,7 +69,7 @@ buffer<uint8_t> audio_converter::convert(const audio_spec& src_spec,
     }
     
     // Complex conversion path - may need multiple stages
-    buffer<uint8_t> working_buffer(static_cast<unsigned int>(src_len));
+    buffer<uint8_t> working_buffer(src_len);
     std::memcpy(working_buffer.data(), src_data, src_len);
     audio_spec working_spec = src_spec;
     
@@ -121,7 +121,7 @@ void audio_converter::convert_in_place(audio_spec& spec,
         if ((spec.format == audio_format::s16le && dst_spec.format == audio_format::s16be) ||
             (spec.format == audio_format::s16be && dst_spec.format == audio_format::s16le)) {
             // Swap bytes for 16-bit samples
-            int16_t* samples = reinterpret_cast<int16_t*>(data);
+            auto* samples = reinterpret_cast<int16_t*>(data);
             size_t num_samples = len / sizeof(int16_t);
             for (size_t i = 0; i < num_samples; ++i) {
                 samples[i] = swap16be(samples[i]);
@@ -251,8 +251,8 @@ struct audio_converter::stream_converter::impl {
           output_consumed(0),
           sample_position(0.0) {
         // Initialize last samples to silence
-        for (size_t i = 0; i < 8; ++i) {
-            last_sample_value[i] = 0.0f;
+        for (float & i : last_sample_value) {
+            i = 0.0f;
         }
     }
     
@@ -418,8 +418,8 @@ void audio_converter::stream_converter::reset() {
     m_pimpl->sample_position = 0.0;
     
     // Reset last sample values to silence
-    for (size_t i = 0; i < 8; ++i) {
-        m_pimpl->last_sample_value[i] = 0.0f;
+    for (float & i : m_pimpl->last_sample_value) {
+        i = 0.0f;
     }
     
     // Clear buffers (optional, but ensures no stale data)
