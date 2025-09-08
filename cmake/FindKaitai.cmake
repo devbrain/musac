@@ -25,6 +25,7 @@ if(NOT KAITAI_COMPILER OR NOT EXISTS ${KAITAI_COMPILER})
         kaitai_compiler_download
         URL ${KAITAI_COMPILER_URL}
         SOURCE_DIR ${CMAKE_BINARY_DIR}/kaitai-compiler
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
     
     FetchContent_MakeAvailable(kaitai_compiler_download)
@@ -61,9 +62,12 @@ FetchContent_Declare(
     GIT_SHALLOW    TRUE
 )
 
+# Disable building tests for Kaitai runtime
+set(BUILD_TESTS OFF CACHE BOOL "Disable Kaitai tests" FORCE)
+
 FetchContent_GetProperties(kaitai_cpp_runtime)
 if(NOT kaitai_cpp_runtime_POPULATED)
-    FetchContent_Populate(kaitai_cpp_runtime)
+    FetchContent_MakeAvailable(kaitai_cpp_runtime)
     
     # Create runtime library target
     add_library(kaitai_runtime STATIC

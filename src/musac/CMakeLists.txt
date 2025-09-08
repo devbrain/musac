@@ -40,8 +40,10 @@ set(MUSAC_SOURCES
         audio_mixer.hh
         ${MUSAC_PROJECT_ROOT}/include/musac/audio_device_data.hh
 
-
-
+        # Resampler (private implementation)
+        resampler/resampler_speex.cc
+        resampler/resampler_speex.hh
+        resampler/speex/resample.c
 )
 
 add_library(musac ${LIB_BUILD_TYPE} ${MUSAC_SOURCES})

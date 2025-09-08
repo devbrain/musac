@@ -6,13 +6,7 @@
 
 #include <musac/audio_system.hh>
 #include <musac/test_data/loader.hh>
-
-// Backend includes
-#ifdef MUSAC_HAS_SDL3_BACKEND
-    #include <musac_backends/sdl3/sdl3_backend.hh>
-#elif defined(MUSAC_HAS_SDL2_BACKEND)
-    #include <musac_backends/sdl2/sdl2_backend.hh>
-#endif
+#include "../example_common.hh"
 
 #include <imgui.h>
 
@@ -200,14 +194,8 @@ bool ImGuiPlayer::init_audio() {
         // Initialize test data loader
         test_data::loader::init();
         
-        // Create backend
-#ifdef MUSAC_HAS_SDL3_BACKEND
-        m_backend = create_sdl3_backend();
-#elif defined(MUSAC_HAS_SDL2_BACKEND)
-        m_backend = create_sdl2_backend();
-#else
-        #error "No SDL backend available"
-#endif
+        // Create backend using common helper
+        m_backend = musac::examples::create_default_backend();
         
         if (!m_backend) {
             std::cerr << "Failed to create audio backend\n";

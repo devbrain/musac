@@ -91,27 +91,27 @@ private:
 // File stream implementation
 class file_stream : public io_stream {
 public:
-    file_stream(const char* filename, const char* mode) {
-        std::ios::openmode open_mode = std::ios::binary;
+    file_stream(const char* filename, const char* mode) 
+        : m_open_mode(std::ios::binary) {
         
         if (std::strchr(mode, 'r')) {
-            open_mode |= std::ios::in;
+            m_open_mode |= std::ios::in;
             if (std::strchr(mode, '+')) {
-                open_mode |= std::ios::out;
+                m_open_mode |= std::ios::out;
             }
         } else if (std::strchr(mode, 'w')) {
-            open_mode |= std::ios::out | std::ios::trunc;
+            m_open_mode |= std::ios::out | std::ios::trunc;
             if (std::strchr(mode, '+')) {
-                open_mode |= std::ios::in;
+                m_open_mode |= std::ios::in;
             }
         } else if (std::strchr(mode, 'a')) {
-            open_mode |= std::ios::out | std::ios::app;
+            m_open_mode |= std::ios::out | std::ios::app;
             if (std::strchr(mode, '+')) {
-                open_mode |= std::ios::in;
+                m_open_mode |= std::ios::in;
             }
         }
         
-        m_file.open(filename, open_mode);
+        m_file.open(filename, m_open_mode);
     }
     
     size_t read(void* ptr, size_t size_bytes) override {
@@ -142,8 +142,19 @@ public:
             case seek_origin::end: dir = std::ios::end; break;
         }
         
+        m_file.clear(); // Clear any error flags before seeking
         m_file.seekg(offset, dir);
-        m_file.seekp(offset, dir);
+        
+        // Only seek write position if file is open for writing
+        if (m_open_mode & std::ios::out) {
+            m_file.seekp(offset, dir);
+        }
+        
+        // Check if seek was successful
+        if (m_file.fail()) {
+            return -1;
+        }
+        
         return tell();
     }
     
@@ -175,6 +186,7 @@ public:
     
 private:
     mutable std::fstream m_file;
+    std::ios::openmode m_open_mode;
 };
 
 // Convenience read functions implementation

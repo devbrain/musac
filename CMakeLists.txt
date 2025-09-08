@@ -154,7 +154,7 @@ if(MUSAC_BUILD_EXAMPLES)
     add_subdirectory(example)
 endif()
 add_subdirectory(unittest)
-add_subdirectory(tools)
+
 
 # Language bindings
 if(MUSAC_BUILD_BINDINGS)

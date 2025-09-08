@@ -310,17 +310,15 @@ size_t aiff_container::read_audio_data(uint8_t* buffer, size_t bytes_to_read) {
         current_byte = m_current_frame * 1 * m_comm.num_channels;
     } else {
         // Uncompressed: direct calculation
-        // Special case for 12-bit samples which are packed
+        // Note: 12-bit samples in AIFF are stored in 16-bit containers, not packed
+        size_t bytes_per_sample = (m_comm.sample_size + 7) / 8;
+        
+        // Special handling for 12-bit: they use 2 bytes per sample
         if (m_comm.sample_size == 12) {
-            // 12-bit samples: 2 samples in 3 bytes
-            // Calculate position based on packed format
-            uint64_t sample_pairs = m_current_frame / 2;
-            uint64_t odd_sample = m_current_frame % 2;
-            current_byte = (sample_pairs * 3 + odd_sample * 2) * m_comm.num_channels;
-        } else {
-            size_t bytes_per_sample = (m_comm.sample_size + 7) / 8;
-            current_byte = m_current_frame * bytes_per_sample * m_comm.num_channels;
+            bytes_per_sample = 2;
         }
+        
+        current_byte = m_current_frame * bytes_per_sample * m_comm.num_channels;
     }
     
     // Don't read past end of audio data
@@ -356,16 +354,16 @@ size_t aiff_container::read_audio_data(uint8_t* buffer, size_t bytes_to_read) {
         m_current_frame += frames_read;
     } else {
         // Uncompressed: update by samples
+        // Note: 12-bit samples in AIFF are stored in 16-bit containers, not packed
+        size_t bytes_per_sample = (m_comm.sample_size + 7) / 8;
+        
+        // Special handling for 12-bit: they use 2 bytes per sample
         if (m_comm.sample_size == 12) {
-            // 12-bit samples: 2 samples in 3 bytes
-            // Each 3 bytes represents 2 frames (for mono) or 2 frames worth of data (for stereo)
-            size_t frames_read = (bytes_read * 2) / (3 * m_comm.num_channels);
-            m_current_frame += frames_read;
-        } else {
-            size_t bytes_per_sample = (m_comm.sample_size + 7) / 8;
-            size_t frames_read = bytes_read / (bytes_per_sample * m_comm.num_channels);
-            m_current_frame += frames_read;
+            bytes_per_sample = 2;
         }
+        
+        size_t frames_read = bytes_read / (bytes_per_sample * m_comm.num_channels);
+        m_current_frame += frames_read;
     }
     
     return bytes_read;
@@ -392,15 +390,15 @@ bool aiff_container::seek_to_frame(uint64_t frame_position) {
         byte_position = frame_position * 1 * m_comm.num_channels;
     } else {
         // Uncompressed: direct calculation
+        // Note: 12-bit samples in AIFF are stored in 16-bit containers, not packed
+        size_t bytes_per_sample = (m_comm.sample_size + 7) / 8;
+        
+        // Special handling for 12-bit: they use 2 bytes per sample
         if (m_comm.sample_size == 12) {
-            // 12-bit samples: 2 samples in 3 bytes
-            uint64_t sample_pairs = frame_position / 2;
-            uint64_t odd_sample = frame_position % 2;
-            byte_position = (sample_pairs * 3 + odd_sample * 2) * m_comm.num_channels;
-        } else {
-            size_t bytes_per_sample = (m_comm.sample_size + 7) / 8;
-            byte_position = frame_position * bytes_per_sample * m_comm.num_channels;
+            bytes_per_sample = 2;
         }
+        
+        byte_position = frame_position * bytes_per_sample * m_comm.num_channels;
     }
     
     // Don't seek past end of audio data

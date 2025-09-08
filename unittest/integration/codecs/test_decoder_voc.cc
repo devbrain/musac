@@ -57,8 +57,8 @@ TEST_SUITE("Codecs::DecoderVOC") {
         SUBCASE("Successfully opens") {
             CHECK_NOTHROW(decoder.open(io.get()));
             CHECK(decoder.is_open());
-            CHECK(decoder.get_channels() == 1);  // Converted to mono
-            CHECK(decoder.get_rate() == 44100);  // Converted to standard rate
+            CHECK(decoder.get_channels() == 1);  // VOC is mono
+            CHECK(decoder.get_rate() == 22222);  // Rate from createTestVOC (256-45)
         }
     }
     
@@ -113,7 +113,7 @@ TEST_SUITE("Codecs::DecoderVOC") {
         CHECK_NOTHROW(decoder.open(io.get()));
         CHECK(decoder.is_open());
         CHECK(decoder.get_channels() == 1);  // VOC is mono
-        CHECK(decoder.get_rate() == 44100);  // Converted to standard rate
+        CHECK(decoder.get_rate() == 11111);  // Original sample rate from file
         
         // Decode some samples
         float buffer[1000];

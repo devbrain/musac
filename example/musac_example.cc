@@ -10,31 +10,15 @@
 #include <musac/test_data/loader.hh>
 #include <musac/stream.hh>
 #include <musac/sdk/audio_backend.hh>
-#ifdef MUSAC_HAS_SDL3_BACKEND
-#include <musac_backends/sdl3/sdl3_backend.hh>
-#elif MUSAC_HAS_SDL2_BACKEND
-#include <musac_backends/sdl2/sdl2_backend.hh>
-#endif
+#include "example_common.hh"
 
 
 int main(int argc, char* argv[]) {
     using namespace musac;
 
-    // Create backend explicitly using v2 API
-    std::shared_ptr<audio_backend> backend;
-    
-#ifdef MUSAC_HAS_SDL3_BACKEND
-    // Use SDL3 backend for actual audio output
-    backend = create_sdl3_backend();
-    std::cout << "Using SDL3 backend for audio output" << std::endl;
-#elif MUSAC_HAS_SDL2_BACKEND
-    // Use SDL2 backend for actual audio output
-    backend = create_sdl2_backend();
-    std::cout << "Using SDL2 backend for audio output" << std::endl;
-#else
-    std::cerr << "No audio backend available" << std::endl;
-    return 1;
-#endif
+    // Create backend using common helper
+    auto backend = musac::examples::create_default_backend();
+    std::cout << "Using " << musac::examples::get_backend_name() << " backend for audio output" << std::endl;
 
     // Initialize test data loader (creates codec registry internally)
     musac::test_data::loader::init();
