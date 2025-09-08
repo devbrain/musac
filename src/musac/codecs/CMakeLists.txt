@@ -58,6 +58,12 @@ set(codecs_sources
         aiff/codecs/float_codec.cc
         aiff/codecs/g711_codec.cc
         
+        # Common codec components shared between decoders
+        common/g711_codec.cc
+        ${CODECS_INCLUDE}common/g711_codec.hh
+        common/adpcm_codec.cc
+        ${CODECS_INCLUDE}common/adpcm_codec.hh
+        
         decoder_8svx.cc
         ${CODECS_INCLUDE}decoder_8svx.hh
         decoder_cmf.cc

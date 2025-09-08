@@ -5,8 +5,10 @@
 #include <musac/audio_source.hh>
 #include <musac/audio_system.hh>
 #include <musac/error.hh>
+#include <musac/sdk/audio_converter.hh>
+#include "resampler/resampler_speex.hh"
 #include <failsafe/failsafe.hh>
-#include <iostream>
+#include <failsafe/logger.hh>
 musac::audio_source::audio_source(std::unique_ptr <decoder> decoder_obj,
                                   std::unique_ptr <resampler> resampler_obj,
                                   std::unique_ptr<musac::io_stream> rwops)
@@ -99,6 +101,22 @@ void musac::audio_source::open(sample_rate_t rate, channels_t channels, size_t f
     } catch (const std::exception& e) {
         // Re-throw with more context
         THROW_RUNTIME("Failed to open audio decoder: ", e.what());
+    }
+    
+    // Check if we need automatic resampling
+    sample_rate_t decoder_rate = m_decoder->get_rate();
+    if (decoder_rate != rate && !m_resampler) {
+        // Automatically create a resampler for sample rate conversion
+        try {
+            m_resampler = std::make_unique<resampler_speex>(5); // Default quality = 5
+            m_resampler->set_decoder(m_decoder);
+            LOG_INFO("audio_source", "Automatic resampling enabled:", decoder_rate, 
+                     "Hz →", rate, "Hz");
+        } catch (const std::exception& e) {
+            LOG_WARN("audio_source", "Failed to create resampler for sample rate conversion from", 
+                     decoder_rate, "Hz to", rate, "Hz:", e.what());
+            LOG_WARN("audio_source", "Playback speed will be incorrect.");
+        }
     }
     
     if (m_resampler) {

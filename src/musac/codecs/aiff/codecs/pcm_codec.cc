@@ -37,8 +37,8 @@ public:
         size_t samples_available;
         
         if (m_params.bits_per_sample == 12) {
-            // 12-bit samples are packed: 2 samples in 3 bytes
-            samples_available = (input_bytes * 2) / 3;
+            // 12-bit samples in AIFF are stored in 16-bit containers (not packed)
+            samples_available = input_bytes / 2;
         } else {
             size_t bytes_per_sample = (m_params.bits_per_sample + 7) / 8;
             samples_available = input_bytes / bytes_per_sample;
@@ -57,8 +57,8 @@ public:
             case 32:
                 return decode_32bit(input, output, samples_to_decode);
             case 12:
-                // Pass input_bytes directly since decode_12bit_packed needs it for bounds checking
-                return decode_12bit_packed(input, input_bytes, output, samples_to_decode);
+                // 12-bit samples are stored in 16-bit containers
+                return decode_12bit_in_16bit(input, output, samples_to_decode);
             default:
                 throw std::runtime_error("Unsupported PCM bit depth: " + std::to_string(m_params.bits_per_sample));
         }
@@ -66,16 +66,16 @@ public:
     
     size_t get_input_bytes_for_samples(size_t samples) const override {
         if (m_params.bits_per_sample == 12) {
-            // 12-bit samples are packed: 2 samples in 3 bytes
-            return (samples * 3 + 1) / 2;
+            // 12-bit samples in AIFF are stored in 16-bit containers
+            return samples * 2;
         }
         return samples * ((m_params.bits_per_sample + 7) / 8);
     }
     
     size_t get_samples_from_bytes(size_t bytes) const override {
         if (m_params.bits_per_sample == 12) {
-            // 12-bit samples: 2 samples per 3 bytes
-            return (bytes * 2) / 3;
+            // 12-bit samples in AIFF: 1 sample per 2 bytes
+            return bytes / 2;
         }
         return bytes / ((m_params.bits_per_sample + 7) / 8);
     }
@@ -133,45 +133,23 @@ private:
         return samples;
     }
     
-    size_t decode_12bit_packed(const uint8_t* input, size_t input_bytes, float* output, size_t samples) {
-        // 12-bit samples are packed: 2 samples in 3 bytes
-        // Format (big-endian):
-        // First sample: byte0 + high nibble of byte1
-        // Second sample: low nibble of byte1 + byte2
+    size_t decode_12bit_in_16bit(const uint8_t* input, float* output, size_t samples) {
+        // 12-bit samples in AIFF are stored in 16-bit big-endian containers
+        // Despite being labeled as 12-bit, the actual data appears to use the full
+        // 16-bit range based on comparison with ffmpeg output.
+        // This might be because the 12-bit samples were scaled up to use the full
+        // 16-bit range for better precision.
+        const uint16_t* input16 = reinterpret_cast<const uint16_t*>(input);
         
-        size_t output_idx = 0;
-        size_t input_idx = 0;
-        
-        while (output_idx < samples && input_idx + 2 <= input_bytes) {
-            // First sample: byte0 + high nibble of byte1
-            int32_t sample1 = (static_cast<int32_t>(input[input_idx]) << 24) |
-                             (static_cast<int32_t>(input[input_idx + 1] & 0xF0) << 16);
-            sample1 = sample1 >> 20;  // Shift to get 12-bit value with sign extension
-            if (sample1 & 0x800) sample1 |= 0xFFFFF000;  // Sign extend
-            output[output_idx++] = static_cast<float>(sample1) / 2048.0f;
+        for (size_t i = 0; i < samples; ++i) {
+            // Get 16-bit big-endian value and treat as regular 16-bit PCM
+            int16_t sample = static_cast<int16_t>(iff::swap16be(input16[i]));
             
-            if (output_idx >= samples) break;
-            
-            // Second sample: low nibble of byte1 + byte2
-            int32_t sample2 = (static_cast<int32_t>(input[input_idx + 1] & 0x0F) << 28) |
-                             (static_cast<int32_t>(input[input_idx + 2]) << 20);
-            sample2 = sample2 >> 20;  // Shift to get 12-bit value with sign extension
-            if (sample2 & 0x800) sample2 |= 0xFFFFF000;  // Sign extend
-            output[output_idx++] = static_cast<float>(sample2) / 2048.0f;
-            
-            input_idx += 3;
+            // Convert to float using 16-bit range to match ffmpeg output
+            output[i] = sample / 32768.0f;
         }
         
-        // Handle last sample if there's an odd number and we have at least 2 bytes left
-        if (output_idx < samples && input_idx + 1 <= input_bytes) {
-            int32_t sample1 = (static_cast<int32_t>(input[input_idx]) << 24) |
-                             (static_cast<int32_t>(input[input_idx + 1] & 0xF0) << 16);
-            sample1 = sample1 >> 20;  // Shift to get 12-bit value with sign extension
-            if (sample1 & 0x800) sample1 |= 0xFFFFF000;  // Sign extend
-            output[output_idx++] = static_cast<float>(sample1) / 2048.0f;
-        }
-        
-        return output_idx;
+        return samples;
     }
     
 private:

@@ -199,7 +199,7 @@ TEST_SUITE("Decoders::8SVX") {
             // Decode some data
             std::vector<float> output(256);
             bool more = true;
-            decoder.decode(output.data(), output.size(), more, 1);
+            (void)decoder.decode(output.data(), output.size(), more, 1);
             
             // Seek to beginning
             CHECK_NOTHROW(decoder.rewind());

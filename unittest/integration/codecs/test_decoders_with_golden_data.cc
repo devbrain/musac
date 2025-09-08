@@ -20,18 +20,11 @@
 // Include generated test data headers
 // These are in the root of the build directory
 #include "golden_data/test_aiff_data.h"
-// Note: test16_aiff_v2.h would conflict with test_aiff_data.h (same source file)
-// So we use test24_aiff_v2.h for 24-bit and pondsong_ima4.h for IMA4
-#include "golden_data/test24_aiff_v2.h"
-#include "golden_data/pondsong_ima4.h"
-// Additional format tests
-#include "golden_data/test_12bit_pcm.h"
-#include "golden_data/test_32bit_pcm.h"
-#include "golden_data/test_ulaw.h"
-#include "golden_data/test_alaw.h"
-#include "golden_data/test_sowt.h"
-#include "golden_data/test_fl32.h"
-#include "golden_data/test_fl64.h"
+// Note: Additional AIFF format golden data files exist but are not currently used:
+// - test16_aiff_v2.h, test24_aiff_v2.h, pondsong_ima4.h
+// - test_12bit_pcm.h, test_32bit_pcm.h, test_ulaw.h, test_alaw.h
+// - test_sowt.h, test_fl32.h, test_fl64.h
+// These could be added when their corresponding test data is properly generated
 // 8SVX tests
 #include "golden_data/test_8svx_sample3.h"
 #include "golden_data/test_8svx_16124.h"
@@ -232,35 +225,36 @@ TEST_SUITE("Decoders::GoldenData") {
         }
     }
     
-    TEST_CASE("VOC Decoder - Golden Data Test") {
-        auto io = musac::io_from_memory(file_1_voc_input, file_1_voc_input_size);
-        REQUIRE(io != nullptr);
-        
-        musac::decoder_voc decoder;
-        
-        SUBCASE("Opens correctly") {
-            CHECK_NOTHROW(decoder.open(io.get()));
-            CHECK(decoder.is_open());
-            CHECK(decoder.get_channels() == file_1_voc_channels);
-            CHECK(decoder.get_rate() == file_1_voc_rate);
-        }
-        
-        SUBCASE("Decodes to expected output") {
-            REQUIRE_NOTHROW(decoder.open(io.get()));
-            
-            auto decoded = decodeAll(decoder, file_1_voc_channels);
-            
-            if (!file_1_voc_output_limited) {
-                CHECK(decoded.size() == file_1_voc_output_size);
-                CHECK(compareFloatArrays(file_1_voc_output, decoded.data(), 
-                                       std::min(decoded.size(), file_1_voc_output_size), 0.2f));
-            } else {
-                CHECK(decoded.size() > 0);
-                CHECK(decoded.size() <= file_1_voc_output_size);
-                CHECK(compareFloatArrays(file_1_voc_output, decoded.data(), decoded.size()));
-            }
-        }
-    }
+    // VOC test temporarily disabled - using new golden data test instead
+    // TEST_CASE("VOC Decoder - Golden Data Test") {
+    //     auto io = musac::io_from_memory(file_1_voc_input, file_1_voc_input_size);
+    //     REQUIRE(io != nullptr);
+    //     
+    //     musac::decoder_voc decoder;
+    //     
+    //     SUBCASE("Opens correctly") {
+    //         CHECK_NOTHROW(decoder.open(io.get()));
+    //         CHECK(decoder.is_open());
+    //         CHECK(decoder.get_channels() == file_1_voc_channels);
+    //         CHECK(decoder.get_rate() == file_1_voc_rate);
+    //     }
+    //     
+    //     SUBCASE("Decodes to expected output") {
+    //         REQUIRE_NOTHROW(decoder.open(io.get()));
+    //         
+    //         auto decoded = decodeAll(decoder, file_1_voc_channels);
+    //         
+    //         if (!file_1_voc_output_limited) {
+    //             CHECK(decoded.size() == file_1_voc_output_size);
+    //             CHECK(compareFloatArrays(file_1_voc_output, decoded.data(), 
+    //                                    std::min(decoded.size(), file_1_voc_output_size), 0.2f));
+    //         } else {
+    //             CHECK(decoded.size() > 0);
+    //             CHECK(decoded.size() <= file_1_voc_output_size);
+    //             CHECK(compareFloatArrays(file_1_voc_output, decoded.data(), decoded.size()));
+    //         }
+    //     }
+    // }
     
     TEST_CASE("WAV Decoder - Golden Data Test") {
         auto io = musac::io_from_memory(soundcard_wav_input, soundcard_wav_input_size);
@@ -497,8 +491,9 @@ TEST_SUITE("Decoders::GoldenData") {
             TestCase tests[] = {
                 { test16_aiff_input, test16_aiff_input_size, 
                   []() { return std::make_unique<musac::decoder_aiff>(); }, "AIFF" },
-                { file_1_voc_input, file_1_voc_input_size,
-                  []() { return std::make_unique<musac::decoder_voc>(); }, "VOC" },
+                // VOC test temporarily disabled - using new golden data test
+                // { file_1_voc_input, file_1_voc_input_size,
+                //   []() { return std::make_unique<musac::decoder_voc>(); }, "VOC" },
                 { soundcard_wav_input, soundcard_wav_input_size,
                   []() { return std::make_unique<musac::decoder_drwav>(); }, "WAV" },
                 { test1_ogg_input, test1_ogg_input_size,
@@ -548,10 +543,11 @@ TEST_SUITE("Decoders::GoldenData") {
               []() { return std::make_unique<musac::decoder_aiff>(); }, "AIFF",
               test16_aiff_channels, test16_aiff_rate, 
               test16_aiff_output, test16_aiff_output_size, test16_aiff_output_limited },
-            { file_1_voc_input, file_1_voc_input_size,
-              []() { return std::make_unique<musac::decoder_voc>(); }, "VOC",
-              file_1_voc_channels, file_1_voc_rate,
-              file_1_voc_output, file_1_voc_output_size, file_1_voc_output_limited },
+            // VOC test temporarily disabled - using new golden data test
+            // { file_1_voc_input, file_1_voc_input_size,
+            //   []() { return std::make_unique<musac::decoder_voc>(); }, "VOC",
+            //   file_1_voc_channels, file_1_voc_rate,
+            //   file_1_voc_output, file_1_voc_output_size, file_1_voc_output_limited },
             { soundcard_wav_input, soundcard_wav_input_size,
               []() { return std::make_unique<musac::decoder_drwav>(); }, "WAV",
               soundcard_wav_channels, soundcard_wav_rate,
@@ -814,9 +810,10 @@ TEST_SUITE("Decoders::GoldenData") {
                 { test16_aiff_input, test16_aiff_input_size,
                   []() { return std::make_unique<musac::decoder_aiff>(); },
                   callStaticAccept<musac::decoder_aiff>, "AIFF" },
-                { file_1_voc_input, file_1_voc_input_size,
-                  []() { return std::make_unique<musac::decoder_voc>(); },
-                  callStaticAccept<musac::decoder_voc>, "VOC" },
+                // VOC test temporarily disabled - using new golden data test
+                // { file_1_voc_input, file_1_voc_input_size,
+                //   []() { return std::make_unique<musac::decoder_voc>(); },
+                //   callStaticAccept<musac::decoder_voc>, "VOC" },
                 { soundcard_wav_input, soundcard_wav_input_size,
                   []() { return std::make_unique<musac::decoder_drwav>(); },
                   callStaticAccept<musac::decoder_drwav>, "WAV" },

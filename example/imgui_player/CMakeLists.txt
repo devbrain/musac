@@ -103,7 +103,7 @@ if((MUSAC_BUILD_SDL3_BACKEND AND TARGET musac_backend_sdl3) OR
             musac_backend_sdl3
         )
         target_compile_definitions(imgui_player PRIVATE 
-            MUSAC_HAS_SDL3_BACKEND
+            MUSAC_USE_SDL3_BACKEND
             IMGUI_USE_SDL3
         )
         
@@ -113,7 +113,7 @@ if((MUSAC_BUILD_SDL3_BACKEND AND TARGET musac_backend_sdl3) OR
             musac_backend_sdl2
         )
         target_compile_definitions(imgui_player PRIVATE 
-            MUSAC_HAS_SDL2_BACKEND
+            MUSAC_USE_SDL2_BACKEND
             IMGUI_USE_SDL2
         )
     endif()

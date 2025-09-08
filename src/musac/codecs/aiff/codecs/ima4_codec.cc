@@ -86,9 +86,11 @@ public:
             const uint8_t* ch_src = src + ch * 34;
             int16_t* ch_dst = dst + ch * 64;
             
-            // Read header
-            int16_t initial_predictor = static_cast<int16_t>(iff::swap16be(*reinterpret_cast<const uint16_t*>(ch_src)));
-            int8_t initial_index = ch_src[2] & 0x7F;  // Only lower 7 bits are valid
+            // Read header (2-byte preamble)
+            // The preamble contains both predictor and step index packed together
+            uint16_t preamble = iff::swap16be(*reinterpret_cast<const uint16_t*>(ch_src));
+            int16_t initial_predictor = static_cast<int16_t>(preamble & 0xFF80);  // Upper 9 bits
+            int8_t initial_index = preamble & 0x7F;  // Lower 7 bits
             
             // Reset decoder state
             reset(initial_predictor, initial_index);
@@ -97,15 +99,20 @@ public:
             ch_dst[0] = initial_predictor;
             
             // Decode 63 samples (stored as nibbles)
-            const uint8_t* data = ch_src + 4;
+            // Header is 2 bytes, so data starts at offset 2
+            const uint8_t* data = ch_src + 2;
+            
+            // Apple QuickTime IMA4: nibbles are decoded bottom-to-top (low nibble first)
+            // This is opposite of standard IMA ADPCM!
+            // 32 bytes contain 64 nibbles, but we only use 63 (plus the initial predictor = 64 total)
             for (int i = 0; i < 31; ++i) {
                 uint8_t byte = data[i];
-                // High nibble first (big-endian nibble order) - MUST match v2!
-                ch_dst[i * 2 + 1] = decode_sample((byte >> 4) & 0x0F);
-                ch_dst[i * 2 + 2] = decode_sample(byte & 0x0F);
+                // Low nibble first, then high nibble
+                ch_dst[i * 2 + 1] = decode_sample(byte & 0x0F);
+                ch_dst[i * 2 + 2] = decode_sample((byte >> 4) & 0x0F);
             }
-            // Last byte has only one sample
-            ch_dst[63] = decode_sample((data[31] >> 4) & 0x0F);
+            // Last byte (byte 31) has only one nibble used (the low nibble)
+            ch_dst[63] = decode_sample(data[31] & 0x0F);
         }
     }
 };

@@ -2,11 +2,7 @@
 #include <musac/audio_device.hh>
 #include <musac/pc_speaker_stream.hh>
 #include <musac/sdk/audio_backend.hh>
-#ifdef MUSAC_HAS_SDL3_BACKEND
-#include <musac_backends/sdl3/sdl3_backend.hh>
-#elif MUSAC_HAS_SDL2_BACKEND
-#include <musac_backends/sdl2/sdl2_backend.hh>
-#endif
+#include "example_common.hh"
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -124,19 +120,9 @@ void play_mml_examples(musac::pc_speaker_stream& speaker,
 
 int main() {
     try {
-        // Create backend
-        std::shared_ptr<musac::audio_backend> backend;
-        
-#ifdef MUSAC_HAS_SDL3_BACKEND
-        backend = musac::create_sdl3_backend();
-        std::cout << "Using SDL3 backend for audio output\n";
-#elif MUSAC_HAS_SDL2_BACKEND
-        backend = musac::create_sdl2_backend();
-        std::cout << "Using SDL2 backend for audio output\n";
-#else
-        std::cerr << "No audio backend available\n";
-        return 1;
-#endif
+        // Create backend using common helper
+        auto backend = musac::examples::create_default_backend();
+        std::cout << "Using " << musac::examples::get_backend_name() << " backend for audio output\n";
         
         // Initialize audio system
         if (!musac::audio_system::init(backend)) {

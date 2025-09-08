@@ -79,20 +79,17 @@ private:
         size_t samples_available = input_bytes / 8;
         size_t samples_to_decode = std::min(samples_available, output_samples);
         
+        const uint64_t* input64 = reinterpret_cast<const uint64_t*>(input);
+        
         for (size_t i = 0; i < samples_to_decode; ++i) {
             // Read 64-bit big-endian double
-            uint64_t bits = 0;
-            for (int j = 0; j < 8; ++j) {
-                bits = (bits << 8) | input[i * 8 + j];
-            }
+            uint64_t bits = iff::swap64be(input64[i]);
             
-            // Convert from big-endian if on little-endian system
-            if (iff::is_little_endian) {
-                bits = iff::swap64(bits);
-            }
-            
+            // Interpret as double
             double value;
             std::memcpy(&value, &bits, sizeof(double));
+            
+            // Convert to float (with precision loss)
             output[i] = static_cast<float>(value);
         }
         

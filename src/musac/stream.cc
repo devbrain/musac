@@ -325,15 +325,9 @@ namespace musac {
                     // LOG_INFO("AudioCallback", "Stream reached end, decoded", cur_pos - before_decode,
                     //          "samples, wanted", out_len_samples - before_decode);
 
-                    // Attempt to rewind; if unsupported, leave remainder silent
-                    bool can_rewind = stream->m_pimpl->m_audio_source.rewind();
-                    if (!can_rewind) {
-                        // LOG_INFO("AudioCallback", "Source cannot rewind");
-                        // source is non-seekable: break to leave silence
-                        break;
-                    }
-                    // Only count loops if we actually rewound
+                    // Check if we should loop
                     if (stream->m_pimpl->m_wanted_iterations != 0) {
+                        // We have a specific number of iterations requested
                         ++stream->m_pimpl->m_current_iteration;
                         // LOG_INFO("AudioCallback", "Iteration", stream->m_pimpl->m_current_iteration,
                         //          "of", stream->m_pimpl->m_wanted_iterations);
@@ -344,8 +338,19 @@ namespace musac {
                             has_finished = true;
                             break;
                         }
-                        has_looped = true;
                     }
+                    
+                    // Try to rewind for the next iteration
+                    bool can_rewind = stream->m_pimpl->m_audio_source.rewind();
+                    if (!can_rewind) {
+                        // LOG_INFO("AudioCallback", "Source cannot rewind");
+                        // source is non-seekable: stop playback
+                        stream->m_pimpl->m_is_playing = false;
+                        impl::s_mixer.remove_stream(stream->m_pimpl->m_token);
+                        has_finished = true;
+                        break;
+                    }
+                    has_looped = true;
                 }
             }
 
