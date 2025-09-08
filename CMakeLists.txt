@@ -71,6 +71,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
             -Wundef         # Warn about undefined identifiers in #if
             -Wunused        # Warn about unused entities
             -Wzero-as-null-pointer-constant # Warn about using 0 as nullptr
+            -Wstringop-overflow
     )
 
     if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
