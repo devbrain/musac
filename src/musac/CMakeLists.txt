@@ -75,3 +75,25 @@ if (MUSAC_BUILD_SHARED)
     )
 endif()
 
+# Installation targets
+install(TARGETS musac
+    EXPORT musacTargets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+# Install headers
+install(DIRECTORY ${MUSAC_PROJECT_ROOT}/include/musac
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.hh" PATTERN "*.h"
+)
+
+# Install generated export header if shared build
+if(MUSAC_BUILD_SHARED)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/musac/export_musac.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/musac
+    )
+endif()
+

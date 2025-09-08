@@ -1,0 +1,65 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# Find dependencies
+if(@MUSAC_BUILD_SDL3_BACKEND@)
+    find_dependency(SDL3)
+endif()
+
+if(@MUSAC_BUILD_SDL2_BACKEND@)
+    find_dependency(SDL2)
+endif()
+
+# Find failsafe package (required dependency)
+if(NOT TARGET failsafe::failsafe)
+    # Try to find installed failsafe first
+    find_package(failsafe QUIET)
+    
+    # If not found, create an interface target to satisfy the dependency
+    if(NOT failsafe_FOUND)
+        add_library(failsafe::failsafe INTERFACE IMPORTED)
+        set_target_properties(failsafe::failsafe PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_LIST_DIR}/../../../include"
+        )
+    endif()
+endif()
+
+# Include the exported targets
+include("${CMAKE_CURRENT_LIST_DIR}/musacTargets.cmake")
+
+# Provide the libraries for backwards compatibility
+set(musac_LIBRARIES musac::musac musac::musac_sdk musac::musac_codecs)
+set(musac_INCLUDE_DIRS 
+    $<TARGET_PROPERTY:musac::musac,INTERFACE_INCLUDE_DIRECTORIES>
+    $<TARGET_PROPERTY:musac::musac_sdk,INTERFACE_INCLUDE_DIRECTORIES>
+    $<TARGET_PROPERTY:musac::musac_codecs,INTERFACE_INCLUDE_DIRECTORIES>
+)
+
+# Check required components
+set(musac_FOUND TRUE)
+foreach(component ${musac_FIND_COMPONENTS})
+    if(component STREQUAL "SDL3Backend")
+        if(NOT @MUSAC_BUILD_SDL3_BACKEND@)
+            set(musac_SDL3Backend_FOUND FALSE)
+            if(musac_FIND_REQUIRED_SDL3Backend)
+                set(musac_FOUND FALSE)
+                set(musac_NOT_FOUND_MESSAGE "SDL3 backend not built")
+            endif()
+        else()
+            set(musac_SDL3Backend_FOUND TRUE)
+        endif()
+    elseif(component STREQUAL "SDL2Backend")
+        if(NOT @MUSAC_BUILD_SDL2_BACKEND@)
+            set(musac_SDL2Backend_FOUND FALSE)
+            if(musac_FIND_REQUIRED_SDL2Backend)
+                set(musac_FOUND FALSE)
+                set(musac_NOT_FOUND_MESSAGE "SDL2 backend not built")
+            endif()
+        else()
+            set(musac_SDL2Backend_FOUND TRUE)
+        endif()
+    endif()
+endforeach()
+
+check_required_components(musac)
