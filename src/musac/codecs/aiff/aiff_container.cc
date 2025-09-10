@@ -228,7 +228,7 @@ void aiff_container::parse_ssnd_chunk(const chunk_info& chunk) {
 iff::fourcc aiff_container::read_fourcc() {
     char id[4];
     if (m_io->read(id, 4) != 4) {
-        return iff::fourcc(0);  // Invalid fourcc
+        return iff::fourcc();  // Return default-constructed invalid fourcc
     }
     // FourCC is stored as 4 ASCII characters in the file
     // Use from_bytes which is designed for 4-byte arrays
