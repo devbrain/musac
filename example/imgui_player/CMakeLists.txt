@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 
+# Include SDL helper module
+include(${CMAKE_SOURCE_DIR}/cmake/FindSDLHelper.cmake)
+
 # Only build if SDL backend is available
 if((MUSAC_BUILD_SDL3_BACKEND AND TARGET musac_backend_sdl3) OR 
    (MUSAC_BUILD_SDL2_BACKEND AND TARGET musac_backend_sdl2))
@@ -38,16 +41,9 @@ if((MUSAC_BUILD_SDL3_BACKEND AND TARGET musac_backend_sdl3) OR
             )
             target_compile_definitions(imgui_lib PUBLIC IMGUI_USE_SDL3)
             
-            # Link with SDL3
-            if(TARGET SDL3::SDL3-shared)
-                target_link_libraries(imgui_lib PUBLIC SDL3::SDL3-shared)
-            elseif(TARGET SDL3::SDL3-static)
-                target_link_libraries(imgui_lib PUBLIC SDL3::SDL3-static)
-            elseif(TARGET SDL3-shared)
-                target_link_libraries(imgui_lib PUBLIC SDL3-shared)
-            elseif(TARGET SDL3-static)
-                target_link_libraries(imgui_lib PUBLIC SDL3-static)
-            endif()
+            # Use the helper function to find and link SDL3
+            find_sdl_library(VERSION 3 TARGET imgui_lib)
+            
         elseif(MUSAC_BUILD_SDL2_BACKEND AND TARGET musac_backend_sdl2)
             target_sources(imgui_lib PRIVATE
                 ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl2.cpp
@@ -55,21 +51,8 @@ if((MUSAC_BUILD_SDL3_BACKEND AND TARGET musac_backend_sdl3) OR
             )
             target_compile_definitions(imgui_lib PUBLIC IMGUI_USE_SDL2)
             
-            # Find and link SDL2
-            find_package(SDL2 QUIET)
-            if(SDL2_FOUND)
-                target_link_libraries(imgui_lib PUBLIC SDL2::SDL2)
-            else()
-                # Try pkg-config
-                find_package(PkgConfig QUIET)
-                if(PKG_CONFIG_FOUND)
-                    pkg_check_modules(SDL2 QUIET sdl2)
-                    if(SDL2_FOUND)
-                        target_include_directories(imgui_lib PUBLIC ${SDL2_INCLUDE_DIRS})
-                        target_link_libraries(imgui_lib PUBLIC ${SDL2_LIBRARIES})
-                    endif()
-                endif()
-            endif()
+            # Use the helper function to find and link SDL2
+            find_sdl_library(VERSION 2 TARGET imgui_lib)
         endif()
     endif()
     
