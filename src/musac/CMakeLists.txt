@@ -63,37 +63,44 @@ target_include_directories(musac
             ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
+# Always generate export header (required by headers)
+include(GenerateExportHeader)
+set(export_file_name "export_musac.h")
+
+generate_export_header(musac
+    EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/musac/${export_file_name}
+    STATIC_DEFINE MUSAC_STATIC_DEFINE
+)
+
 if (MUSAC_BUILD_SHARED)
     set(CMAKE_CXX_VISIBILITY_PRESET hidden)
     set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
-
-    include(GenerateExportHeader)
-    set(export_file_name "export_musac.h")
-
-    generate_export_header(musac 
-        EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/musac/${export_file_name}
-    )
+else()
+    # For static builds, define the static macro
+    target_compile_definitions(musac PUBLIC MUSAC_STATIC_DEFINE)
 endif()
 
-# Installation targets
-install(TARGETS musac
-    EXPORT musacTargets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-)
-
-# Install headers
-install(DIRECTORY ${MUSAC_PROJECT_ROOT}/include/musac
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING PATTERN "*.hh" PATTERN "*.h"
-)
-
-# Install generated export header if shared build
-if(MUSAC_BUILD_SHARED)
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/musac/export_musac.h
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/musac
+# Installation targets - only when not building as subdirectory
+if(NOT MUSAC_IS_SUBDIRECTORY)
+    install(TARGETS musac
+        EXPORT musacTargets
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     )
+
+    # Install headers
+    install(DIRECTORY ${MUSAC_PROJECT_ROOT}/include/musac
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h"
+    )
+
+    # Install generated export header if shared build
+    if(MUSAC_BUILD_SHARED)
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/musac/export_musac.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/musac
+        )
+    endif()
 endif()
 

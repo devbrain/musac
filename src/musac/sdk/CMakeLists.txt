@@ -145,38 +145,47 @@ target_link_libraries(musac_sdk PUBLIC thirdparty::failsafe)
 # Set logger category for sdk
 target_compile_definitions(musac_sdk PRIVATE LOGGER_DEFAULT_CATEGORY=musac::sdk)
 
+# Always generate export header (required by headers)
+include(GenerateExportHeader)
+set(export_file_name "export_musac_sdk.h")
+
+generate_export_header(musac_sdk
+    EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/musac/sdk/${export_file_name}
+    STATIC_DEFINE MUSAC_SDK_STATIC_DEFINE
+)
+
 if (MUSAC_BUILD_SHARED)
     set(CMAKE_CXX_VISIBILITY_PRESET hidden)
     set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
-
-    include(GenerateExportHeader)
-    set(export_file_name "export_musac_sdk.h")
-
-    generate_export_header(musac_sdk EXPORT_FILE_NAME  ${CMAKE_CURRENT_BINARY_DIR}/musac/sdk/${export_file_name})
+else()
+    # For static builds, define the static macro
+    target_compile_definitions(musac_sdk PUBLIC MUSAC_SDK_STATIC_DEFINE)
 endif()
 
-# Installation targets
-install(TARGETS musac_sdk
-    EXPORT musacTargets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-)
+# Installation targets - only when not building as subdirectory
+if(NOT MUSAC_IS_SUBDIRECTORY)
+    install(TARGETS musac_sdk
+        EXPORT musacTargets
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    )
 
-# Install SDK headers
-install(DIRECTORY ${MUSAC_PROJECT_ROOT}/include/musac/sdk
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/musac
-    FILES_MATCHING PATTERN "*.hh" PATTERN "*.h"
-)
+    # Install SDK headers
+    install(DIRECTORY ${MUSAC_PROJECT_ROOT}/include/musac/sdk
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/musac
+        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h"
+    )
 
-# Install generated headers
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/musac/sdk/musac_sdk_config.h
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/musac/sdk
-)
-
-if(MUSAC_BUILD_SHARED)
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/musac/sdk/export_musac_sdk.h
+    # Install generated headers
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/musac/sdk/musac_sdk_config.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/musac/sdk
     )
+
+    if(MUSAC_BUILD_SHARED)
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/musac/sdk/export_musac_sdk.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/musac/sdk
+        )
+    endif()
 endif()

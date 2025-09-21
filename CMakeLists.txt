@@ -7,6 +7,13 @@ project(musac
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Check if we're being used via FetchContent / add_subdirectory
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    set(MUSAC_IS_SUBDIRECTORY OFF)
+else()
+    set(MUSAC_IS_SUBDIRECTORY ON)
+endif()
+
 # Build options
 option(MUSAC_BUILD_SHARED "Build MUSAC as a shared library" ON)
 option(MUSAC_BUILD_FPIC "Build MUSAC with position independent code (for static builds)" OFF)
@@ -310,17 +317,19 @@ write_basic_package_version_file(
     COMPATIBILITY SameMajorVersion
 )
 
-# Install the config and version files
-install(FILES
-    "${CMAKE_CURRENT_BINARY_DIR}/musacConfig.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/musacConfigVersion.cmake"
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/musac"
-)
+# Install the config and version files - only when not building as subdirectory
+if(NOT MUSAC_IS_SUBDIRECTORY)
+    install(FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/musacConfig.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/musacConfigVersion.cmake"
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/musac"
+    )
 
-# Export targets
-install(EXPORT musacTargets
-    FILE musacTargets.cmake
-    NAMESPACE musac::
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/musac"
-)
+    # Export targets
+    install(EXPORT musacTargets
+        FILE musacTargets.cmake
+        NAMESPACE musac::
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/musac"
+    )
+endif()
 

@@ -179,6 +179,7 @@ target_include_directories(musac_codecs
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
         $<BUILD_INTERFACE:${MUSAC_PROJECT_ROOT}>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/..>  # For musac/codecs/export_musac_codecs.h
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 target_link_libraries(musac_codecs
@@ -207,34 +208,43 @@ else()
     target_compile_definitions(musac_codecs PRIVATE MUSAC_LITTLE_ENDIAN=1)
 endif()
 
+# Always generate export header (required by headers)
+include(GenerateExportHeader)
+set(export_file_name "export_musac_codecs.h")
+
+generate_export_header(musac_codecs
+    EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/musac/codecs/${export_file_name}
+    STATIC_DEFINE MUSAC_CODECS_STATIC_DEFINE
+)
+
 if (MUSAC_BUILD_SHARED)
     set(CMAKE_CXX_VISIBILITY_PRESET hidden)
     set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
-
-    include(GenerateExportHeader)
-    set(export_file_name "export_musac_codecs.h")
-
-    generate_export_header(musac_codecs EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/musac/codecs/${export_file_name})
+else()
+    # For static builds, define the static macro
+    target_compile_definitions(musac_codecs PUBLIC MUSAC_CODECS_STATIC_DEFINE)
 endif ()
 
-# Installation targets
-install(TARGETS musac_codecs
-    EXPORT musacTargets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-)
-
-# Install codec headers
-install(DIRECTORY ${MUSAC_PROJECT_ROOT}/include/musac/codecs
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/musac
-    FILES_MATCHING PATTERN "*.hh" PATTERN "*.h"
-)
-
-# Install generated export header if shared build
-if(MUSAC_BUILD_SHARED)
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/musac/codecs/export_musac_codecs.h
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/musac/codecs
+# Installation targets - only when not building as subdirectory
+if(NOT MUSAC_IS_SUBDIRECTORY)
+    install(TARGETS musac_codecs
+        EXPORT musacTargets
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     )
+
+    # Install codec headers
+    install(DIRECTORY ${MUSAC_PROJECT_ROOT}/include/musac/codecs
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/musac
+        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h"
+    )
+
+    # Install generated export header if shared build
+    if(MUSAC_BUILD_SHARED)
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/musac/codecs/export_musac_codecs.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/musac/codecs
+        )
+    endif()
 endif()

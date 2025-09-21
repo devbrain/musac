@@ -121,23 +121,27 @@ target_link_libraries(musac_backend_sdl3
 )
 
 # Export macro for shared library
+# Always generate export header (required even for static builds)
+include(GenerateExportHeader)
+generate_export_header(musac_backend_sdl3
+        EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/export_musac_backend_sdl3.h
+        EXPORT_MACRO_NAME MUSAC_BACKEND_SDL3_EXPORT
+        STATIC_DEFINE MUSAC_BACKEND_SDL3_STATIC_DEFINE
+)
+
+# Add generated header to include paths
+target_include_directories(musac_backend_sdl3
+        PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+)
+
 if (MUSAC_BUILD_SHARED)
     target_compile_definitions(musac_backend_sdl3
             PRIVATE MUSAC_BACKEND_SDL3_EXPORTS
             PUBLIC MUSAC_BACKEND_SDL3_SHARED
     )
-
-    # Generate export header
-    include(GenerateExportHeader)
-    generate_export_header(musac_backend_sdl3
-            EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/export_musac_backend_sdl3.h
-            EXPORT_MACRO_NAME MUSAC_BACKEND_SDL3_EXPORT
-    )
-
-    # Add generated header to include paths
-    target_include_directories(musac_backend_sdl3
-            PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-    )
+else()
+    # For static builds, define the static macro
+    target_compile_definitions(musac_backend_sdl3 PUBLIC MUSAC_BACKEND_SDL3_STATIC_DEFINE)
 endif ()
 
 
@@ -148,25 +152,27 @@ if (MUSAC_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
-# Installation targets
-install(TARGETS musac_backend_sdl3
-    EXPORT musacTargets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-)
-
-# Install backend headers
-install(DIRECTORY ${MUSAC_PROJECT_ROOT}/backends/include/musac_backends
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    FILES_MATCHING PATTERN "*.hh" PATTERN "*.h"
-)
-
-# Install generated export header if shared build
-if(MUSAC_BUILD_SHARED)
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/export_musac_backend_sdl3.h
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/musac
+# Installation targets - only when not building as subdirectory
+if(NOT MUSAC_IS_SUBDIRECTORY)
+    install(TARGETS musac_backend_sdl3
+        EXPORT musacTargets
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     )
+
+    # Install backend headers
+    install(DIRECTORY ${MUSAC_PROJECT_ROOT}/backends/include/musac_backends
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h"
+    )
+
+    # Install generated export header if shared build
+    if(MUSAC_BUILD_SHARED)
+        install(FILES ${CMAKE_CURRENT_BINARY_DIR}/export_musac_backend_sdl3.h
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/musac
+        )
+    endif()
 endif()
 
