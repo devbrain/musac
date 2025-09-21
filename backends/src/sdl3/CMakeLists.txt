@@ -11,7 +11,13 @@ else ()
 endif ()
 
 # Handle SDL3 dependency
-find_package(SDL3 QUIET)
+# First check if SDL3 target already exists (e.g., from parent project)
+if(TARGET SDL3::SDL3 OR TARGET SDL3-static)
+    message(STATUS "Found SDL3 target from parent project")
+    set(SDL3_FOUND TRUE)
+else()
+    find_package(SDL3 QUIET)
+endif()
 
 if (NOT SDL3_FOUND)
     message(STATUS "SDL3 not found locally, fetching from GitHub...")
@@ -112,11 +118,21 @@ target_include_directories(musac_backend_sdl3
 )
 
 # Dependencies
+# Determine which SDL3 target to use
+if(TARGET SDL3::SDL3)
+    set(SDL3_TARGET SDL3::SDL3)
+elseif(TARGET SDL3-static)
+    set(SDL3_TARGET SDL3-static)
+else()
+    # Fallback to SDL3::SDL3 (will be created if we fetch SDL3 ourselves)
+    set(SDL3_TARGET SDL3::SDL3)
+endif()
+
 target_link_libraries(musac_backend_sdl3
         PUBLIC
         musac_sdk
         PRIVATE
-        SDL3::SDL3
+        ${SDL3_TARGET}
         thirdparty::failsafe
 )
 
