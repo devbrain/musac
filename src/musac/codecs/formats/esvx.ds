@@ -1,0 +1,23 @@
+// IFF 8SVX Chunk Contents Parser
+// This file defines parsers for 8SVX audio format chunks.
+// The IFF container parsing is handled by libiff.
+// 8SVX uses big-endian byte order for all multi-byte fields.
+
+package formats.esvx;
+
+// Compression types for 8SVX
+enum uint8 compression_type {
+    NONE = 0,
+    FIBONACCI_DELTA = 1
+};
+
+// Voice Header - contains playback parameters
+struct vhdr_chunk {
+    big uint32 one_shot_hi_samples;   // Number of samples in the one-shot (non-repeating) part
+    big uint32 repeat_hi_samples;     // Number of samples in the repeating part
+    big uint32 samples_per_hi_cycle;  // Number of samples per cycle in highest octave
+    big uint16 samples_per_sec;       // Playback sampling rate in Hz
+    uint8 octave_count;               // Number of octaves of waveforms
+    compression_type compression;     // Compression algorithm used
+    big uint32 volume;                // Playback volume in 16.16 fixed-point format
+};

@@ -1,41 +1,46 @@
 cmake_minimum_required(VERSION 3.20)
+
 project(musac
-        VERSION 0.1.0
-        LANGUAGES CXX C
+    VERSION 0.1.0
+    DESCRIPTION "MUSAC - Multi-platform Universal Sound and Audio Codecs library"
+    LANGUAGES CXX C
 )
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# ============================================================================
+# Neutrino CMake Integration
+# ============================================================================
 
-# Check if we're being used via FetchContent / add_subdirectory
-if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-    set(MUSAC_IS_SUBDIRECTORY OFF)
-else()
-    set(MUSAC_IS_SUBDIRECTORY ON)
+include(FetchContent)
+
+# Fetch neutrino-cmake if not already available
+if(NOT DEFINED NEUTRINO_CMAKE_DIR)
+    FetchContent_Declare(neutrino_cmake
+        GIT_REPOSITORY https://github.com/devbrain/neutrino-cmake.git
+        GIT_TAG master
+        GIT_SHALLOW TRUE
+    )
+    FetchContent_MakeAvailable(neutrino_cmake)
+    set(NEUTRINO_CMAKE_DIR "${neutrino_cmake_SOURCE_DIR}/cmake")
+    list(APPEND CMAKE_MODULE_PATH "${NEUTRINO_CMAKE_DIR}")
 endif()
 
-# Build options
-option(MUSAC_BUILD_SHARED "Build MUSAC as a shared library" ON)
-option(MUSAC_BUILD_FPIC "Build MUSAC with position independent code (for static builds)" OFF)
+include(NeutrinoInit)
 
-# Build configuration options
-option(MUSAC_ENABLE_SANITIZERS "Enable AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
-option(MUSAC_ENABLE_LTO "Enable link-time optimization" OFF)
+# ============================================================================
+# Build Options (using standardized naming)
+# ============================================================================
+
+# Standard options (tests, examples, install, etc.)
+neutrino_define_library_options(musac)
 
 # Audio backend options
-option(MUSAC_BUILD_SDL3_BACKEND "Build SDL3 backend as separate library" ON)
-option(MUSAC_BUILD_SDL2_BACKEND "Build SDL2 backend as separate library" ON)
-
-# Option to enable/disable unit tests
-option(MUSAC_BUILD_TESTS "Build unit tests" ON)
-
-# Option to enable/disable examples
-option(MUSAC_BUILD_EXAMPLES "Build examples" ON)
+option(NEUTRINO_MUSAC_BUILD_SDL3_BACKEND "Build SDL3 backend" ON)
+option(NEUTRINO_MUSAC_BUILD_SDL2_BACKEND "Build SDL2 backend" ON)
 
 # Language bindings options
-option(MUSAC_BUILD_BINDINGS "Build language bindings" OFF)
-option(MUSAC_BUILD_JAVA_BINDING "Build Java/JNI binding" ON)
-option(MUSAC_BUILD_PYTHON_BINDING "Build Python binding" OFF)
+option(NEUTRINO_MUSAC_BUILD_BINDINGS "Build language bindings" OFF)
+option(NEUTRINO_MUSAC_BUILD_JAVA_BINDING "Build Java/JNI binding" ON)
+option(NEUTRINO_MUSAC_BUILD_PYTHON_BINDING "Build Python binding" OFF)
 
 # Include standard install directories
 include(GNUInstallDirs)
@@ -47,88 +52,46 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
+# ============================================================================
+# Compiler Configuration
+# ============================================================================
 
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Set visibility settings for shared libraries
-if(MUSAC_BUILD_SHARED)
+if(NEUTRINO_MUSAC_BUILD_SHARED)
     set(CMAKE_CXX_VISIBILITY_PRESET hidden)
     set(CMAKE_C_VISIBILITY_PRESET hidden)
     set(CMAKE_VISIBILITY_INLINES_HIDDEN YES)
     include(GenerateExportHeader)
 endif()
 
-# Define warning flags for our project
-set(MUSAC_WARNING_FLAGS)
+# ============================================================================
+# Dependencies
+# ============================================================================
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    set(MUSAC_WARNING_FLAGS
-            -Wall           # All standard warnings
-            -Wextra         # Extra warnings
-            -Wpedantic      # Strict ISO C++ compliance
-            -Wcast-align    # Warn about potential performance problem casts
-            -Wcast-qual     # Warn about casts that remove qualifiers
-            -Wconversion    # Warn about type conversions that may lose data
-            -Wdouble-promotion  # Warn about float to double promotion
-            -Wformat=2      # Additional format string warnings
-            -Wnon-virtual-dtor  # Warn about non-virtual destructors
-            -Wold-style-cast    # Warn about C-style casts
-            -Woverloaded-virtual # Warn about overloaded virtual functions
-            -Wshadow        # Warn about variable shadowing
-            -Wsign-conversion   # Warn about sign conversions
-            -Wundef         # Warn about undefined identifiers in #if
-            -Wunused        # Warn about unused entities
-            -Wzero-as-null-pointer-constant # Warn about using 0 as nullptr
-            -Wstringop-overflow
-    )
+# Fetch failsafe
+include(${NEUTRINO_CMAKE_DIR}/deps/failsafe.cmake)
+neutrino_fetch_failsafe()
 
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-        list(APPEND MUSAC_WARNING_FLAGS
-                -Wlogical-op    # Warn about logical operations being used where bitwise were probably wanted
-                -Wuseless-cast  # Warn about useless casts
-        )
-    endif()
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    set(MUSAC_WARNING_FLAGS
-            /W4             # Highest warning level
-            /permissive-    # Strict standard conformance
-            /Zc:__cplusplus # Report correct __cplusplus value
-    )
+# Create thirdparty::failsafe alias for compatibility with existing code
+if(TARGET neutrino::failsafe AND NOT TARGET thirdparty::failsafe)
+    add_library(thirdparty::failsafe ALIAS failsafe)
 endif()
 
-# Treat warnings as errors in CI/Release builds (optional)
-# list(APPEND MUSAC_WARNING_FLAGS -Werror)
-
-# Sanitizer flags
-if(MUSAC_ENABLE_SANITIZERS)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        set(MUSAC_SANITIZER_FLAGS
-                -fsanitize=address
-                -fsanitize=undefined
-                -fno-omit-frame-pointer
-        )
-        list(APPEND MUSAC_WARNING_FLAGS ${MUSAC_SANITIZER_FLAGS})
-
-        # Link flags for sanitizers
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address -fsanitize=undefined")
-        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address -fsanitize=undefined")
-    else()
-        message(WARNING "Sanitizers are only supported with GCC and Clang")
-    endif()
+# Fetch doctest for testing
+if(NEUTRINO_MUSAC_BUILD_TESTS)
+    include(${NEUTRINO_CMAKE_DIR}/deps/doctest.cmake)
+    neutrino_fetch_doctest()
 endif()
 
-# Link-time optimization
-if(MUSAC_ENABLE_LTO)
-    include(CheckIPOSupported)
-    check_ipo_supported(RESULT ipo_supported OUTPUT ipo_output)
-    if(ipo_supported)
-        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
-        message(STATUS "Link-time optimization enabled")
-    else()
-        message(WARNING "Link-time optimization not supported: ${ipo_output}")
-    endif()
-endif()
+# ============================================================================
+# Output Directories
+# ============================================================================
 
-# Output binary to predictable location.
 set(BINARY_OUT_DIR ${CMAKE_BINARY_DIR}/bin)
 set(LIB_OUT_DIR ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BINARY_OUT_DIR})
@@ -142,30 +105,88 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${LIB_OUT_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${BINARY_OUT_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE ${BINARY_OUT_DIR})
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${LIB_OUT_DIR})
-# ===========================================================================
-set (MUSAC_PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
-if(MUSAC_BUILD_SDL3_BACKEND)
+# ============================================================================
+# Project Root for Subdirectories
+# ============================================================================
+
+set(MUSAC_PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+
+# Legacy compatibility variables (for existing code)
+set(MUSAC_BUILD_SHARED ${NEUTRINO_MUSAC_BUILD_SHARED})
+set(MUSAC_BUILD_TESTS ${NEUTRINO_MUSAC_BUILD_TESTS})
+set(MUSAC_BUILD_EXAMPLES ${NEUTRINO_MUSAC_BUILD_EXAMPLES})
+set(MUSAC_BUILD_SDL3_BACKEND ${NEUTRINO_MUSAC_BUILD_SDL3_BACKEND})
+set(MUSAC_BUILD_SDL2_BACKEND ${NEUTRINO_MUSAC_BUILD_SDL2_BACKEND})
+set(MUSAC_BUILD_BINDINGS ${NEUTRINO_MUSAC_BUILD_BINDINGS})
+set(MUSAC_BUILD_JAVA_BINDING ${NEUTRINO_MUSAC_BUILD_JAVA_BINDING})
+set(MUSAC_BUILD_PYTHON_BINDING ${NEUTRINO_MUSAC_BUILD_PYTHON_BINDING})
+
+# Determine if we're a subdirectory
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    set(MUSAC_IS_SUBDIRECTORY OFF)
+else()
+    set(MUSAC_IS_SUBDIRECTORY ON)
+endif()
+
+# FPIC setting for static builds that need PIC
+set(MUSAC_BUILD_FPIC OFF)
+if(NOT NEUTRINO_MUSAC_BUILD_SHARED)
+    # Check if we need PIC (e.g., for embedding in shared libraries)
+    if(CMAKE_POSITION_INDEPENDENT_CODE)
+        set(MUSAC_BUILD_FPIC ON)
+    endif()
+endif()
+
+# Warning flags from neutrino-cmake
+if(NEUTRINO_MUSAC_DEVELOPER_MODE)
+    set(MUSAC_WARNING_FLAGS)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        set(MUSAC_WARNING_FLAGS
+            -Wall -Wextra -Wpedantic
+            -Wcast-align -Wcast-qual -Wconversion
+            -Wdouble-promotion -Wformat=2 -Wnon-virtual-dtor
+            -Wold-style-cast -Woverloaded-virtual -Wshadow
+            -Wsign-conversion -Wundef -Wunused
+            -Wzero-as-null-pointer-constant
+        )
+        if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+            list(APPEND MUSAC_WARNING_FLAGS -Wlogical-op -Wuseless-cast)
+        endif()
+    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        set(MUSAC_WARNING_FLAGS /W4 /permissive- /Zc:__cplusplus)
+    endif()
+endif()
+
+# ============================================================================
+# Subdirectories
+# ============================================================================
+
+# Audio backends (built before main library as it sets up SDL)
+if(NEUTRINO_MUSAC_BUILD_SDL3_BACKEND)
     add_subdirectory(backends/src/sdl3)
 endif()
 
-if(MUSAC_BUILD_SDL2_BACKEND)
+if(NEUTRINO_MUSAC_BUILD_SDL2_BACKEND)
     add_subdirectory(backends/src/sdl2)
 endif()
 
-add_subdirectory(ext)
+# Main library components
 add_subdirectory(src/musac)
 
-# Build test_data library only if examples are enabled
-if(MUSAC_BUILD_EXAMPLES)
+# Examples and test data
+if(NEUTRINO_MUSAC_BUILD_EXAMPLES)
     add_subdirectory(test_data)
     add_subdirectory(example)
 endif()
-add_subdirectory(unittest)
 
+# Unit tests
+if(NEUTRINO_MUSAC_BUILD_TESTS)
+    add_subdirectory(unittest)
+endif()
 
 # Language bindings
-if(MUSAC_BUILD_BINDINGS)
+if(NEUTRINO_MUSAC_BUILD_BINDINGS)
     add_subdirectory(bindings)
 endif()
 
@@ -180,14 +201,12 @@ message(STATUS "========================================")
 message(STATUS "")
 
 # Library type
-if(MUSAC_BUILD_SHARED)
+if(NEUTRINO_MUSAC_BUILD_SHARED)
     message(STATUS "Library Type:        SHARED")
 else()
     message(STATUS "Library Type:        STATIC")
     if(MUSAC_BUILD_FPIC)
         message(STATUS "  Position Independent Code: ON")
-    else()
-        message(STATUS "  Position Independent Code: OFF")
     endif()
 endif()
 
@@ -196,44 +215,14 @@ message(STATUS "")
 
 # Audio backends
 message(STATUS "Audio Backends:")
-if(MUSAC_BUILD_SDL3_BACKEND)
+if(NEUTRINO_MUSAC_BUILD_SDL3_BACKEND)
     message(STATUS "  SDL3 Backend:      ON")
-    # Check if SDL3 was fetched by looking for the source directory
-    if(EXISTS "${CMAKE_BINARY_DIR}/_deps/sdl3-src")
-        message(STATUS "    SDL3 Source:     Fetched from GitHub")
-        if(DEFINED MUSAC_FETCHED_SDL3_STATIC)
-            if(MUSAC_FETCHED_SDL3_STATIC)
-                message(STATUS "    SDL3 Build:      Static")
-            else()
-                message(STATUS "    SDL3 Build:      Shared")
-            endif()
-        endif()
-    else()
-        message(STATUS "    SDL3 Source:     System")
-    endif()
 else()
     message(STATUS "  SDL3 Backend:      OFF")
 endif()
 
-if(MUSAC_BUILD_SDL2_BACKEND)
+if(NEUTRINO_MUSAC_BUILD_SDL2_BACKEND)
     message(STATUS "  SDL2 Backend:      ON")
-    # Check if SDL2 was fetched by looking for the source directory
-    if(EXISTS "${CMAKE_BINARY_DIR}/_deps/sdl2-src")
-        message(STATUS "    SDL2 Source:     Fetched from GitHub")
-        if(DEFINED MUSAC_FETCHED_SDL2_STATIC)
-            if(MUSAC_FETCHED_SDL2_STATIC)
-                message(STATUS "    SDL2 Build:      Static")
-            else()
-                message(STATUS "    SDL2 Build:      Shared")
-            endif()
-        endif()
-    else()
-        if(SDL2_FOUND)
-            message(STATUS "    SDL2 Source:     System (${SDL2_VERSION})")
-        else()
-            message(STATUS "    SDL2 Source:     System")
-        endif()
-    endif()
 else()
     message(STATUS "  SDL2 Backend:      OFF")
 endif()
@@ -242,53 +231,30 @@ message(STATUS "")
 
 # Build options
 message(STATUS "Build Options:")
-message(STATUS "  Unit Tests:        ${MUSAC_BUILD_TESTS}")
-if(MUSAC_BUILD_TESTS)
-    if(TARGET musac_backend_sdl3)
-        message(STATUS "    Test Backend:    SDL3")
-    elseif(TARGET musac_backend_sdl2)
-        message(STATUS "    Test Backend:    SDL2")
-    else()
-        message(STATUS "    Test Backend:    None (limited testing)")
-    endif()
-endif()
-message(STATUS "  Examples:          ${MUSAC_BUILD_EXAMPLES}")
-
-message(STATUS "  Sanitizers:        ${MUSAC_ENABLE_SANITIZERS}")
-message(STATUS "  LTO:               ${MUSAC_ENABLE_LTO}")
+message(STATUS "  Unit Tests:        ${NEUTRINO_MUSAC_BUILD_TESTS}")
+message(STATUS "  Examples:          ${NEUTRINO_MUSAC_BUILD_EXAMPLES}")
+message(STATUS "  Developer Mode:    ${NEUTRINO_MUSAC_DEVELOPER_MODE}")
 message(STATUS "")
 
 # Language bindings
-if(MUSAC_BUILD_BINDINGS)
+if(NEUTRINO_MUSAC_BUILD_BINDINGS)
     message(STATUS "Language Bindings:")
-    message(STATUS "  Java/JNI:          ${MUSAC_BUILD_JAVA_BINDING}")
-    message(STATUS "  Python:            ${MUSAC_BUILD_PYTHON_BINDING}")
+    message(STATUS "  Java/JNI:          ${NEUTRINO_MUSAC_BUILD_JAVA_BINDING}")
+    message(STATUS "  Python:            ${NEUTRINO_MUSAC_BUILD_PYTHON_BINDING}")
     message(STATUS "")
 endif()
 
 # Installation paths
-message(STATUS "Installation:")
-message(STATUS "  Install Prefix:    ${CMAKE_INSTALL_PREFIX}")
-message(STATUS "")
+if(NEUTRINO_MUSAC_INSTALL)
+    message(STATUS "Installation:")
+    message(STATUS "  Install Prefix:    ${CMAKE_INSTALL_PREFIX}")
+    message(STATUS "")
+endif()
 
 # Compiler information
 message(STATUS "Compiler:")
 message(STATUS "  C++ Compiler:      ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "  C++ Standard:      ${CMAKE_CXX_STANDARD}")
-message(STATUS "")
-
-# Platform information
-message(STATUS "Platform:")
-message(STATUS "  System:            ${CMAKE_SYSTEM_NAME}")
-message(STATUS "  Processor:         ${CMAKE_SYSTEM_PROCESSOR}")
-message(STATUS "  Build Platform:    ${CMAKE_HOST_SYSTEM_NAME}")
-message(STATUS "")
-
-# Output directories
-message(STATUS "Output Directories:")
-message(STATUS "  Runtime:           ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
-message(STATUS "  Library:           ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
-message(STATUS "  Archive:           ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}")
 message(STATUS "")
 
 message(STATUS "========================================")
@@ -300,25 +266,24 @@ message(STATUS "")
 # Installation and Packaging
 # ============================================================================
 
-# Configure package config files
-include(CMakePackageConfigHelpers)
+if(NEUTRINO_MUSAC_INSTALL AND NOT MUSAC_IS_SUBDIRECTORY)
+    include(CMakePackageConfigHelpers)
 
-# Generate the config file from template
-configure_package_config_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/musacConfig.cmake.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/musacConfig.cmake"
-    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/musac"
-)
+    # Generate the config file from template
+    configure_package_config_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/musacConfig.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/musacConfig.cmake"
+        INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/musac"
+    )
 
-# Generate the version file
-write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/musacConfigVersion.cmake"
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY SameMajorVersion
-)
+    # Generate the version file
+    write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/musacConfigVersion.cmake"
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion
+    )
 
-# Install the config and version files - only when not building as subdirectory
-if(NOT MUSAC_IS_SUBDIRECTORY)
+    # Install the config and version files
     install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/musacConfig.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/musacConfigVersion.cmake"
@@ -332,4 +297,3 @@ if(NOT MUSAC_IS_SUBDIRECTORY)
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/musac"
     )
 endif()
-

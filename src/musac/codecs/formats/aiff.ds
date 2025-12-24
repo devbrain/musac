@@ -1,0 +1,98 @@
+// AIFF Chunk Contents Parser
+// This file defines parsers for the CONTENTS of AIFF chunks only.
+// The IFF container parsing is handled by libiff.
+// AIFF uses big-endian byte order for all multi-byte fields.
+
+package formats.aiff;
+
+// 80-bit IEEE 754 extended precision float
+// Note: Conversion to double is handled in C++ code
+struct extended_float {
+    big uint16 exponent;
+    big uint64 mantissa;
+};
+
+// Common chunk for AIFF (no compression fields)
+struct comm_chunk_aiff {
+    big uint16 num_channels;        // Number of audio channels
+    big uint32 num_sample_frames;   // Number of sample frames
+    big uint16 sample_size;         // Number of bits per sample
+    extended_float sample_rate;     // Sample rate in Hz (80-bit IEEE extended)
+};
+
+// Common chunk for AIFC (with compression fields)
+// Note: compression_type and compression_name are parsed separately
+// because pstring requires variable-length handling
+struct comm_chunk_aifc_header {
+    big uint16 num_channels;        // Number of audio channels
+    big uint32 num_sample_frames;   // Number of sample frames
+    big uint16 sample_size;         // Number of bits per sample
+    extended_float sample_rate;     // Sample rate in Hz (80-bit IEEE extended)
+    uint8 compression_type[4];      // Compression type fourcc (bytes, no endian swap)
+    // compression_name (pstring) follows - handled in C++
+};
+
+// Sound data chunk header (not the data itself)
+struct ssnd_chunk {
+    big uint32 offset;      // Offset to start of audio data (usually 0)
+    big uint32 block_size;  // Block size for block-aligned data (usually 0)
+    // Note: audio_data is NOT parsed here - handled by libiff streaming
+};
+
+// Single marker entry
+struct marker {
+    big uint16 marker_id;   // Unique marker ID
+    big uint32 position;    // Frame position of marker
+    // marker_name (pstring) follows - handled in C++
+};
+
+// Marker chunk header
+struct mark_chunk_header {
+    big uint16 num_markers;
+    // markers[] follows - each marker has variable-length pstring
+};
+
+// Loop mode values for instrument chunk
+// 0 = NO_LOOP, 1 = FORWARD_LOOP, 2 = FORWARD_BACKWARD_LOOP
+struct loop_info {
+    big uint16 play_mode;    // Loop mode value
+    big uint16 begin_loop;   // Marker ID for loop start
+    big uint16 end_loop;     // Marker ID for loop end
+};
+
+// Instrument chunk - MIDI instrument info
+struct inst_chunk {
+    uint8 base_note;    // MIDI note number
+    uint8 detune;       // Pitch shift in cents
+    uint8 low_note;
+    uint8 high_note;
+    uint8 low_velocity;
+    uint8 high_velocity;
+    big uint16 gain;    // Gain in dB
+    loop_info sustain_loop;
+    loop_info release_loop;
+};
+
+// Comment entry header (text is pstring, handled separately)
+struct comment_header {
+    big uint32 timestamp;   // Time of comment creation
+    big uint16 marker_id;   // Related marker ID (0 if none)
+    // text (pstring) follows - handled in C++
+};
+
+// Comments chunk header
+struct comt_chunk_header {
+    big uint16 num_comments;
+    // comments[] follows - each comment has variable-length pstring
+};
+
+// Format version chunk (AIFC only)
+struct fver_chunk {
+    big uint32 timestamp;   // Format version timestamp
+};
+
+// Application-specific chunk header
+struct appl_chunk_header {
+    uint8 application_signature[4];  // bytes, no endian swap
+    // data follows - size from IFF container
+};
