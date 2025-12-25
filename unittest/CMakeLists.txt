@@ -146,3 +146,8 @@ if (TARGET musac_internal)
     target_compile_definitions(musac_unittest PRIVATE MUSAC_INTERNAL_TESTING)
 endif()
 
+# Register tests with CTest
+include(CTest)
+enable_testing()
+add_test(NAME musac_unittest COMMAND musac_unittest)
+

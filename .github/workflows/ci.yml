@@ -107,7 +107,7 @@ jobs:
           SDL_AUDIODRIVER: dummy
         run: |
           cd build
-          ./bin/musac_unittest
+          ctest --build-config Release --output-on-failure
 
       - name: Run tests (Windows)
         if: runner.os == 'Windows'
@@ -116,7 +116,7 @@ jobs:
           SDL_AUDIODRIVER: dummy
         run: |
           cd build
-          .\bin\Release\musac_unittest.exe
+          ctest --build-config Release --output-on-failure
 
   debug:
     runs-on: ubuntu-latest
@@ -151,4 +151,4 @@ jobs:
           SDL_AUDIODRIVER: dummy
         run: |
           cd build
-          ./bin/musac_unittest
+          ctest --build-config Debug --output-on-failure
