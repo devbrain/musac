@@ -264,11 +264,6 @@ message(STATUS "")
 # Installation
 # ============================================================================
 
-if(NEUTRINO_MUSAC_INSTALL AND NOT MUSAC_IS_SUBDIRECTORY)
-    include(NeutrinoInstall)
-
-    neutrino_install_library(musac
-        NAMESPACE neutrino::
-        COMPATIBILITY SameMajorVersion
-    )
-endif()
+# Note: Full CMake export/install is not supported when musac is built with
+# FetchContent dependencies (failsafe, musac_sdk). Those targets cannot be
+# exported. For installation, build musac against system-installed dependencies.
