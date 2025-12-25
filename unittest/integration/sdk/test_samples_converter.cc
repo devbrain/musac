@@ -2,8 +2,13 @@
 #include <musac/sdk/samples_converter.hh>
 #include <musac/sdk/audio_format.hh>
 #include <vector>
+#define _USE_MATH_DEFINES
 #include <cmath>
 #include <algorithm>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 TEST_SUITE("SDK::SamplesConverter") {
     TEST_CASE("to_float_converter function selection") {
