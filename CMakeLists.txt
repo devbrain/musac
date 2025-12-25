@@ -6,6 +6,12 @@ project(musac
     LANGUAGES CXX C
 )
 
+# Enable Objective-C languages on Apple platforms for SDL3
+if(APPLE)
+    enable_language(OBJC)
+    enable_language(OBJCXX)
+endif()
+
 # ============================================================================
 # Neutrino CMake Integration
 # ============================================================================

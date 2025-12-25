@@ -13,6 +13,7 @@
 #include <musac/sdk/export_musac_sdk.h>
 #include <stdexcept>
 #include <cstddef>
+#include <string>
 
 namespace musac {
 

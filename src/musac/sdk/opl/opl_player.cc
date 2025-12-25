@@ -4,7 +4,11 @@
 
 #include <musac/sdk/audio_format.hh>
 #include <cstring>
+#ifdef _WIN32
+#include <malloc.h>
+#else
 #include <alloca.h>
+#endif
 
 #include <musac/sdk/opl/opl_player.hh>
 #include <musac/sdk/samples_converter.hh>
