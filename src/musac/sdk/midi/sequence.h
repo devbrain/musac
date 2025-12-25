@@ -3,6 +3,7 @@
 
 #include <musac/sdk/types.hh>
 #include <musac/sdk/io_stream.hh>
+#include <cstdio>
 #include <memory>
 
 namespace musac { 
