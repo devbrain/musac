@@ -356,7 +356,7 @@ namespace musac {
                 const audio_spec* spec);
             
             // For device switching
-            friend class audio_system;
+            friend struct audio_system;
             
         private:
             struct impl;

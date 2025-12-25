@@ -102,6 +102,19 @@ if(DEFINED MUSAC_WARNING_FLAGS)
     target_compile_options(musac PRIVATE ${MUSAC_WARNING_FLAGS})
 endif()
 
+# Suppress warnings for third-party code (speex resampler)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set_source_files_properties(
+        resampler/speex/resample.c
+        PROPERTIES COMPILE_OPTIONS "-w"
+    )
+elseif(MSVC)
+    set_source_files_properties(
+        resampler/speex/resample.c
+        PROPERTIES COMPILE_OPTIONS "/w"
+    )
+endif()
+
 # ============================================================================
 # Installation
 # ============================================================================

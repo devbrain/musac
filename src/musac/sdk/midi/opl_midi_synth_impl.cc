@@ -1008,7 +1008,6 @@ namespace musac {
 		}
 		
 		// Save current state
-		auto saved_sequence = m_sequence;
 		uint32_t saved_samples_left = m_samples_left;
 		bool saved_at_end = at_end();
 		

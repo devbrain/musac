@@ -191,7 +191,6 @@ namespace musac {
                     }
                     
                     frames_to_decode = blocks_to_decode * 64;
-                    size_t samples_to_decode = frames_to_decode * comm.num_channels;
 
                     // Calculate bytes to decode (34 bytes per block per channel)
                     size_t bytes_to_decode = blocks_to_decode * 34 * comm.num_channels;

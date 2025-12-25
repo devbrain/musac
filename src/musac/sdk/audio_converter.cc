@@ -259,8 +259,7 @@ struct audio_converter::stream_converter::impl {
     size_t get_min_input_size() const {
         // Minimum input size needed for one output frame
         size_t input_frame_size = audio_format_byte_size(from_spec.format) * from_spec.channels;
-        size_t output_frame_size = audio_format_byte_size(to_spec.format) * to_spec.channels;
-        
+
         // For resampling, we need at least 4 input frames for cubic interpolation
         if (from_spec.freq != to_spec.freq) {
             return input_frame_size * 4;

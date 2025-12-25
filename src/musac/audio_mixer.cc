@@ -10,10 +10,10 @@
 namespace musac {
     audio_device_data audio_mixer::m_audio_device_data {};
 
-    audio_mixer::audio_mixer(): m_final_mix_buf(0),
+    audio_mixer::audio_mixer(): m_final_output_buffer(OUTPUT_BUFFER_SIZE, 0.0f),
+                                m_final_mix_buf(0),
                                 m_stream_buf(0),
-                                m_processor_buf(0),
-                                m_final_output_buffer(OUTPUT_BUFFER_SIZE, 0.0f) {
+                                m_processor_buf(0) {
     }
 
     std::shared_ptr<std::vector<stream_container::stream_entry>> audio_mixer::get_streams() const {
@@ -113,7 +113,7 @@ namespace musac {
 #elif defined(__clang__)
     // Clang’s vectorization hint—you can tweak to your needs
 #define PRAGMA_IVDEP _Pragma("clang loop vectorize(enable) interleave(enable)")
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) && (__GNUC__ >= 5)
 #define PRAGMA_IVDEP _Pragma("GCC ivdep")
 #else
 #define PRAGMA_IVDEP

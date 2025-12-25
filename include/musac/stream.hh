@@ -523,7 +523,7 @@ namespace musac {
             friend class audio_device;
             friend class audio_mixer;  // For state capture during device switching
             friend struct in_use_guard;
-            friend class audio_system;  // For device switching
+            friend struct audio_system;  // For device switching
             friend class pc_speaker_stream;  // For PC speaker stream creation
             
 #ifdef MUSAC_BENCHMARK_MODE

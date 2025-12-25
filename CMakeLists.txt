@@ -67,6 +67,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# MSVC-specific settings
+if(MSVC)
+    # Suppress deprecation warnings for standard C functions
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+endif()
+
 # Set visibility settings for shared libraries
 if(NEUTRINO_MUSAC_BUILD_SHARED)
     set(CMAKE_CXX_VISIBILITY_PRESET hidden)

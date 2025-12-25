@@ -595,7 +595,6 @@ namespace musac {
             const size_t chunk_size = 16384; // Increased chunk size for better performance
             uint8_t chunk[chunk_size];
 
-            size_t total_bytes_read = 0;
             while (true) {
                 uint32_t read = voc_read(v, chunk, chunk_size, m_spec);
                 if (read == 0) {
@@ -609,8 +608,6 @@ namespace musac {
                     }
                     continue;
                 }
-
-                total_bytes_read += read;
 
                 // Update format if codec changed
                 if (v.codec != VOC_CODEC_PCM_U8) {

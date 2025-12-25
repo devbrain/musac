@@ -62,13 +62,11 @@ namespace musac {
              */
             audio_mixer();
             
-            // Delete copy operations (contains static data and buffers)
+            // Delete copy and move operations (contains mutex, atomics, and stream container)
             audio_mixer(const audio_mixer&) = delete;
             audio_mixer& operator=(const audio_mixer&) = delete;
-            
-            // Default move operations
-            audio_mixer(audio_mixer&&) = default;
-            audio_mixer& operator=(audio_mixer&&) = default;
+            audio_mixer(audio_mixer&&) = delete;
+            audio_mixer& operator=(audio_mixer&&) = delete;
 
             /**
              * @brief Get valid streams for mixing

@@ -189,6 +189,41 @@ if(DEFINED MUSAC_WARNING_FLAGS)
     target_compile_options(musac_sdk PRIVATE ${MUSAC_WARNING_FLAGS})
 endif()
 
+# Suppress warnings for third-party code (ymfm, impl_opl, speex resampler)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set_source_files_properties(
+        opl/ymfm/ymfm_adpcm.cpp
+        opl/ymfm/ymfm_misc.cpp
+        opl/ymfm/ymfm_opl.cpp
+        opl/ymfm/ymfm_opm.cpp
+        opl/ymfm/ymfm_opn.cpp
+        opl/ymfm/ymfm_opq.cpp
+        opl/ymfm/ymfm_opz.cpp
+        opl/ymfm/ymfm_pcm.cpp
+        opl/ymfm/ymfm_ssg.cpp
+        opl/impl_opl.c
+        opl/adlib_emu.cpp
+        resampler/speex/resample.c
+        PROPERTIES COMPILE_OPTIONS "-w"
+    )
+elseif(MSVC)
+    set_source_files_properties(
+        opl/ymfm/ymfm_adpcm.cpp
+        opl/ymfm/ymfm_misc.cpp
+        opl/ymfm/ymfm_opl.cpp
+        opl/ymfm/ymfm_opm.cpp
+        opl/ymfm/ymfm_opn.cpp
+        opl/ymfm/ymfm_opq.cpp
+        opl/ymfm/ymfm_opz.cpp
+        opl/ymfm/ymfm_pcm.cpp
+        opl/ymfm/ymfm_ssg.cpp
+        opl/impl_opl.c
+        opl/adlib_emu.cpp
+        resampler/speex/resample.c
+        PROPERTIES COMPILE_OPTIONS "/w"
+    )
+endif()
+
 # ============================================================================
 # Installation
 # ============================================================================

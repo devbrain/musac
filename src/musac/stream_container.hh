@@ -35,13 +35,11 @@ namespace musac {
         stream_container() = default;
         ~stream_container() = default;
         
-        // Container is not copyable (contains raw pointers)
+        // Container is not copyable or movable (contains mutex and atomics)
         stream_container(const stream_container&) = delete;
         stream_container& operator=(const stream_container&) = delete;
-        
-        // Move operations are safe with mutex and atomic
-        stream_container(stream_container&&) = default;
-        stream_container& operator=(stream_container&&) = default;
+        stream_container(stream_container&&) = delete;
+        stream_container& operator=(stream_container&&) = delete;
         
         // Add a stream and its lifetime token
         void add(audio_stream* stream, std::weak_ptr<void> lifetime_token, int token_id) {

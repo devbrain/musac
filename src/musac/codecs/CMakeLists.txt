@@ -228,6 +228,91 @@ if(DEFINED MUSAC_WARNING_FLAGS)
     target_compile_options(musac_codecs PRIVATE ${MUSAC_WARNING_FLAGS})
 endif()
 
+# Suppress warnings for third-party code
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set_source_files_properties(
+        dr_libs/dr_wav.h
+        dr_libs/dr_flac.h
+        dr_libs/dr_mp3.h
+        vorbis/stb_vorbis.c
+        opb_lib/opblib.c
+        cmf/fmdrv.c
+        vgm/em_inflate.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/fastmix.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_669.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_amf.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_ams.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_dbm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_dmf.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_dsm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_far.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_gdm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_it.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_mdl.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_med.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_mod.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_mt2.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_mtm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_okt.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_psm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_ptm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_s3m.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_stm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_ult.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_umx.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_xm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/mmcmp.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/modplug.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/snd_dsp.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/snd_flt.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/snd_fx.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/sndfile.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/sndmix.c
+        PROPERTIES COMPILE_OPTIONS "-w"
+    )
+elseif(MSVC)
+    set_source_files_properties(
+        dr_libs/dr_wav.h
+        dr_libs/dr_flac.h
+        dr_libs/dr_mp3.h
+        vorbis/stb_vorbis.c
+        opb_lib/opblib.c
+        cmf/fmdrv.c
+        vgm/em_inflate.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/fastmix.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_669.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_amf.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_ams.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_dbm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_dmf.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_dsm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_far.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_gdm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_it.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_mdl.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_med.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_mod.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_mt2.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_mtm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_okt.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_psm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_ptm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_s3m.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_stm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_ult.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_umx.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/load_xm.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/mmcmp.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/modplug.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/snd_dsp.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/snd_flt.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/snd_fx.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/sndfile.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/sndmix.c
+        PROPERTIES COMPILE_OPTIONS "/w"
+    )
+endif()
+
 # ============================================================================
 # Installation
 # ============================================================================
