@@ -459,7 +459,7 @@ TEST_SUITE("ErrorScenarios::System") {
             
             // Streams should handle the switch
             for (auto& stream : streams) {
-                CHECK_NOTHROW(stream.is_playing());
+                CHECK_NOTHROW((void)stream.is_playing());
             }
         }
     }

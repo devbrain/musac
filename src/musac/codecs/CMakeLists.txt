@@ -231,9 +231,11 @@ endif()
 # Suppress warnings for third-party code
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     set_source_files_properties(
-        dr_libs/dr_wav.h
-        dr_libs/dr_flac.h
-        dr_libs/dr_mp3.h
+        # Files that include dr_libs headers (header-only libraries)
+        decoder_drwav.cc
+        decoder_drflac.cc
+        decoder_drmp3.cc
+        # Other third-party code
         vorbis/stb_vorbis.c
         opb_lib/opblib.c
         cmf/fmdrv.c
@@ -272,9 +274,11 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     )
 elseif(MSVC)
     set_source_files_properties(
-        dr_libs/dr_wav.h
-        dr_libs/dr_flac.h
-        dr_libs/dr_mp3.h
+        # Files that include dr_libs headers (header-only libraries)
+        decoder_drwav.cc
+        decoder_drflac.cc
+        decoder_drmp3.cc
+        # Other third-party code
         vorbis/stb_vorbis.c
         opb_lib/opblib.c
         cmf/fmdrv.c
@@ -309,7 +313,7 @@ elseif(MSVC)
         ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/snd_fx.c
         ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/sndfile.c
         ${CMAKE_CURRENT_SOURCE_DIR}/libmodplug/sndmix.c
-        PROPERTIES COMPILE_OPTIONS "/w"
+        PROPERTIES COMPILE_FLAGS "/W0"
     )
 endif()
 

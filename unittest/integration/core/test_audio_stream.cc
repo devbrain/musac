@@ -580,7 +580,7 @@ TEST_SUITE("AudioStream::Integration") {
                     destruction_order++;
                     // Access previous stream
                     if (prev_stream) {
-                        prev_stream->is_playing();
+                        (void)prev_stream->is_playing();
                     }
                 });
             }

@@ -179,28 +179,42 @@ TEST_SUITE("AudioSystem::BackendV2::Integration") {
     
     TEST_CASE("legacy init still works") {
         // Suppress deprecation warning for this test
+        #if defined(__GNUC__) && !defined(__clang__)
         #pragma GCC diagnostic push
         #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-        
+        #elif defined(__clang__)
+        #pragma clang diagnostic push
+        #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        #elif defined(_MSC_VER)
+        #pragma warning(push)
+        #pragma warning(disable: 4996)
+        #endif
+
         // Old API should still work
         // Initialize with null backend
         REQUIRE_BACKEND();
         std::shared_ptr<audio_backend> backend = test::create_backend();
         bool result = audio_system::init(backend);
         REQUIRE(result == true);
-        
+
         // Should have created a backend internally
         auto retrieved_backend = audio_system::get_backend();
         REQUIRE(backend.get() != nullptr);
         REQUIRE(backend->is_initialized());
-        
+
         // Should be able to enumerate devices
         auto current_backend = audio_system::get_backend();
         auto devices = current_backend ? audio_device::enumerate_devices(current_backend, true) : std::vector<device_info>();
         CHECK(devices.size() > 0);
-        
+
+        #if defined(__GNUC__) && !defined(__clang__)
         #pragma GCC diagnostic pop
-        
+        #elif defined(__clang__)
+        #pragma clang diagnostic pop
+        #elif defined(_MSC_VER)
+        #pragma warning(pop)
+        #endif
+
         audio_system::done();
     }
     

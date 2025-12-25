@@ -220,7 +220,7 @@ elseif(MSVC)
         opl/impl_opl.c
         opl/adlib_emu.cpp
         resampler/speex/resample.c
-        PROPERTIES COMPILE_OPTIONS "/w"
+        PROPERTIES COMPILE_FLAGS "/W0"
     )
 endif()
 

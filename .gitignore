@@ -42,4 +42,5 @@
 
 .idea
 cmake-build-debug
-buildimgui.ini
+build/
+imgui.ini

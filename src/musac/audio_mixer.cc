@@ -42,30 +42,28 @@ namespace musac {
         static constexpr size_t STABILITY_FRAMES = 100;             // Wait 100 callbacks before shrinking
         
         // Track usage patterns for stability
-        static size_t frames_at_current_size = 0;
         static size_t consecutive_small_requests = 0;
-        
+
         if (out_len_samples > m_allocated_samples) {
             // Need to grow - do it immediately for real-time safety
             m_final_mix_buf.resize(out_len_samples);
             m_stream_buf.resize(out_len_samples);
             m_processor_buf.resize(out_len_samples);
             m_allocated_samples = out_len_samples;
-            
-            // Reset stability counters since size changed
-            frames_at_current_size = 0;
+
+            // Reset stability counter since size changed
             consecutive_small_requests = 0;
-            
+
             // Log significant growth for debugging
             if (out_len_samples > MAX_RETAINED_SAMPLES) {
                 LOG_WARN("audio_mixer", "Large buffer allocation:", out_len_samples, "samples");
             }
-            
-        } else if (m_allocated_samples > MAX_RETAINED_SAMPLES && 
+
+        } else if (m_allocated_samples > MAX_RETAINED_SAMPLES &&
                    out_len_samples < static_cast<unsigned int>(m_allocated_samples * SHRINK_THRESHOLD)) {
             // Buffer is large and we're using less than 25% of it
             consecutive_small_requests++;
-            
+
             // Only shrink after consistent small usage for STABILITY_FRAMES callbacks
             if (consecutive_small_requests > STABILITY_FRAMES) {
                 // Calculate new size with headroom for growth
@@ -73,26 +71,22 @@ namespace musac {
                     static_cast<size_t>(out_len_samples * SHRINK_HEADROOM),
                     MIN_BUFFER_SAMPLES
                 );
-                
+
                 // Ensure we don't grow beyond MAX_RETAINED_SAMPLES
                 new_size = std::min(new_size, MAX_RETAINED_SAMPLES);
-                
+
                 // Resize buffers (but don't shrink_to_fit to avoid reallocation in audio thread)
                 m_final_mix_buf.resize(new_size);
                 m_stream_buf.resize(new_size);
                 m_processor_buf.resize(new_size);
                 m_allocated_samples = static_cast<unsigned int>(new_size);
-                
-                // Reset counters
+
+                // Reset counter
                 consecutive_small_requests = 0;
-                frames_at_current_size = 0;
-                
+
                 LOG_INFO("audio_mixer", "Shrunk buffers from", m_allocated_samples, "to", new_size, "samples");
             }
         } else {
-            // Size is acceptable, just track stability
-            frames_at_current_size++;
-            
             // Reset small request counter if we're using a reasonable amount
             if (out_len_samples >= static_cast<unsigned int>(m_allocated_samples * SHRINK_THRESHOLD)) {
                 consecutive_small_requests = 0;
@@ -106,12 +100,15 @@ namespace musac {
 
     // Define a portable IVDEP hint macro
 #ifndef PRAGMA_IVDEP
-#if defined(_MSC_VER)
+#if defined(__clang__) && defined(_MSC_VER)
+    // clang-cl: no reliable ivdep pragma available
+#define PRAGMA_IVDEP
+#elif defined(_MSC_VER)
 #define PRAGMA_IVDEP __pragma(loop(ivdep))
 #elif defined(__INTEL_COMPILER)
 #define PRAGMA_IVDEP _Pragma("ivdep")
 #elif defined(__clang__)
-    // Clang’s vectorization hint—you can tweak to your needs
+    // Regular clang (not clang-cl)
 #define PRAGMA_IVDEP _Pragma("clang loop vectorize(enable) interleave(enable)")
 #elif defined(__GNUC__) && (__GNUC__ >= 5)
 #define PRAGMA_IVDEP _Pragma("GCC ivdep")

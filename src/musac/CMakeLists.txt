@@ -111,7 +111,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 elseif(MSVC)
     set_source_files_properties(
         resampler/speex/resample.c
-        PROPERTIES COMPILE_OPTIONS "/w"
+        PROPERTIES COMPILE_FLAGS "/W0"
     )
 endif()
 
