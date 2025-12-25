@@ -4,6 +4,7 @@
 #include <musac/sdk/export_musac_sdk.h>
 #include <musac/sdk/types.hh>
 #include <cstddef>
+#include <cstdio>
 #include <memory>
 
 namespace musac {

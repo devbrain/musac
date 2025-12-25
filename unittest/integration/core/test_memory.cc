@@ -1,9 +1,27 @@
 #include <doctest/doctest.h>
 #include <cstring>
 #include <cstdint>
+#include <cstdlib>
 #include <string>
 #include <vector>
 #include <algorithm>
+
+#ifdef _WIN32
+#include <malloc.h>
+inline void* portable_aligned_alloc(size_t alignment, size_t size) {
+    return _aligned_malloc(size, alignment);
+}
+inline void portable_aligned_free(void* ptr) {
+    _aligned_free(ptr);
+}
+#else
+inline void* portable_aligned_alloc(size_t alignment, size_t size) {
+    return std::aligned_alloc(alignment, size);
+}
+inline void portable_aligned_free(void* ptr) {
+    std::free(ptr);
+}
+#endif
 
 // Memory utility tests
 // These test standard memory operations that will replace SDL equivalents
@@ -135,12 +153,12 @@ TEST_SUITE("Core::Memory") {
             // C++17 aligned allocation
             size_t alignment = 32;
             size_t size = 1024;
-            
-            void* ptr = std::aligned_alloc(alignment, size);
+
+            void* ptr = portable_aligned_alloc(alignment, size);
             CHECK(ptr != nullptr);
             CHECK(reinterpret_cast<uintptr_t>(ptr) % alignment == 0);
-            
-            std::free(ptr);
+
+            portable_aligned_free(ptr);
         }
         
         SUBCASE("Vector as dynamic buffer") {

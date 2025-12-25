@@ -7,10 +7,15 @@
 #include <musac/audio_source.hh>
 #include <cstring>
 #include <vector>
+#define _USE_MATH_DEFINES
 #include <cmath>
 #include <atomic>
 #include <algorithm>
 #include <cstdlib>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 namespace musac::test {
 
