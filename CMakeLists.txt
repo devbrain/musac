@@ -274,6 +274,7 @@ if(NEUTRINO_MUSAC_INSTALL AND NOT MUSAC_IS_SUBDIRECTORY)
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/musacConfig.cmake.in"
         "${CMAKE_CURRENT_BINARY_DIR}/musacConfig.cmake"
         INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/musac"
+        PATH_VARS CMAKE_INSTALL_INCLUDEDIR
     )
 
     # Generate the version file
@@ -287,13 +288,6 @@ if(NEUTRINO_MUSAC_INSTALL AND NOT MUSAC_IS_SUBDIRECTORY)
     install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/musacConfig.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/musacConfigVersion.cmake"
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/musac"
-    )
-
-    # Export targets
-    install(EXPORT musacTargets
-        FILE musacTargets.cmake
-        NAMESPACE musac::
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/musac"
     )
 endif()

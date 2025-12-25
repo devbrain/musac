@@ -11,30 +11,16 @@ if(@MUSAC_BUILD_SDL2_BACKEND@)
     find_dependency(SDL2)
 endif()
 
-# Find failsafe package (required dependency)
-if(NOT TARGET failsafe::failsafe)
-    # Try to find installed failsafe first
-    find_package(failsafe QUIET)
-    
-    # If not found, create an interface target to satisfy the dependency
-    if(NOT failsafe_FOUND)
-        add_library(failsafe::failsafe INTERFACE IMPORTED)
-        set_target_properties(failsafe::failsafe PROPERTIES
-            INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_LIST_DIR}/../../../include"
-        )
-    endif()
-endif()
+# Provide version information
+set(MUSAC_FOUND TRUE)
+set(MUSAC_VERSION @PROJECT_VERSION@)
+set(MUSAC_VERSION_MAJOR @PROJECT_VERSION_MAJOR@)
+set(MUSAC_VERSION_MINOR @PROJECT_VERSION_MINOR@)
+set(MUSAC_VERSION_PATCH @PROJECT_VERSION_PATCH@)
 
-# Include the exported targets
-include("${CMAKE_CURRENT_LIST_DIR}/musacTargets.cmake")
-
-# Provide the libraries for backwards compatibility
-set(musac_LIBRARIES musac::musac musac::musac_sdk musac::musac_codecs)
-set(musac_INCLUDE_DIRS 
-    $<TARGET_PROPERTY:musac::musac,INTERFACE_INCLUDE_DIRECTORIES>
-    $<TARGET_PROPERTY:musac::musac_sdk,INTERFACE_INCLUDE_DIRECTORIES>
-    $<TARGET_PROPERTY:musac::musac_codecs,INTERFACE_INCLUDE_DIRECTORIES>
-)
+# Provide include directory
+set_and_check(MUSAC_INCLUDE_DIR "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
+set(musac_INCLUDE_DIRS "${MUSAC_INCLUDE_DIR}")
 
 # Check required components
 set(musac_FOUND TRUE)

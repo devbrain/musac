@@ -78,8 +78,7 @@ jobs:
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DNEUTRINO_MUSAC_BUILD_TESTS=ON \
-            -DNEUTRINO_MUSAC_BUILD_EXAMPLES=OFF \
-            -DNEUTRINO_MUSAC_INSTALL=OFF
+            -DNEUTRINO_MUSAC_BUILD_EXAMPLES=OFF
 
       - name: Configure CMake (Windows MSVC)
         if: runner.os == 'Windows' && matrix.compiler == 'msvc'
@@ -87,8 +86,7 @@ jobs:
           cmake -B build `
             -DCMAKE_BUILD_TYPE=Release `
             -DNEUTRINO_MUSAC_BUILD_TESTS=ON `
-            -DNEUTRINO_MUSAC_BUILD_EXAMPLES=OFF `
-            -DNEUTRINO_MUSAC_INSTALL=OFF
+            -DNEUTRINO_MUSAC_BUILD_EXAMPLES=OFF
 
       - name: Configure CMake (Windows Clang-CL)
         if: runner.os == 'Windows' && matrix.compiler == 'clang-cl'
@@ -97,8 +95,7 @@ jobs:
             -T ClangCL `
             -DCMAKE_BUILD_TYPE=Release `
             -DNEUTRINO_MUSAC_BUILD_TESTS=ON `
-            -DNEUTRINO_MUSAC_BUILD_EXAMPLES=OFF `
-            -DNEUTRINO_MUSAC_INSTALL=OFF
+            -DNEUTRINO_MUSAC_BUILD_EXAMPLES=OFF
 
       - name: Build
         run: cmake --build build --config Release
@@ -143,8 +140,7 @@ jobs:
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Debug \
             -DNEUTRINO_MUSAC_BUILD_TESTS=ON \
-            -DNEUTRINO_MUSAC_BUILD_EXAMPLES=OFF \
-            -DNEUTRINO_MUSAC_INSTALL=OFF
+            -DNEUTRINO_MUSAC_BUILD_EXAMPLES=OFF
 
       - name: Build
         run: cmake --build build --config Debug
