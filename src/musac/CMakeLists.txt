@@ -97,10 +97,8 @@ else()
     target_compile_definitions(musac PUBLIC MUSAC_STATIC_DEFINE)
 endif()
 
-# Warning flags
-if(DEFINED MUSAC_WARNING_FLAGS)
-    target_compile_options(musac PRIVATE ${MUSAC_WARNING_FLAGS})
-endif()
+# Compiler Warnings
+neutrino_target_warnings(musac)
 
 # Suppress warnings for third-party code (speex resampler)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -116,23 +114,10 @@ elseif(MSVC)
 endif()
 
 # ============================================================================
-# Installation
+# Installation (handled in root CMakeLists.txt via NeutrinoInstall)
 # ============================================================================
 
 if(NOT MUSAC_IS_SUBDIRECTORY AND NEUTRINO_MUSAC_INSTALL)
-    install(TARGETS musac
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-    )
-
-    # Install headers
-    install(DIRECTORY ${MUSAC_PROJECT_ROOT}/include/musac
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-        FILES_MATCHING PATTERN "*.hh" PATTERN "*.h"
-    )
-
     # Install generated export header if shared build
     if(MUSAC_BUILD_SHARED)
         install(FILES ${CMAKE_CURRENT_BINARY_DIR}/musac/export_musac.h

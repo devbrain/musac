@@ -150,25 +150,6 @@ if(NOT NEUTRINO_MUSAC_BUILD_SHARED)
     endif()
 endif()
 
-# Warning flags from neutrino-cmake
-if(NEUTRINO_MUSAC_DEVELOPER_MODE)
-    set(MUSAC_WARNING_FLAGS)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-        set(MUSAC_WARNING_FLAGS
-            -Wall -Wextra -Wpedantic
-            -Wcast-align -Wcast-qual -Wconversion
-            -Wdouble-promotion -Wformat=2 -Wnon-virtual-dtor
-            -Wold-style-cast -Woverloaded-virtual -Wshadow
-            -Wsign-conversion -Wundef -Wunused
-            -Wzero-as-null-pointer-constant
-        )
-        if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-            list(APPEND MUSAC_WARNING_FLAGS -Wlogical-op -Wuseless-cast)
-        endif()
-    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        set(MUSAC_WARNING_FLAGS /W4 /permissive- /Zc:__cplusplus)
-    endif()
-endif()
 
 # ============================================================================
 # Subdirectories
@@ -185,6 +166,11 @@ endif()
 
 # Main library components
 add_subdirectory(src/musac)
+
+# Create neutrino:: alias
+if(TARGET musac AND NOT TARGET neutrino::musac)
+    add_library(neutrino::musac ALIAS musac)
+endif()
 
 # Examples and test data
 if(NEUTRINO_MUSAC_BUILD_EXAMPLES)
@@ -275,31 +261,14 @@ message(STATUS "========================================")
 message(STATUS "")
 
 # ============================================================================
-# Installation and Packaging
+# Installation
 # ============================================================================
 
 if(NEUTRINO_MUSAC_INSTALL AND NOT MUSAC_IS_SUBDIRECTORY)
-    include(CMakePackageConfigHelpers)
+    include(NeutrinoInstall)
 
-    # Generate the config file from template
-    configure_package_config_file(
-        "${CMAKE_CURRENT_SOURCE_DIR}/cmake/musacConfig.cmake.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/musacConfig.cmake"
-        INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/musac"
-        PATH_VARS CMAKE_INSTALL_INCLUDEDIR
-    )
-
-    # Generate the version file
-    write_basic_package_version_file(
-        "${CMAKE_CURRENT_BINARY_DIR}/musacConfigVersion.cmake"
-        VERSION ${PROJECT_VERSION}
+    neutrino_install_library(musac
+        NAMESPACE neutrino::
         COMPATIBILITY SameMajorVersion
-    )
-
-    # Install the config and version files
-    install(FILES
-        "${CMAKE_CURRENT_BINARY_DIR}/musacConfig.cmake"
-        "${CMAKE_CURRENT_BINARY_DIR}/musacConfigVersion.cmake"
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/musac"
     )
 endif()
