@@ -60,7 +60,8 @@ namespace musac {
             }
 
         } else if (m_allocated_samples > MAX_RETAINED_SAMPLES &&
-                   out_len_samples < static_cast<unsigned int>(m_allocated_samples * SHRINK_THRESHOLD)) {
+                   out_len_samples < static_cast<size_t>(
+                       static_cast<float>(m_allocated_samples) * SHRINK_THRESHOLD)) {
             // Buffer is large and we're using less than 25% of it
             consecutive_small_requests++;
 
@@ -68,7 +69,7 @@ namespace musac {
             if (consecutive_small_requests > STABILITY_FRAMES) {
                 // Calculate new size with headroom for growth
                 size_t new_size = std::max(
-                    static_cast<size_t>(out_len_samples * SHRINK_HEADROOM),
+                    out_len_samples * SHRINK_HEADROOM,
                     MIN_BUFFER_SAMPLES
                 );
 
@@ -79,7 +80,7 @@ namespace musac {
                 m_final_mix_buf.resize(new_size);
                 m_stream_buf.resize(new_size);
                 m_processor_buf.resize(new_size);
-                m_allocated_samples = static_cast<unsigned int>(new_size);
+                m_allocated_samples = new_size;
 
                 // Reset counter
                 consecutive_small_requests = 0;
@@ -88,7 +89,8 @@ namespace musac {
             }
         } else {
             // Reset small request counter if we're using a reasonable amount
-            if (out_len_samples >= static_cast<unsigned int>(m_allocated_samples * SHRINK_THRESHOLD)) {
+            if (out_len_samples >= static_cast<size_t>(
+                    static_cast<float>(m_allocated_samples) * SHRINK_THRESHOLD)) {
                 consecutive_small_requests = 0;
             }
         }

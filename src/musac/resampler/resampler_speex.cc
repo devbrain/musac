@@ -73,7 +73,9 @@ namespace musac {
         // The speex resampler does not offer a way to clear its internal state.
         // speex_resampler_reset_mem() does not work. We are forced to allocate a new resampler handle.
         if (m_pimpl->m_resampler) {
-            adjust_for_output_spec(get_current_rate(), m_pimpl->m_src_rate, get_current_channels());
+            adjust_for_output_spec(get_current_rate(),
+                                   m_pimpl->m_src_rate,
+                                   static_cast<channels_t>(get_current_channels()));
         }
     }
 }

@@ -345,7 +345,7 @@ audio_stream audio_device::create_stream(audio_source&& audio_src) {
     // Create the callback that will call audio_stream's callback
     if (!m_pimpl->stream) {
         create_stream_with_callback(
-            [](void* userdata, uint8_t* stream, int len) {
+            [](void* /*userdata*/, uint8_t* stream, int len) {
                 audio_stream::audio_callback(stream, static_cast<unsigned int>(len));
             },
             nullptr
@@ -391,7 +391,7 @@ pc_speaker_stream audio_device::create_pc_speaker_stream() {
     // Create the callback that will call audio_stream's callback
     if (!m_pimpl->stream) {
         create_stream_with_callback(
-            [](void* userdata, uint8_t* stream, int len) {
+            [](void* /*userdata*/, uint8_t* stream, int len) {
                 audio_stream::audio_callback(stream, static_cast<unsigned int>(len));
             },
             nullptr

@@ -545,6 +545,13 @@ namespace musac {
         private:
             struct impl;
             friend struct impl;
-            std::unique_ptr <impl> m_pimpl;
+            // shared_ptr (not unique_ptr) so the SDL audio thread can
+            // pin the impl alive for the duration of an audio_callback
+            // iteration via a parallel weak_ptr held in the mixer.
+            // Without this pin, there is a TOCTOU race where the
+            // destructor runs between `entry.is_valid()` and
+            // `m_pimpl->create_usage_guard()`, freeing the impl
+            // mid-callback. See audio_callback in stream.cc.
+            std::shared_ptr <impl> m_pimpl;
     };
 }

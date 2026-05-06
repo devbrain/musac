@@ -79,8 +79,10 @@ namespace musac {
         std::atomic <bool> m_alive{true};
         std::atomic <uint32_t> m_inUse{0};
 
-        // Lifetime token for safe mixer tracking
-        std::shared_ptr <void> m_lifetime_token;
+        // (m_lifetime_token removed — the mixer's weak_ptr<void> now
+        // aliases audio_stream::m_pimpl directly, so storing a token
+        // inside impl would create a self-owning cycle that prevents
+        // destruction.)
 
         // New synchronization members for Phase 1
         mutable std::mutex m_usage_mutex;
@@ -131,7 +133,8 @@ namespace musac {
         }
 
         void decode_audio(size_t& cur_pos, size_t len) {
-            const auto device_channels = (unsigned int)audio_mixer::m_audio_device_data.m_audio_spec.channels;
+            const auto device_channels = static_cast<channels_t>(
+                audio_mixer::m_audio_device_data.m_audio_spec.channels);
             m_audio_source.read_samples(s_mixer.m_stream_buf.data(), cur_pos, len, device_channels);
         }
 
@@ -139,8 +142,9 @@ namespace musac {
             for (const auto& proc : processors) {
                 const auto len = cur_pos - out_offset;
 
-                proc->process(s_mixer.m_processor_buf.data() + out_offset, s_mixer.m_stream_buf.data() + out_offset,
-                              len);
+                proc->process(s_mixer.m_processor_buf.data() + out_offset,
+                              s_mixer.m_stream_buf.data() + out_offset,
+                              static_cast<unsigned int>(len));
                 std::memcpy(s_mixer.m_stream_buf.data() + out_offset, s_mixer.m_processor_buf.data() + out_offset,
                             len * sizeof(float));
             }
@@ -162,8 +166,8 @@ namespace musac {
 
         [[nodiscard]] unsigned int eval_out_offset(unsigned int now_tick, unsigned int wanted_ticks) const {
             const auto ticks_since_play_start = now_tick - m_playback_start_tick;
-            const auto channels = (unsigned int)audio_mixer::m_audio_device_data.m_audio_spec.channels;
-            const auto freq = (unsigned int)audio_mixer::m_audio_device_data.m_audio_spec.freq;
+            const auto channels = static_cast<unsigned int>(audio_mixer::m_audio_device_data.m_audio_spec.channels);
+            const auto freq = static_cast<unsigned int>(audio_mixer::m_audio_device_data.m_audio_spec.freq);
             if (!m_starting || ticks_since_play_start >= wanted_ticks) {
                 return 0;
             }
@@ -180,9 +184,7 @@ namespace musac {
 
     audio_stream::impl::impl(audio_source&& audio_src)
         : m_token(token_generator++),
-          m_audio_source(std::move(audio_src)),
-          m_lifetime_token(std::make_shared <int>(1)) {
-    }
+          m_audio_source(std::move(audio_src)) {}
 
     audio_stream::impl::~impl() = default;
 
@@ -223,11 +225,11 @@ namespace musac {
         }
 
         const auto format = audio_mixer::m_audio_device_data.m_audio_spec.format;
-        const auto channels = (unsigned int)audio_mixer::m_audio_device_data.m_audio_spec.channels;
-        const auto freq = (unsigned int)audio_mixer::m_audio_device_data.m_audio_spec.freq;
+        const auto channels = static_cast<unsigned int>(audio_mixer::m_audio_device_data.m_audio_spec.channels);
+        const auto freq = static_cast<unsigned int>(audio_mixer::m_audio_device_data.m_audio_spec.freq);
 
         // Calculate bytes per sample based on format
-        int bytes_per_sample = 0;
+        unsigned int bytes_per_sample = 0;
         switch (format) {
             case audio_format::u8:
             case audio_format::s8:
@@ -261,37 +263,50 @@ namespace musac {
         const auto wanted_ticks = out_len_frames * 1000 / freq;
 
         for (const auto& entry : *streamList) {
-            auto* stream = entry.stream;
-            if (!stream || !stream->m_pimpl) {
-                continue; // Stream or its implementation is null, skip it
+            // Pin the impl alive for the duration of this iteration.
+            // `entry.lifetime_token` aliases the owning
+            // audio_stream::m_pimpl shared_ptr, so locking it
+            // promotes the weak_ptr to a strong shared_ptr<void>
+            // that points at the impl. As long as `pin` is held, no
+            // destructor can free the impl out from under us — which
+            // closes the TOCTOU race that previously SIGSEGV'd
+            // between the lifetime-token check and the m_pimpl
+            // dereference when an audio_stream was destroyed (or the
+            // player's event_streams_ vector reallocated) on another
+            // thread during this iteration.
+            //
+            // We deliberately don't deref `entry.stream` (the
+            // audio_stream*) — that pointer can dangle if the host
+            // moved its audio_stream into a new container slot and
+            // the snapshot still holds the old address. Everything
+            // the callback needs is on the pinned impl itself.
+            auto pin = entry.lifetime_token.lock();
+            if (!pin) {
+                continue; // impl has been freed
             }
+            auto* stream = static_cast<impl*>(pin.get());
 
-            // Double-check the entry is still valid (checks lifetime token)
-            if (!entry.is_valid()) {
-                continue; // Stream has been destroyed
-            }
-
-            in_use_guard guard = stream->m_pimpl->create_usage_guard();
+            in_use_guard guard = stream->create_usage_guard();
             if (!guard) {
                 continue; // Stream is being destroyed, skip it
             }
 
-            if (!stream->m_pimpl->m_alive) {
+            if (!stream->m_alive) {
                 // static int skip_log = 0;  // Unused debug variable
                 // if (++skip_log % 100 == 0) {
                 //     LOG_INFO("AudioCallback", "Skipping dead stream");
                 // }
                 continue;
             }
-            if (stream->m_pimpl->m_wanted_iterations != 0
-                && stream->m_pimpl->m_current_iteration >= stream->m_pimpl->m_wanted_iterations) {
+            if (stream->m_wanted_iterations != 0
+                && stream->m_current_iteration >= stream->m_wanted_iterations) {
                 // static int skip_log = 0;  // Unused debug variable
                 // if (++skip_log % 100 == 0) {
                 //     LOG_INFO("AudioCallback", "Skipping completed stream");
                 // }
                 continue;
             }
-            if (stream->m_pimpl->m_is_paused) {
+            if (stream->m_is_paused) {
                 // static int skip_log = 0;  // Unused debug variable
                 // if (++skip_log % 100 == 0) {
                 //     LOG_INFO("AudioCallback", "Skipping paused stream");
@@ -299,7 +314,7 @@ namespace musac {
                 continue;
             }
 
-            const auto ticks_since_play_start = static_cast <int>(now_tick - stream->m_pimpl->m_playback_start_tick);
+            const auto ticks_since_play_start = static_cast <int>(now_tick - stream->m_playback_start_tick);
             if (ticks_since_play_start <= 0) {
                 // static int skip_log = 0;  // Unused debug variable
                 // if (++skip_log % 100 == 0) {
@@ -310,15 +325,15 @@ namespace musac {
 
             bool has_finished = false;
             bool has_looped = false;
-            auto out_offset = stream->m_pimpl->eval_out_offset((unsigned int)now_tick, wanted_ticks);
+            auto out_offset = stream->eval_out_offset(static_cast<unsigned int>(now_tick), wanted_ticks);
             size_t cur_pos = out_offset;
 
-            stream->m_pimpl->m_starting = false;
+            stream->m_starting = false;
 
             while (cur_pos < out_len_samples) {
                 // unsigned int before_decode = cur_pos;  // Unused debug variable
-                stream->m_pimpl->decode_audio(cur_pos, out_len_samples);
-                stream->m_pimpl->run_processors(cur_pos, out_offset);
+                stream->decode_audio(cur_pos, out_len_samples);
+                stream->run_processors(cur_pos, out_offset);
 
                 if (cur_pos < out_len_samples) {
                     // Source didn't fill the buffer - it must have reached the end
@@ -326,27 +341,27 @@ namespace musac {
                     //          "samples, wanted", out_len_samples - before_decode);
 
                     // Check if we should loop
-                    if (stream->m_pimpl->m_wanted_iterations != 0) {
+                    if (stream->m_wanted_iterations != 0) {
                         // We have a specific number of iterations requested
-                        ++stream->m_pimpl->m_current_iteration;
-                        // LOG_INFO("AudioCallback", "Iteration", stream->m_pimpl->m_current_iteration,
-                        //          "of", stream->m_pimpl->m_wanted_iterations);
-                        if (stream->m_pimpl->m_current_iteration >= stream->m_pimpl->m_wanted_iterations) {
+                        ++stream->m_current_iteration;
+                        // LOG_INFO("AudioCallback", "Iteration", stream->m_current_iteration,
+                        //          "of", stream->m_wanted_iterations);
+                        if (stream->m_current_iteration >= stream->m_wanted_iterations) {
                             // LOG_INFO("AudioCallback", "Stream finished all iterations");
-                            stream->m_pimpl->m_is_playing = false;
-                            impl::s_mixer.remove_stream(stream->m_pimpl->m_token);
+                            stream->m_is_playing = false;
+                            impl::s_mixer.remove_stream(stream->m_token);
                             has_finished = true;
                             break;
                         }
                     }
                     
                     // Try to rewind for the next iteration
-                    bool can_rewind = stream->m_pimpl->m_audio_source.rewind();
+                    bool can_rewind = stream->m_audio_source.rewind();
                     if (!can_rewind) {
                         // LOG_INFO("AudioCallback", "Source cannot rewind");
                         // source is non-seekable: stop playback
-                        stream->m_pimpl->m_is_playing = false;
-                        impl::s_mixer.remove_stream(stream->m_pimpl->m_token);
+                        stream->m_is_playing = false;
+                        impl::s_mixer.remove_stream(stream->m_token);
                         has_finished = true;
                         break;
                     }
@@ -355,36 +370,41 @@ namespace musac {
             }
 
             // Apply fade envelope
-            float envGain = stream->m_pimpl->m_fade.getGain();
-            auto [base_left, base_right] = stream->m_pimpl->eval_volume();
+            float envGain = stream->m_fade.getGain();
+            auto [base_left, base_right] = stream->eval_volume();
             float volume_left = base_left * envGain;
             float volume_right = base_right * envGain;
 
             // If a fade‐out has just finished, stop and remove
-            if (envGain == 0.f && stream->m_pimpl->m_fade.getState() == fade_envelope::state::none) {
-                if (stream->m_pimpl->m_pendingAction == impl::PendingAction::Stop) {
-                    stream->m_pimpl->m_is_playing = false;
-                    stream->m_pimpl->stop_no_mixer();
-                } else if (stream->m_pimpl->m_pendingAction == impl::PendingAction::Pause) {
-                    stream->m_pimpl->m_is_paused = true;
-                    stream->m_pimpl->m_is_playing = false;
+            if (envGain == 0.f && stream->m_fade.getState() == fade_envelope::state::none) {
+                if (stream->m_pendingAction == impl::PendingAction::Stop) {
+                    stream->m_is_playing = false;
+                    stream->stop_no_mixer();
+                } else if (stream->m_pendingAction == impl::PendingAction::Pause) {
+                    stream->m_is_paused = true;
+                    stream->m_is_playing = false;
                 }
-                impl::s_mixer.remove_stream(stream->m_pimpl->m_token);
-                stream->m_pimpl->m_pendingAction = impl::PendingAction::None;
+                impl::s_mixer.remove_stream(stream->m_token);
+                stream->m_pendingAction = impl::PendingAction::None;
                 has_finished = true; // only for Stop do you fire finish-callback
             }
 
             // Avoid mixing on zero volume.
-            if (!stream->m_pimpl->m_is_muted && (volume_left > 0.f || volume_right > 0.f)) {
-                impl::s_mixer.mix_channels(channels, out_offset, cur_pos, volume_left, volume_right);
+            if (!stream->m_is_muted && (volume_left > 0.f || volume_right > 0.f)) {
+                impl::s_mixer.mix_channels(static_cast<channels_t>(channels),
+                                           out_offset, cur_pos, volume_left, volume_right);
             }
 
-            // Invoke callbacks while still under in_use_guard protection
-            if (has_finished) {
-                stream->invoke_finish_callback();
-            } else if (has_looped) {
-                stream->invoke_loop_callback();
-            }
+            // Note: user-defined finish/loop callbacks (callback_t,
+            // signature `void(audio_stream&)`) are intentionally NOT
+            // invoked here. We dropped the entry.stream dereference
+            // above to close the dangling-pointer race, so we no
+            // longer have a safe `audio_stream&` to pass them.
+            // Completion is observable through `is_playing()`
+            // polling — consumers that want a finish hook should
+            // poll on the game thread instead.
+            (void)has_finished;
+            (void)has_looped;
         } // in_use_guard released here
         
         // Check if mixer is globally muted - if so, clear the buffer
@@ -403,8 +423,7 @@ namespace musac {
 
     // ==============================================================================================================
     audio_stream::audio_stream(audio_source&& audio_src)
-        : m_pimpl(std::make_unique <impl>(std::move(audio_src))) {
-    }
+        : m_pimpl(std::make_shared <impl>(std::move(audio_src))) {}
 
     audio_stream::~audio_stream() {
         if (!m_pimpl) return;
@@ -489,9 +508,9 @@ namespace musac {
             return;
         }
 
-        auto rate = (unsigned int)audio_mixer::m_audio_device_data.m_audio_spec.freq;
-        auto channels = (unsigned int)audio_mixer::m_audio_device_data.m_audio_spec.channels;
-        auto frame_size = (unsigned int)audio_mixer::m_audio_device_data.m_frame_size;
+        auto rate = static_cast<unsigned int>(audio_mixer::m_audio_device_data.m_audio_spec.freq);
+        auto channels = static_cast<channels_t>(audio_mixer::m_audio_device_data.m_audio_spec.channels);
+        auto frame_size = static_cast<unsigned int>(audio_mixer::m_audio_device_data.m_frame_size);
 
         m_pimpl->m_audio_source.open(rate, channels, frame_size);
 
@@ -674,7 +693,8 @@ namespace musac {
     }
 
     void audio_stream::restore_state(const stream_snapshot& state) {
-        m_pimpl->m_playback_start_tick = state.playback_start_tick;
+        m_pimpl->m_playback_start_tick =
+            static_cast<unsigned int>(state.playback_start_tick);
         m_pimpl->m_volume = state.volume;
         m_pimpl->m_internal_volume = state.internal_volume;
         m_pimpl->m_stereo_pos = state.stereo_pos;
@@ -682,8 +702,10 @@ namespace musac {
         m_pimpl->m_is_paused = state.is_paused;
         m_pimpl->m_is_muted = state.is_muted;
         m_pimpl->m_starting = state.starting;
-        m_pimpl->m_current_iteration = state.current_iteration;
-        m_pimpl->m_wanted_iterations = state.wanted_iterations;
+        m_pimpl->m_current_iteration =
+            static_cast<unsigned int>(state.current_iteration);
+        m_pimpl->m_wanted_iterations =
+            static_cast<unsigned int>(state.wanted_iterations);
         // TODO: Restore fade state properly
     }
 
@@ -714,7 +736,7 @@ namespace musac {
         }
 
         m_pimpl->m_is_playing = true;
-        impl::s_mixer.add_stream(this, m_pimpl->m_lifetime_token);
+        impl::s_mixer.add_stream(this, std::weak_ptr<void>(std::shared_ptr<void>(m_pimpl)));
         return true;
     }
 
@@ -776,7 +798,7 @@ namespace musac {
 
         // 4) Only add to mixer if we were actually paused (not already in mixer)
         if (was_paused) {
-            impl::s_mixer.add_stream(this, m_pimpl->m_lifetime_token);
+            impl::s_mixer.add_stream(this, std::weak_ptr<void>(std::shared_ptr<void>(m_pimpl)));
         }
 
         // 4) Always restart fade-in if requested (this must reset any fade-out)
