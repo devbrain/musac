@@ -5,6 +5,7 @@
 #ifndef  OPL_PLAYER_HH
 #define  OPL_PLAYER_HH
 
+#include <cstddef>
 #include <vector>
 
 #include <musac/sdk/opl/opl.hh>

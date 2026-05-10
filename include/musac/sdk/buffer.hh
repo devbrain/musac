@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <algorithm>
 #include <cstring>
 #include <memory>

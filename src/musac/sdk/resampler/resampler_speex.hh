@@ -1,6 +1,7 @@
 // This is copyrighted software. More information is at the end of this file.
 #pragma once
 
+#include <cstddef>
 #include <musac/sdk/resampler.hh>
 
 namespace musac {

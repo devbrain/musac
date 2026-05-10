@@ -134,6 +134,21 @@ include(${NEUTRINO_CMAKE_DIR}/deps/libiff.cmake)
 # Configure libiff options to match our build
 set(NEUTRINO_LIBIFF_BUILD_SHARED ${MUSAC_BUILD_SHARED} CACHE INTERNAL "")
 
+include(FetchContent)
+find_package(Git REQUIRED)
+
+# neutrino-cmake currently fetches libiff from master. Predeclare the same
+# content so CMake applies our compatibility patch before building it.
+FetchContent_Declare(libiff
+    GIT_REPOSITORY https://github.com/devbrain/libiff.git
+    GIT_TAG ${NEUTRINO_LIBIFF_VERSION}
+    GIT_SHALLOW TRUE
+    PATCH_COMMAND
+        ${CMAKE_COMMAND} -E chdir <SOURCE_DIR>
+        ${GIT_EXECUTABLE} apply --ignore-whitespace
+        ${MUSAC_PROJECT_ROOT}/cmake/patches/libiff-chunk-reader-size-t.patch
+)
+
 neutrino_fetch_libiff()
 
 # ============================================================================
