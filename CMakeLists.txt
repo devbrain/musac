@@ -48,6 +48,67 @@ option(NEUTRINO_MUSAC_BUILD_BINDINGS "Build language bindings" OFF)
 option(NEUTRINO_MUSAC_BUILD_JAVA_BINDING "Build Java/JNI binding" ON)
 option(NEUTRINO_MUSAC_BUILD_PYTHON_BINDING "Build Python binding" OFF)
 
+# -----------------------------------------------------------------------------
+# Codec selection
+# -----------------------------------------------------------------------------
+# musac ships 13 audio decoders bundling several third-party libraries
+# (dr_libs WAV/FLAC/MP3, libmodplug, stb_vorbis, OPB, VGM, etc).
+# Most consumers only need a couple — warlords needs only XMI (via the
+# SEQ MIDI/sequence decoder) + WAV. Size-conscious downstreams can
+# bulk-disable then opt-in:
+#
+#   set(NEUTRINO_MUSAC_CODEC_ALL OFF CACHE BOOL "" FORCE)
+#   set(NEUTRINO_MUSAC_CODEC_DRWAV ON CACHE BOOL "" FORCE)
+#   set(NEUTRINO_MUSAC_CODEC_SEQ   ON CACHE BOOL "" FORCE)
+#
+# Defaults to ALL ON. Each axis controls the matching decoder_<name>.cc
+# plus its third-party support files (libmodplug → ~30 files for MOD,
+# stb_vorbis for OGG, opblib for OPB, etc.) and any datascript schemas
+# the decoder uses. register_codecs.cc gates each register_decoder()
+# call via MUSAC_HAS_<NAME> compile defs that mirror the CMake flags.
+
+neutrino_option_group(NEUTRINO_MUSAC_CODEC_ALL
+    "Default state for all musac audio decoders" ON)
+neutrino_option(NEUTRINO_MUSAC_CODEC_DRWAV
+    "WAV via dr_wav (header-only dr_libs)" ON
+    GROUP NEUTRINO_MUSAC_CODEC_ALL)
+neutrino_option(NEUTRINO_MUSAC_CODEC_DRMP3
+    "MP3 via dr_mp3" ON
+    GROUP NEUTRINO_MUSAC_CODEC_ALL)
+neutrino_option(NEUTRINO_MUSAC_CODEC_DRFLAC
+    "FLAC via dr_flac" ON
+    GROUP NEUTRINO_MUSAC_CODEC_ALL)
+neutrino_option(NEUTRINO_MUSAC_CODEC_VORBIS
+    "Ogg Vorbis via stb_vorbis" ON
+    GROUP NEUTRINO_MUSAC_CODEC_ALL)
+neutrino_option(NEUTRINO_MUSAC_CODEC_AIFF
+    "AIFF (IFF) — pulls libiff + multiple sub-codecs (PCM/IMA4/G711/float)" ON
+    GROUP NEUTRINO_MUSAC_CODEC_ALL)
+neutrino_option(NEUTRINO_MUSAC_CODEC_8SVX
+    "8SVX (Amiga IFF sampled voice) — pulls libiff" ON
+    GROUP NEUTRINO_MUSAC_CODEC_ALL)
+neutrino_option(NEUTRINO_MUSAC_CODEC_MODPLUG
+    "MOD/S3M/XM/IT (libmodplug, ~30 third-party files)" ON
+    GROUP NEUTRINO_MUSAC_CODEC_ALL)
+neutrino_option(NEUTRINO_MUSAC_CODEC_VOC
+    "VOC (Creative Voice File)" ON
+    GROUP NEUTRINO_MUSAC_CODEC_ALL)
+neutrino_option(NEUTRINO_MUSAC_CODEC_SEQ
+    "MIDI / XMI sequence formats" ON
+    GROUP NEUTRINO_MUSAC_CODEC_ALL)
+neutrino_option(NEUTRINO_MUSAC_CODEC_CMF
+    "CMF (Creative Music File, OPL FM)" ON
+    GROUP NEUTRINO_MUSAC_CODEC_ALL)
+neutrino_option(NEUTRINO_MUSAC_CODEC_OPB
+    "OPB (OPL Binary, OPL register dump)" ON
+    GROUP NEUTRINO_MUSAC_CODEC_ALL)
+neutrino_option(NEUTRINO_MUSAC_CODEC_VGM
+    "VGM (Video Game Music)" ON
+    GROUP NEUTRINO_MUSAC_CODEC_ALL)
+neutrino_option(NEUTRINO_MUSAC_CODEC_MML
+    "MML (Music Macro Language)" ON
+    GROUP NEUTRINO_MUSAC_CODEC_ALL)
+
 # Include standard install directories
 include(GNUInstallDirs)
 
@@ -251,6 +312,13 @@ message(STATUS "========================================")
 message(STATUS "  Configuration complete!")
 message(STATUS "========================================")
 message(STATUS "")
+
+# Per-codec roster (BUILD/CODEC categories) — only printed at top-level
+# to avoid noise when musac is fetched as a dependency.
+neutrino_is_top_level(_musac_is_top_level)
+if(_musac_is_top_level)
+    neutrino_print_summary(musac)
+endif()
 
 # ============================================================================
 # Installation
