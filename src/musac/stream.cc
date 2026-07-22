@@ -93,7 +93,7 @@ namespace musac {
         mutable std::mutex m_state_mutex; // For state changes (play/pause/stop)
         mutable std::shared_mutex m_data_mutex; // For data access (volume, position, etc.)
 
-        static audio_mixer s_mixer;
+        static audio_mixer& s_mixer; // immortal (leaked): see the definition below
 
         void stop();
         void stop_no_mixer();
@@ -178,7 +178,12 @@ namespace musac {
         }
     };
 
-    audio_mixer audio_stream::impl::s_mixer;
+    // Immortal (heap-allocated, never destroyed). audio_streams may be destroyed at process
+    // teardown from a client's own static (e.g. a cached sound_effect) and call
+    // s_mixer.remove_stream() from their destructor; if s_mixer were an ordinary static it could
+    // already be torn down, and the removal would use-after-free the stream container (a static
+    // destruction-order fiasco). Leaking it keeps it valid for the whole process lifetime.
+    audio_mixer& audio_stream::impl::s_mixer = *new audio_mixer();
 
     // ==============================================================================================================
 

@@ -22,10 +22,24 @@ namespace musac {
     extern void reset_audio_stream();
     extern audio_device* get_active_audio_device();
     
-    // v2 backend
-    static std::shared_ptr<audio_backend> s_backend_v2;
-    static std::shared_ptr<decoders_registry> s_decoders_registry;
-    static std::mutex s_system_mutex;
+    // Immortal audio-system state. Function-local statics so they initialise on first use
+    // (no static-INITIALISATION-order fiasco -- a client may call init() during its own static
+    // construction) and are never torn down: the holders are heap-allocated and deliberately
+    // leaked, so a client's audio_system::done() called from a LATE destructor still finds
+    // valid state instead of resetting already-destroyed shared_ptrs and double-freeing the
+    // backend / registry (a static-DESTRUCTION-order fiasco).
+    static std::shared_ptr<audio_backend>& s_backend_v2() {
+        static auto* p = new std::shared_ptr<audio_backend>();
+        return *p;
+    }
+    static std::shared_ptr<decoders_registry>& s_decoders_registry() {
+        static auto* p = new std::shared_ptr<decoders_registry>();
+        return *p;
+    }
+    static std::mutex& s_system_mutex() {
+        static auto* m = new std::mutex();
+        return *m;
+    }
     
     
     // Helper structures for device switching
@@ -38,21 +52,21 @@ namespace musac {
 
     // New v2 API init method
     bool audio_system::init(std::shared_ptr<audio_backend> backend) {
-        std::lock_guard<std::mutex> lock(s_system_mutex);
+        std::lock_guard<std::mutex> lock(s_system_mutex());
         
         if (!backend) {
             return false;
         }
         
         // Store the v2 backend
-        s_backend_v2 = backend;
+        s_backend_v2() = backend;
         
         // Initialize if not already initialized
         if (!backend->is_initialized()) {
             try {
                 backend->init();
             } catch (const std::exception& e) {
-                s_backend_v2.reset();
+                s_backend_v2().reset();
                 return false;
             }
         }
@@ -63,23 +77,23 @@ namespace musac {
     // Init with backend and registry
     bool audio_system::init(std::shared_ptr<audio_backend> backend, 
                            std::shared_ptr<decoders_registry> registry) {
-        std::lock_guard<std::mutex> lock(s_system_mutex);
+        std::lock_guard<std::mutex> lock(s_system_mutex());
         
         if (!backend) {
             return false;
         }
         
         // Store the v2 backend and registry
-        s_backend_v2 = backend;
-        s_decoders_registry = registry;
+        s_backend_v2() = backend;
+        s_decoders_registry() = registry;
         
         // Initialize if not already initialized
         if (!backend->is_initialized()) {
             try {
                 backend->init();
             } catch (const std::exception& e) {
-                s_backend_v2.reset();
-                s_decoders_registry.reset();
+                s_backend_v2().reset();
+                s_decoders_registry().reset();
                 return false;
             }
         }
@@ -89,18 +103,18 @@ namespace musac {
     
 
     std::shared_ptr<audio_backend> audio_system::get_backend() {
-        std::lock_guard<std::mutex> lock(s_system_mutex);
-        return s_backend_v2;
+        std::lock_guard<std::mutex> lock(s_system_mutex());
+        return s_backend_v2();
     }
     
     const decoders_registry* audio_system::get_decoders_registry() {
-        std::lock_guard<std::mutex> lock(s_system_mutex);
-        return s_decoders_registry.get();
+        std::lock_guard<std::mutex> lock(s_system_mutex());
+        return s_decoders_registry().get();
     }
     
     void audio_system::set_decoders_registry(std::shared_ptr<decoders_registry> registry) {
-        std::lock_guard<std::mutex> lock(s_system_mutex);
-        s_decoders_registry = registry;
+        std::lock_guard<std::mutex> lock(s_system_mutex());
+        s_decoders_registry() = registry;
     }
     
     void audio_system::done() {
@@ -108,22 +122,22 @@ namespace musac {
         close_audio_devices();
         
         // Clear the registry
-        s_decoders_registry.reset();
+        s_decoders_registry().reset();
         
         // Shutdown v2 backend if present
-        if (s_backend_v2) {
-            if (s_backend_v2->is_initialized()) {
-                s_backend_v2->shutdown();
+        if (s_backend_v2()) {
+            if (s_backend_v2()->is_initialized()) {
+                s_backend_v2()->shutdown();
             }
-            s_backend_v2.reset();
+            s_backend_v2().reset();
         }
     }
     
     
     bool audio_system::switch_device(audio_device& new_device) {
-        std::lock_guard<std::mutex> lock(s_system_mutex);
+        std::lock_guard<std::mutex> lock(s_system_mutex());
         
-        if (!s_backend_v2) {
+        if (!s_backend_v2()) {
             return false;
         }
         
