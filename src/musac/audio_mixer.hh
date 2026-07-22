@@ -39,8 +39,27 @@ namespace musac {
      * per-stream m_data_mutex -> stream_container mutex. Never acquire it while
      * holding any of those.
      *
-     * Immortal (leaked) for the same static-destruction-order reasons as the
-     * global mixer.
+     * ## Immortal globals
+     *
+     * The audio core's process-global state is uniformly held in function-local
+     * leaked holders (`static auto* p = new T(); return *p;`):
+     *
+     * - this mutex (stream.cc)
+     * - the global mixer (stream.cc: global_mixer())
+     * - the shared device data (audio_mixer::device_data())
+     * - the device-layer backend pointer and mutexes (audio_device.cc)
+     * - the audio_system backend/registry holders (audio_system.cc)
+     *
+     * Function-local: initialized on first use, so clients may call in during
+     * their own static construction. Leaked: never destroyed, so
+     * audio_system::done() (or a stream destructor) may run from a client's
+     * late static destructor without touching dead objects. Trivially
+     * destructible constant-init statics (atomics, plain pointers) stay
+     * ordinary statics.
+     *
+     * Caveat: "immortal" means the life of the loaded library — if musac is
+     * built as a shared library it must not be unloaded while client streams
+     * or devices still exist.
      */
     std::recursive_mutex& audio_callback_mutex();
 
@@ -302,9 +321,14 @@ namespace musac {
             
             /**
              * @brief Shared device data
-             * 
-             * Contains device parameters shared across the audio system
+             *
+             * Contains device parameters shared across the audio system.
+             * Returned by reference to an immortal (leaked) instance: it holds
+             * a shared_ptr, so an ordinary static would be destroyed at exit —
+             * but close_audio_stream() writes it on the audio_system::done()
+             * path, which clients may run from a late static destructor.
+             * Reads/writes are synchronized by audio_callback_mutex().
              */
-            static audio_device_data m_audio_device_data;
+            static audio_device_data& device_data();
     };
 }

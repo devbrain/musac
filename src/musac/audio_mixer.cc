@@ -8,7 +8,11 @@
 #include <algorithm>
 #include <chrono>
 namespace musac {
-    audio_device_data audio_mixer::m_audio_device_data {};
+    // Immortal (leaked): see the declaration in audio_mixer.hh.
+    audio_device_data& audio_mixer::device_data() {
+        static auto* d = new audio_device_data{};
+        return *d;
+    }
 
     audio_mixer::audio_mixer(): m_final_output_buffer(new std::atomic<float>[OUTPUT_BUFFER_SIZE]),
                                 m_final_mix_buf(0),
@@ -48,7 +52,10 @@ namespace musac {
         static constexpr size_t SHRINK_HEADROOM = 2;                // Shrink to 2x current need
         static constexpr size_t STABILITY_FRAMES = 100;             // Wait 100 callbacks before shrinking
         
-        // Track usage patterns for stability
+        // Track usage patterns for stability. Function-local static shared by
+        // ALL audio_mixer instances — fine today because exactly one (leaked)
+        // mixer exists, and all resize() callers hold audio_callback_mutex();
+        // revisit if a second mixer instance ever appears.
         static size_t consecutive_small_requests = 0;
 
         if (out_len_samples > m_allocated_samples) {
@@ -184,7 +191,11 @@ namespace musac {
     void audio_mixer::compact_buffers() {
         // This can be called by the application during quiet periods
         // (e.g., menu screens, level transitions) to force memory cleanup
-        
+
+        // The audio callback mixes into these buffers; without this lock a
+        // concurrent callback would keep using the freed storage
+        std::lock_guard<std::recursive_mutex> cb_lock(audio_callback_mutex());
+
         static constexpr size_t MIN_BUFFER_SAMPLES = 4096;
         
         // Only compact if we have excessively large buffers
@@ -221,9 +232,9 @@ namespace musac {
         );
         
         // Capture audio format
-        snapshot.audio_spec.channels = m_audio_device_data.m_audio_spec.channels;
-        snapshot.audio_spec.freq = m_audio_device_data.m_audio_spec.freq;
-        snapshot.audio_spec.format = static_cast<int>(m_audio_device_data.m_audio_spec.format);
+        snapshot.audio_spec.channels = device_data().m_audio_spec.channels;
+        snapshot.audio_spec.freq = device_data().m_audio_spec.freq;
+        snapshot.audio_spec.format = static_cast<int>(device_data().m_audio_spec.format);
         
         // Capture any pending samples from the final mix buffer
         // These are samples that have been mixed but not yet consumed
@@ -276,10 +287,14 @@ namespace musac {
     }
     
     void audio_mixer::restore_state(const mixer_snapshot& snapshot) {
+        // resize() below reallocates the buffers the audio callback mixes
+        // into (recursive: switch_device already holds the mutex)
+        std::lock_guard<std::recursive_mutex> cb_lock(audio_callback_mutex());
+
         // Restore audio format
-        m_audio_device_data.m_audio_spec.channels = snapshot.audio_spec.channels;
-        m_audio_device_data.m_audio_spec.freq = snapshot.audio_spec.freq;
-        m_audio_device_data.m_audio_spec.format = static_cast<audio_format>(snapshot.audio_spec.format);
+        device_data().m_audio_spec.channels = snapshot.audio_spec.channels;
+        device_data().m_audio_spec.freq = snapshot.audio_spec.freq;
+        device_data().m_audio_spec.format = static_cast<audio_format>(snapshot.audio_spec.format);
         
         // Restore pending samples to the mix buffer
         if (!snapshot.pending_samples.empty()) {

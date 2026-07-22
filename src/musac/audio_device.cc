@@ -19,18 +19,32 @@ namespace musac {
 extern void close_audio_stream();
 extern void reset_audio_stream();
 
-// Global backend instance for backward compatibility
-static std::shared_ptr<audio_backend> s_global_backend;
-static std::mutex s_backend_mutex;
+// Global backend instance for backward compatibility. Immortal (leaked)
+// function-local holders: close_audio_devices() runs on the
+// audio_system::done() path, which clients may call from a late static
+// destructor — an ordinary static shared_ptr/mutex would already be
+// destroyed by then (locking a destroyed mutex is UB). Same pattern as the
+// holders in audio_system.cc.
+static std::shared_ptr<audio_backend>& global_backend() {
+    static auto* p = new std::shared_ptr<audio_backend>();
+    return *p;
+}
+static std::mutex& backend_mutex() {
+    static auto* m = new std::mutex();
+    return *m;
+}
+static std::mutex& device_mutex() {
+    static auto* m = new std::mutex();
+    return *m;
+}
 
-
-// Track the active device to enforce single device constraint
+// Track the active device to enforce single device constraint.
+// (Plain static is fine: constant-initialized, trivially destructible.)
 static audio_device* s_active_device = nullptr;
-static std::mutex s_device_mutex;
 
 // Helper function for device switching
 audio_device* get_active_audio_device() {
-    std::lock_guard<std::mutex> lock(s_device_mutex);
+    std::lock_guard<std::mutex> lock(device_mutex());
     return s_active_device;
 }
 
@@ -38,15 +52,15 @@ audio_device* get_active_audio_device() {
 // Close all audio devices (called from audio_system::done)
 void close_audio_devices() {
     {
-        std::lock_guard<std::mutex> lock(s_device_mutex);
+        std::lock_guard<std::mutex> lock(device_mutex());
         s_active_device = nullptr;
     }
     {
-        std::lock_guard<std::mutex> lock(s_backend_mutex);
-        if (s_global_backend && s_global_backend->is_initialized()) {
-            s_global_backend->shutdown();
+        std::lock_guard<std::mutex> lock(backend_mutex());
+        if (global_backend() && global_backend()->is_initialized()) {
+            global_backend()->shutdown();
         }
-        s_global_backend.reset();
+        global_backend().reset();
     }
 }
 
@@ -139,7 +153,7 @@ struct audio_device::impl {
 
 audio_device::~audio_device() {
     {
-        std::lock_guard<std::mutex> lock(s_device_mutex);
+        std::lock_guard<std::mutex> lock(device_mutex());
         if (s_active_device == this) {
             // LOG_INFO("AudioDevice", "Destroying active device");
             s_active_device = nullptr;
@@ -193,7 +207,7 @@ audio_device::audio_device(
     
     // Register as active device if there isn't one
     {
-        std::lock_guard<std::mutex> lock(s_device_mutex);
+        std::lock_guard<std::mutex> lock(device_mutex());
         if (s_active_device == nullptr) {
             s_active_device = this;
             reset_audio_stream();

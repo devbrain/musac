@@ -24,10 +24,11 @@ namespace musac {
     // Phase 3: Mixer is now thread-safe, no need for mixer mutex
     static std::atomic <bool> s_isShuttingDown{false};
 
-    // Time tracking
-    static auto s_start_time = std::chrono::steady_clock::now();
-
+    // Time tracking. Function-local so the origin is captured on first use —
+    // a namespace-scope `steady_clock::now()` initializer would be dynamic
+    // init, unordered relative to a client's own static constructors.
     static unsigned int get_ticks() {
+        static const auto s_start_time = std::chrono::steady_clock::now();
         auto now = std::chrono::steady_clock::now();
         auto duration = std::chrono::duration_cast <std::chrono::milliseconds>(now - s_start_time);
         return static_cast <unsigned int>(duration.count());
@@ -40,13 +41,25 @@ namespace musac {
         return *m;
     }
 
+    // The process-wide mixer. Immortal on BOTH ends of the program's life:
+    // function-local (initialized on first use, so a client calling in during
+    // its own static construction never sees an uninitialized object) and
+    // heap-allocated/leaked (audio_streams may be destroyed at process
+    // teardown from a client's own static — e.g. a cached sound_effect — and
+    // call remove_stream() from their destructor; an ordinary static could
+    // already be torn down, use-after-freeing the stream container).
+    static audio_mixer& global_mixer() {
+        static auto* m = new audio_mixer();
+        return *m;
+    }
+
     void close_audio_stream() {
         // Prevent any further callbacks from running their per-stream logic
         s_isShuttingDown = true;
         // Then clear out the conversion stream, synchronized against a
         // callback that may be reading the device data right now
         std::lock_guard<std::recursive_mutex> cb_lock(audio_callback_mutex());
-        audio_mixer::m_audio_device_data.m_stream = nullptr;
+        audio_mixer::device_data().m_stream = nullptr;
     }
 
     void reset_audio_stream() {
@@ -106,8 +119,6 @@ namespace musac {
         mutable std::mutex m_state_mutex; // For state changes (play/pause/stop)
         mutable std::shared_mutex m_data_mutex; // For data access (volume, position, etc.)
 
-        static audio_mixer& s_mixer; // immortal (leaked): see the definition below
-
         void stop();
         void stop_no_mixer();
 
@@ -147,8 +158,8 @@ namespace musac {
 
         void decode_audio(size_t& cur_pos, size_t len) {
             const auto device_channels = static_cast<channels_t>(
-                audio_mixer::m_audio_device_data.m_audio_spec.channels);
-            m_audio_source.read_samples(s_mixer.m_stream_buf.data(), cur_pos, len, device_channels);
+                audio_mixer::device_data().m_audio_spec.channels);
+            m_audio_source.read_samples(global_mixer().m_stream_buf.data(), cur_pos, len, device_channels);
         }
 
         // Takes a snapshot of the processor list (copied under m_data_mutex by
@@ -160,10 +171,10 @@ namespace musac {
             for (const auto& proc : procs) {
                 const auto len = cur_pos - out_offset;
 
-                proc->process(s_mixer.m_processor_buf.data() + out_offset,
-                              s_mixer.m_stream_buf.data() + out_offset,
+                proc->process(global_mixer().m_processor_buf.data() + out_offset,
+                              global_mixer().m_stream_buf.data() + out_offset,
                               static_cast<unsigned int>(len));
-                std::memcpy(s_mixer.m_stream_buf.data() + out_offset, s_mixer.m_processor_buf.data() + out_offset,
+                std::memcpy(global_mixer().m_stream_buf.data() + out_offset, global_mixer().m_processor_buf.data() + out_offset,
                             len * sizeof(float));
             }
         }
@@ -171,7 +182,7 @@ namespace musac {
         [[nodiscard]] std::tuple <float, float> eval_volume() const {
             float volume_left = m_volume * m_internal_volume;
             float volume_right = m_volume * m_internal_volume;
-            const auto device_channels = audio_mixer::m_audio_device_data.m_audio_spec.channels;
+            const auto device_channels = audio_mixer::device_data().m_audio_spec.channels;
             if (device_channels > 1) {
                 if (m_stereo_pos < 0.f) {
                     volume_right *= 1.f + m_stereo_pos;
@@ -184,8 +195,8 @@ namespace musac {
 
         [[nodiscard]] unsigned int eval_out_offset(unsigned int now_tick, unsigned int wanted_ticks) const {
             const auto ticks_since_play_start = now_tick - m_playback_start_tick;
-            const auto channels = static_cast<unsigned int>(audio_mixer::m_audio_device_data.m_audio_spec.channels);
-            const auto freq = static_cast<unsigned int>(audio_mixer::m_audio_device_data.m_audio_spec.freq);
+            const auto channels = static_cast<unsigned int>(audio_mixer::device_data().m_audio_spec.channels);
+            const auto freq = static_cast<unsigned int>(audio_mixer::device_data().m_audio_spec.freq);
             if (!m_starting || ticks_since_play_start >= wanted_ticks) {
                 return 0;
             }
@@ -195,13 +206,6 @@ namespace musac {
             return offset - (offset % channels);
         }
     };
-
-    // Immortal (heap-allocated, never destroyed). audio_streams may be destroyed at process
-    // teardown from a client's own static (e.g. a cached sound_effect) and call
-    // s_mixer.remove_stream() from their destructor; if s_mixer were an ordinary static it could
-    // already be torn down, and the removal would use-after-free the stream container (a static
-    // destruction-order fiasco). Leaking it keeps it valid for the whole process lifetime.
-    audio_mixer& audio_stream::impl::s_mixer = *new audio_mixer();
 
     // ==============================================================================================================
 
@@ -221,7 +225,7 @@ namespace musac {
     }
 
     std::vector<float> audio_stream::get_final_output_buffer() {
-        return impl::s_mixer.get_final_output();
+        return global_mixer().get_final_output();
     }
     
     void audio_stream::audio_callback(uint8_t out[], unsigned int out_len) {
@@ -237,7 +241,7 @@ namespace musac {
         // finish/loop callback dispatch below), and against device switching.
         std::lock_guard<std::recursive_mutex> cb_lock(audio_callback_mutex());
 
-        auto& dev = audio_mixer::m_audio_device_data;
+        auto& dev = audio_mixer::device_data();
 
         // Always clear the output buffer first (silence)
         std::memset(out, 0, out_len);
@@ -253,9 +257,9 @@ namespace musac {
             return;
         }
 
-        const auto format = audio_mixer::m_audio_device_data.m_audio_spec.format;
-        const auto channels = static_cast<unsigned int>(audio_mixer::m_audio_device_data.m_audio_spec.channels);
-        const auto freq = static_cast<unsigned int>(audio_mixer::m_audio_device_data.m_audio_spec.freq);
+        const auto format = audio_mixer::device_data().m_audio_spec.format;
+        const auto channels = static_cast<unsigned int>(audio_mixer::device_data().m_audio_spec.channels);
+        const auto freq = static_cast<unsigned int>(audio_mixer::device_data().m_audio_spec.freq);
 
         // Calculate bytes per sample based on format
         unsigned int bytes_per_sample = 0;
@@ -281,12 +285,12 @@ namespace musac {
         const auto out_len_samples = out_len / bytes_per_sample;
         const auto out_len_frames = out_len_samples / channels;
 
-        impl::s_mixer.resize(out_len_samples);
-        impl::s_mixer.set_zeros();
+        global_mixer().resize(out_len_samples);
+        global_mixer().set_zeros();
 
         // Iterate over a copy of the original stream list, since we might want to
         // modify the original as we go, removing streams that have stopped.
-        auto streamList = impl::s_mixer.get_streams();
+        auto streamList = global_mixer().get_streams();
 
         const auto now_tick = get_ticks();
         const auto wanted_ticks = out_len_frames * 1000 / freq;
@@ -422,7 +426,7 @@ namespace musac {
 
                 // Avoid mixing on zero volume.
                 if (!muted && (volume_left > 0.f || volume_right > 0.f)) {
-                    impl::s_mixer.mix_channels(static_cast<channels_t>(channels),
+                    global_mixer().mix_channels(static_cast<channels_t>(channels),
                                                out_offset, cur_pos, volume_left, volume_right);
                 }
             } // state mutex released — user callbacks below may call stream API
@@ -437,10 +441,10 @@ namespace musac {
             // calls play() re-adds the stream instead of being wiped out.
             audio_stream* current = nullptr;
             if (has_finished || has_looped) {
-                current = impl::s_mixer.find_stream_by_token(stream->m_token);
+                current = global_mixer().find_stream_by_token(stream->m_token);
             }
             if (remove_from_mixer) {
-                impl::s_mixer.remove_stream(stream->m_token);
+                global_mixer().remove_stream(stream->m_token);
             }
             if (current) {
                 if (has_finished) {
@@ -452,15 +456,15 @@ namespace musac {
         } // in_use_guard released here
         
         // Check if mixer is globally muted - if so, clear the buffer
-        if (impl::s_mixer.is_all_muted()) {
-            impl::s_mixer.set_zeros();
+        if (global_mixer().is_all_muted()) {
+            global_mixer().set_zeros();
         }
         
         // Capture the final mixed output for visualization
-        impl::s_mixer.capture_final_output(impl::s_mixer.m_final_mix_buf.data(), out_len_samples);
+        global_mixer().capture_final_output(global_mixer().m_final_mix_buf.data(), out_len_samples);
         
         // Finally convert the float mix into the device buffer
-        dev.m_sample_converter(out, out_len, impl::s_mixer.m_final_mix_buf);
+        dev.m_sample_converter(out, out_len, global_mixer().m_final_mix_buf);
     }
 
     // =============================================================================================================="
@@ -487,7 +491,7 @@ namespace musac {
         // 2) Remove from mixer under state lock
         {
             impl::state_lock lock(m_pimpl.get());
-            impl::s_mixer.remove_stream(m_pimpl->m_token);
+            global_mixer().remove_stream(m_pimpl->m_token);
             m_pimpl->stop_no_mixer();
         }
 
@@ -526,7 +530,7 @@ namespace musac {
         m_pimpl = std::move(other.m_pimpl);
         // Update the mixer to point to this new stream object
         if (m_pimpl) {
-            impl::s_mixer.update_stream_pointer(m_pimpl->m_token, this);
+            global_mixer().update_stream_pointer(m_pimpl->m_token, this);
         }
     }
 
@@ -541,7 +545,7 @@ namespace musac {
                 m_pimpl->m_destruction_pending.store(true);
                 m_pimpl->m_alive = false; {
                     impl::state_lock lock(m_pimpl.get());
-                    impl::s_mixer.remove_stream(m_pimpl->m_token);
+                    global_mixer().remove_stream(m_pimpl->m_token);
                     m_pimpl->stop_no_mixer();
                 } {
                     std::unique_lock <std::mutex> lock(m_pimpl->m_usage_mutex);
@@ -564,7 +568,7 @@ namespace musac {
 
             // Update the mixer to point to this stream object
             if (m_pimpl) {
-                impl::s_mixer.update_stream_pointer(m_pimpl->m_token, this);
+                global_mixer().update_stream_pointer(m_pimpl->m_token, this);
             }
         }
         return *this;
@@ -580,9 +584,9 @@ namespace musac {
             return;
         }
 
-        auto rate = static_cast<unsigned int>(audio_mixer::m_audio_device_data.m_audio_spec.freq);
-        auto channels = static_cast<channels_t>(audio_mixer::m_audio_device_data.m_audio_spec.channels);
-        auto frame_size = static_cast<unsigned int>(audio_mixer::m_audio_device_data.m_frame_size);
+        auto rate = static_cast<unsigned int>(audio_mixer::device_data().m_audio_spec.freq);
+        auto channels = static_cast<channels_t>(audio_mixer::device_data().m_audio_spec.channels);
+        auto frame_size = static_cast<unsigned int>(audio_mixer::device_data().m_frame_size);
 
         m_pimpl->m_audio_source.open(rate, channels, frame_size);
 
@@ -752,7 +756,7 @@ namespace musac {
         // The audio callback and audio_stream::open() read this global under
         // the same mutex.
         std::lock_guard<std::recursive_mutex> cb_lock(audio_callback_mutex());
-        audio_mixer::m_audio_device_data = aud;
+        audio_mixer::device_data() = aud;
     }
 
     int audio_stream::get_token() const {
@@ -760,7 +764,7 @@ namespace musac {
     }
 
     audio_mixer& audio_stream::get_global_mixer() {
-        return impl::s_mixer;
+        return global_mixer();
     }
 
     audio_stream::stream_snapshot audio_stream::capture_state() const {
@@ -833,7 +837,7 @@ namespace musac {
         }
 
         m_pimpl->m_is_playing = true;
-        impl::s_mixer.add_stream(this, std::weak_ptr<void>(std::shared_ptr<void>(m_pimpl)));
+        global_mixer().add_stream(this, std::weak_ptr<void>(std::shared_ptr<void>(m_pimpl)));
         return true;
     }
 
@@ -847,7 +851,7 @@ namespace musac {
             );
         } else {
             // Immediate stop
-            impl::s_mixer.remove_stream(m_pimpl->m_token);
+            global_mixer().remove_stream(m_pimpl->m_token);
             m_pimpl->stop_no_mixer();
         }
     }
@@ -895,7 +899,7 @@ namespace musac {
 
         // 4) Only add to mixer if we were actually paused (not already in mixer)
         if (was_paused) {
-            impl::s_mixer.add_stream(this, std::weak_ptr<void>(std::shared_ptr<void>(m_pimpl)));
+            global_mixer().add_stream(this, std::weak_ptr<void>(std::shared_ptr<void>(m_pimpl)));
         }
 
         // 4) Always restart fade-in if requested (this must reset any fade-out)

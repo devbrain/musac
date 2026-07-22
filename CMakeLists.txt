@@ -231,8 +231,12 @@ if(NEUTRINO_MUSAC_BUILD_EXAMPLES)
     add_subdirectory(example)
 endif()
 
-# Unit tests
+# Unit tests. enable_testing() must run at the TOP level (not just inside
+# unittest/) so the top-level CTestTestfile.cmake references the subdirectory —
+# otherwise `ctest --test-dir <build>` finds no tests and CI silently runs
+# nothing.
 if(NEUTRINO_MUSAC_BUILD_TESTS)
+    enable_testing()
     add_subdirectory(unittest)
 endif()
 

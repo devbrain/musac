@@ -152,3 +152,37 @@ include(CTest)
 enable_testing()
 add_test(NAME musac_unittest COMMAND musac_unittest)
 
+
+# ----------------------------------------------------------------------------
+# Static-teardown regression test: a separate binary because the scenario
+# under test (stream/device destruction and audio_system::done() AFTER main
+# returns, from static destructors / .fini_array) cannot run inside the
+# doctest process. Success criterion is exit code 0.
+# ----------------------------------------------------------------------------
+add_executable(musac_static_teardown_test test_static_teardown.cc)
+
+target_include_directories(musac_static_teardown_test
+        PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+if (MUSAC_BUILD_SHARED AND TARGET musac_internal)
+    target_link_libraries(musac_static_teardown_test
+            PRIVATE
+            musac_internal
+            musac_sdk
+            thirdparty::failsafe
+    )
+else ()
+    target_link_libraries(musac_static_teardown_test
+            PRIVATE
+            musac
+            musac_sdk
+            thirdparty::failsafe
+    )
+endif ()
+
+target_compile_options(musac_static_teardown_test PRIVATE ${MUSAC_WARNING_FLAGS})
+
+add_test(NAME musac_static_teardown COMMAND musac_static_teardown_test)

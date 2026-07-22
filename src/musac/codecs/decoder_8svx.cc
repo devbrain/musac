@@ -25,17 +25,19 @@
 
 namespace musac {
 
-// 8SVX chunk identifiers using iff::fourcc
-static const iff::fourcc FORM_ID("FORM");
-static const iff::fourcc ESVX_ID("8SVX");  // Note: "8SVX" as fourcc
-static const iff::fourcc VHDR_ID("VHDR");
-static const iff::fourcc BODY_ID("BODY");
-static const iff::fourcc NAME_ID("NAME");
-static const iff::fourcc AUTH_ID("AUTH");
-static const iff::fourcc COPY_ID("(c) ");
-static const iff::fourcc ANNO_ID("ANNO");
-static const iff::fourcc ATAK_ID("ATAK");
-static const iff::fourcc RLSE_ID("RLSE");
+// 8SVX chunk identifiers using iff::fourcc. The 4-char constructor is
+// constexpr, so these are constant-initialized — usable even from a client's
+// own static initializers (the string ctor would be dynamic init).
+static constexpr iff::fourcc FORM_ID('F', 'O', 'R', 'M');
+static constexpr iff::fourcc ESVX_ID('8', 'S', 'V', 'X');
+static constexpr iff::fourcc VHDR_ID('V', 'H', 'D', 'R');
+static constexpr iff::fourcc BODY_ID('B', 'O', 'D', 'Y');
+static constexpr iff::fourcc NAME_ID('N', 'A', 'M', 'E');
+static constexpr iff::fourcc AUTH_ID('A', 'U', 'T', 'H');
+static constexpr iff::fourcc COPY_ID('(', 'c', ')', ' ');
+static constexpr iff::fourcc ANNO_ID('A', 'N', 'N', 'O');
+static constexpr iff::fourcc ATAK_ID('A', 'T', 'A', 'K');
+static constexpr iff::fourcc RLSE_ID('R', 'L', 'S', 'E');
 
 // Compression types
 enum SVXCompression : uint8_t {
