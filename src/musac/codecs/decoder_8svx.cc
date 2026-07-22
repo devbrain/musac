@@ -57,20 +57,20 @@ public:
         current_value = 0;
     }
     
-    void decode(const uint8_t* src, int8_t* dst, size_t len) {
-        for (size_t i = 0; i < len; ++i) {
+    void decode(const uint8_t* src, size_t src_len, int8_t* dst, size_t dst_len) {
+        for (size_t i = 0; i < src_len; ++i) {
             uint8_t byte = src[i];
             // Each byte contains two 4-bit codes
             uint8_t code1 = (byte >> 4) & 0x0F;
             uint8_t code2 = byte & 0x0F;
-            
+
             current_value += fib_table[code1];
-            if (i * 2 < len) {
+            if (i * 2 < dst_len) {
                 dst[i * 2] = current_value;
             }
-            
+
             current_value += fib_table[code2];
-            if (i * 2 + 1 < len) {
+            if (i * 2 + 1 < dst_len) {
                 dst[i * 2 + 1] = current_value;
             }
         }
@@ -253,7 +253,8 @@ struct decoder_8svx::impl {
         
         m_fib_decoder.reset();
         m_fib_decoder.decode(
-            reinterpret_cast<uint8_t*>(m_body_data.data()),
+            reinterpret_cast<const uint8_t*>(m_body_data.data()),
+            m_body_size,
             m_decoded_buffer.data(),
             decompressed_size
         );
@@ -344,7 +345,8 @@ bool decoder_8svx::accept(io_stream* rwops) {
         return false;
     }
     
-    if (iff::fourcc(chunk_id) != FORM_ID) {
+    // from_bytes: chunk_id is a raw 4-byte buffer, not a NUL-terminated string
+    if (iff::fourcc::from_bytes(chunk_id) != FORM_ID) {
         rwops->seek(pos, seek_origin::set);
         return false;
     }
@@ -361,7 +363,7 @@ bool decoder_8svx::accept(io_stream* rwops) {
         return false;
     }
     
-    bool is_8svx = (iff::fourcc(type_id) == ESVX_ID);
+    bool is_8svx = (iff::fourcc::from_bytes(type_id) == ESVX_ID);
     
     rwops->seek(pos, seek_origin::set);
     return is_8svx;

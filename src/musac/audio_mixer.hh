@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <mutex>
 #include <vector>
 #include <atomic>
 #include <musac/sdk/buffer.hh>
@@ -21,6 +22,29 @@ namespace musac {
     class audio_stream;
 
     /**
+     * @brief Mutex serializing the audio callback against stream topology changes
+     *
+     * Held (recursively) by:
+     * - audio_stream::audio_callback for its whole body, so at most one device
+     *   callback runs at a time and the shared mixer buffers / device data can't
+     *   be reallocated or swapped underneath it;
+     * - audio_stream destruction and move operations, so a raw audio_stream*
+     *   observed under this mutex cannot be freed or re-seated concurrently;
+     * - audio_stream::set_audio_device_data / close_audio_stream, which swap the
+     *   global device data the callback reads;
+     * - audio_system::switch_device and audio_mixer::capture_state, which walk
+     *   raw stream pointers.
+     *
+     * Lock order: audio_callback_mutex -> per-stream m_state_mutex ->
+     * per-stream m_data_mutex -> stream_container mutex. Never acquire it while
+     * holding any of those.
+     *
+     * Immortal (leaked) for the same static-destruction-order reasons as the
+     * global mixer.
+     */
+    std::recursive_mutex& audio_callback_mutex();
+
+    /**
      * @class audio_mixer
      * @brief Core mixing engine for combining multiple audio streams
      * @ingroup internal
@@ -31,19 +55,17 @@ namespace musac {
      * with real-time constraints.
      * 
      * ## Architecture
-     * 
-     * The mixer uses a lock-free design with weak pointer lifetime management
-     * to ensure thread safety without blocking the audio thread:
-     * 
+     *
      * - **Stream Management**: Uses weak_ptr tokens to safely access streams
-     * - **Lock-Free Mixing**: Audio thread never blocks on mutex operations
      * - **Buffer Pooling**: Pre-allocated buffers to avoid memory allocation
      * - **Device Switching**: Snapshot/restore for seamless device changes
-     * 
+     *
      * ## Thread Safety
-     * 
-     * - Audio thread (callback) reads stream data without locking
-     * - Control thread adds/removes streams with minimal locking
+     *
+     * - The audio callback runs under audio_callback_mutex(), which also
+     *   serializes stream destruction/moves and device switching
+     * - Per-stream state is protected by the stream's own mutexes while the
+     *   callback processes its slice
      * - Weak pointers prevent use-after-free in concurrent access
      * 
      * ## Performance Characteristics
@@ -102,6 +124,17 @@ namespace musac {
              * @param new_stream New stream pointer after move
              */
             void update_stream_pointer(int token, audio_stream* new_stream);
+
+            /**
+             * @brief Look up the current audio_stream pointer for a token
+             * @param token Stream identifier token
+             * @return Current stream pointer, or nullptr if not registered
+             *
+             * The returned pointer is only safe to dereference while
+             * audio_callback_mutex() is held (which blocks stream destruction
+             * and moves).
+             */
+            [[nodiscard]] audio_stream* find_stream_by_token(int token) const;
 
             /**
              * @brief Resize internal buffers
@@ -215,13 +248,17 @@ namespace musac {
             
             /**
              * @brief Ring buffer for final output (for visualization)
+             *
+             * Elements are atomic because the audio thread writes them while
+             * UI/client threads read them concurrently via get_final_output();
+             * the write index alone cannot synchronize the element storage.
              */
-            mutable std::vector<float> m_final_output_buffer;
-            
+            std::unique_ptr<std::atomic<float>[]> m_final_output_buffer;
+
             /**
              * @brief Write position in ring buffer
              */
-            mutable std::atomic<size_t> m_output_write_pos{0};
+            std::atomic<size_t> m_output_write_pos{0};
             
             /**
              * @brief Global mute state for mixer-level fallback

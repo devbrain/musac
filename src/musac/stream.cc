@@ -33,10 +33,19 @@ namespace musac {
         return static_cast <unsigned int>(duration.count());
     }
 
+    // Immortal (leaked), like the global mixer: stream destructors may run from
+    // a client's static teardown and still need to lock it.
+    std::recursive_mutex& audio_callback_mutex() {
+        static auto* m = new std::recursive_mutex();
+        return *m;
+    }
+
     void close_audio_stream() {
         // Prevent any further callbacks from running their per-stream logic
         s_isShuttingDown = true;
-        // Then clear out the conversion stream
+        // Then clear out the conversion stream, synchronized against a
+        // callback that may be reading the device data right now
+        std::lock_guard<std::recursive_mutex> cb_lock(audio_callback_mutex());
         audio_mixer::m_audio_device_data.m_stream = nullptr;
     }
 
@@ -45,7 +54,7 @@ namespace musac {
         s_isShuttingDown = false;
     }
 
-    static int token_generator = 0;
+    static std::atomic<int> token_generator{0};
 
     struct audio_stream::impl final {
         explicit impl(audio_source&& audio_src);
@@ -55,8 +64,12 @@ namespace musac {
 
         bool m_is_open = false;
         audio_source m_audio_source;
-        bool m_is_playing = false;
-        bool m_is_paused = false;
+        // Atomic: written under m_state_mutex (play/pause/resume/stop and the
+        // audio callback) but read by the is_playing()/is_paused() getters,
+        // which take only m_data_mutex — a different mutex, so plain bools
+        // would be a C++ data race.
+        std::atomic<bool> m_is_playing{false};
+        std::atomic<bool> m_is_paused{false};
         float m_volume = 1.f;
         float m_stereo_pos = 0.f;
         float m_internal_volume = 1.f;
@@ -138,8 +151,13 @@ namespace musac {
             m_audio_source.read_samples(s_mixer.m_stream_buf.data(), cur_pos, len, device_channels);
         }
 
-        void run_processors(size_t cur_pos, size_t out_offset) {
-            for (const auto& proc : processors) {
+        // Takes a snapshot of the processor list (copied under m_data_mutex by
+        // the caller) so remove_processor()/clear_processors() on another
+        // thread can't invalidate the iteration; the shared_ptr copies keep
+        // the processor objects alive even if removed concurrently.
+        void run_processors(const std::vector<std::shared_ptr<processor>>& procs,
+                            size_t cur_pos, size_t out_offset) {
+            for (const auto& proc : procs) {
                 const auto len = cur_pos - out_offset;
 
                 proc->process(s_mixer.m_processor_buf.data() + out_offset,
@@ -188,7 +206,7 @@ namespace musac {
     // ==============================================================================================================
 
     audio_stream::impl::impl(audio_source&& audio_src)
-        : m_token(token_generator++),
+        : m_token(token_generator.fetch_add(1, std::memory_order_relaxed)),
           m_audio_source(std::move(audio_src)) {}
 
     audio_stream::impl::~impl() = default;
@@ -212,6 +230,12 @@ namespace musac {
             std::memset(out, 0, out_len);
             return;
         }
+
+        // Serialize the whole callback: against a second device's callback
+        // (the mixer buffers and device data are process-global), against
+        // stream destruction/moves (so raw audio_stream* stay valid for the
+        // finish/loop callback dispatch below), and against device switching.
+        std::lock_guard<std::recursive_mutex> cb_lock(audio_callback_mutex());
 
         auto& dev = audio_mixer::m_audio_device_data;
 
@@ -296,120 +320,135 @@ namespace musac {
                 continue; // Stream is being destroyed, skip it
             }
 
-            if (!stream->m_alive) {
-                // static int skip_log = 0;  // Unused debug variable
-                // if (++skip_log % 100 == 0) {
-                //     LOG_INFO("AudioCallback", "Skipping dead stream");
-                // }
-                continue;
-            }
-            if (stream->m_wanted_iterations != 0
-                && stream->m_current_iteration >= stream->m_wanted_iterations) {
-                // static int skip_log = 0;  // Unused debug variable
-                // if (++skip_log % 100 == 0) {
-                //     LOG_INFO("AudioCallback", "Skipping completed stream");
-                // }
-                continue;
-            }
-            if (stream->m_is_paused) {
-                // static int skip_log = 0;  // Unused debug variable
-                // if (++skip_log % 100 == 0) {
-                //     LOG_INFO("AudioCallback", "Skipping paused stream");
-                // }
-                continue;
-            }
-
-            const auto ticks_since_play_start = static_cast <int>(now_tick - stream->m_playback_start_tick);
-            if (ticks_since_play_start <= 0) {
-                // static int skip_log = 0;  // Unused debug variable
-                // if (++skip_log % 100 == 0) {
-                //     LOG_INFO("AudioCallback", "Skipping stream - not started yet");
-                // }
-                continue;
-            }
-
             bool has_finished = false;
             bool has_looped = false;
-            auto out_offset = stream->eval_out_offset(static_cast<unsigned int>(now_tick), wanted_ticks);
-            size_t cur_pos = out_offset;
+            bool remove_from_mixer = false;
 
-            stream->m_starting = false;
+            {
+                // Hold the stream's state mutex for the whole slice so API
+                // methods (play/stop/pause/seek/rewind — and the destructor's
+                // teardown rewind) can't mutate the source or playback state
+                // mid-decode. Data-domain fields (volume, mute, processors)
+                // are read under short m_data_mutex sections below; holding
+                // both here means any writer, whichever mutex it takes, is
+                // excluded.
+                std::lock_guard<std::mutex> state_lk(stream->m_state_mutex);
 
-            while (cur_pos < out_len_samples) {
-                // unsigned int before_decode = cur_pos;  // Unused debug variable
-                stream->decode_audio(cur_pos, out_len_samples);
-                stream->run_processors(cur_pos, out_offset);
+                if (!stream->m_alive) {
+                    continue;
+                }
+                if (stream->m_wanted_iterations != 0
+                    && stream->m_current_iteration >= stream->m_wanted_iterations) {
+                    continue;
+                }
+                if (stream->m_is_paused) {
+                    continue;
+                }
 
-                if (cur_pos < out_len_samples) {
-                    // Source didn't fill the buffer - it must have reached the end
-                    // LOG_INFO("AudioCallback", "Stream reached end, decoded", cur_pos - before_decode,
-                    //          "samples, wanted", out_len_samples - before_decode);
+                const auto ticks_since_play_start = static_cast <int>(now_tick - stream->m_playback_start_tick);
+                if (ticks_since_play_start <= 0) {
+                    continue;
+                }
 
-                    // Check if we should loop
-                    if (stream->m_wanted_iterations != 0) {
-                        // We have a specific number of iterations requested
-                        ++stream->m_current_iteration;
-                        // LOG_INFO("AudioCallback", "Iteration", stream->m_current_iteration,
-                        //          "of", stream->m_wanted_iterations);
-                        if (stream->m_current_iteration >= stream->m_wanted_iterations) {
-                            // LOG_INFO("AudioCallback", "Stream finished all iterations");
+                auto out_offset = stream->eval_out_offset(static_cast<unsigned int>(now_tick), wanted_ticks);
+                size_t cur_pos = out_offset;
+
+                stream->m_starting = false;
+
+                std::vector<std::shared_ptr<processor>> procs;
+                {
+                    std::shared_lock<std::shared_mutex> data_lk(stream->m_data_mutex);
+                    procs = stream->processors;
+                }
+
+                while (cur_pos < out_len_samples) {
+                    stream->decode_audio(cur_pos, out_len_samples);
+                    stream->run_processors(procs, cur_pos, out_offset);
+
+                    if (cur_pos < out_len_samples) {
+                        // Source didn't fill the buffer - it must have reached the end
+
+                        // Check if we should loop
+                        if (stream->m_wanted_iterations != 0) {
+                            // We have a specific number of iterations requested
+                            ++stream->m_current_iteration;
+                            if (stream->m_current_iteration >= stream->m_wanted_iterations) {
+                                stream->m_is_playing = false;
+                                remove_from_mixer = true;
+                                has_finished = true;
+                                break;
+                            }
+                        }
+
+                        // Try to rewind for the next iteration
+                        bool can_rewind = stream->m_audio_source.rewind();
+                        if (!can_rewind) {
+                            // source is non-seekable: stop playback
                             stream->m_is_playing = false;
-                            impl::s_mixer.remove_stream(stream->m_token);
+                            remove_from_mixer = true;
                             has_finished = true;
                             break;
                         }
+                        has_looped = true;
                     }
-                    
-                    // Try to rewind for the next iteration
-                    bool can_rewind = stream->m_audio_source.rewind();
-                    if (!can_rewind) {
-                        // LOG_INFO("AudioCallback", "Source cannot rewind");
-                        // source is non-seekable: stop playback
+                }
+
+                // Apply fade envelope
+                float envGain = stream->m_fade.getGain();
+                float volume_left;
+                float volume_right;
+                bool muted;
+                {
+                    std::shared_lock<std::shared_mutex> data_lk(stream->m_data_mutex);
+                    auto [base_left, base_right] = stream->eval_volume();
+                    volume_left = base_left * envGain;
+                    volume_right = base_right * envGain;
+                    muted = stream->m_is_muted;
+                }
+
+                // If a fade‐out has just finished, stop and remove
+                if (envGain == 0.f && stream->m_fade.getState() == fade_envelope::state::none) {
+                    if (stream->m_pendingAction == impl::PendingAction::Stop) {
                         stream->m_is_playing = false;
-                        impl::s_mixer.remove_stream(stream->m_token);
-                        has_finished = true;
-                        break;
+                        stream->stop_no_mixer();
+                    } else if (stream->m_pendingAction == impl::PendingAction::Pause) {
+                        stream->m_is_paused = true;
+                        stream->m_is_playing = false;
                     }
-                    has_looped = true;
+                    stream->m_pendingAction = impl::PendingAction::None;
+                    remove_from_mixer = true;
+                    has_finished = true; // only for Stop do you fire finish-callback
                 }
+
+                // Avoid mixing on zero volume.
+                if (!muted && (volume_left > 0.f || volume_right > 0.f)) {
+                    impl::s_mixer.mix_channels(static_cast<channels_t>(channels),
+                                               out_offset, cur_pos, volume_left, volume_right);
+                }
+            } // state mutex released — user callbacks below may call stream API
+
+            // Dispatch user finish/loop callbacks. entry.stream from the
+            // snapshot may be stale after a move, so look up the CURRENT
+            // audio_stream* by token instead: audio_callback_mutex() (held
+            // for the whole callback) blocks moves and destruction, and the
+            // in_use_guard blocks a destructor that slipped in before we took
+            // it — so the pointer can't go dangling while we invoke.
+            // Removal happens before invocation so a finish callback that
+            // calls play() re-adds the stream instead of being wiped out.
+            audio_stream* current = nullptr;
+            if (has_finished || has_looped) {
+                current = impl::s_mixer.find_stream_by_token(stream->m_token);
             }
-
-            // Apply fade envelope
-            float envGain = stream->m_fade.getGain();
-            auto [base_left, base_right] = stream->eval_volume();
-            float volume_left = base_left * envGain;
-            float volume_right = base_right * envGain;
-
-            // If a fade‐out has just finished, stop and remove
-            if (envGain == 0.f && stream->m_fade.getState() == fade_envelope::state::none) {
-                if (stream->m_pendingAction == impl::PendingAction::Stop) {
-                    stream->m_is_playing = false;
-                    stream->stop_no_mixer();
-                } else if (stream->m_pendingAction == impl::PendingAction::Pause) {
-                    stream->m_is_paused = true;
-                    stream->m_is_playing = false;
-                }
+            if (remove_from_mixer) {
                 impl::s_mixer.remove_stream(stream->m_token);
-                stream->m_pendingAction = impl::PendingAction::None;
-                has_finished = true; // only for Stop do you fire finish-callback
             }
-
-            // Avoid mixing on zero volume.
-            if (!stream->m_is_muted && (volume_left > 0.f || volume_right > 0.f)) {
-                impl::s_mixer.mix_channels(static_cast<channels_t>(channels),
-                                           out_offset, cur_pos, volume_left, volume_right);
+            if (current) {
+                if (has_finished) {
+                    current->invoke_finish_callback();
+                } else if (has_looped) {
+                    current->invoke_loop_callback();
+                }
             }
-
-            // Note: user-defined finish/loop callbacks (callback_t,
-            // signature `void(audio_stream&)`) are intentionally NOT
-            // invoked here. We dropped the entry.stream dereference
-            // above to close the dangling-pointer race, so we no
-            // longer have a safe `audio_stream&` to pass them.
-            // Completion is observable through `is_playing()`
-            // polling — consumers that want a finish hook should
-            // poll on the game thread instead.
-            (void)has_finished;
-            (void)has_looped;
         } // in_use_guard released here
         
         // Check if mixer is globally muted - if so, clear the buffer
@@ -433,6 +472,14 @@ namespace musac {
     audio_stream::~audio_stream() {
         if (!m_pimpl) return;
 
+        // Serialize against the audio callback: it holds audio_callback_mutex()
+        // for its whole body, so once we own the mutex no callback is running
+        // and none can start until we're done — the callback can never observe
+        // a partially-destroyed stream. Also orders us against moves and
+        // device switches. (If a finish/loop callback on the audio thread
+        // destroys a stream, the recursive mutex lets it through.)
+        std::lock_guard<std::recursive_mutex> cb_lock(audio_callback_mutex());
+
         // 1) Signal destruction pending to prevent new usage
         m_pimpl->m_destruction_pending.store(true);
         m_pimpl->m_alive = false;
@@ -444,7 +491,9 @@ namespace musac {
             m_pimpl->stop_no_mixer();
         }
 
-        // 3) Wait for callbacks with timeout
+        // 3) Wait for callbacks with timeout (belt-and-suspenders: with
+        //    audio_callback_mutex() held the usage count is already zero
+        //    unless our own audio-thread callback is destroying us)
         {
             std::unique_lock <std::mutex> lock(m_pimpl->m_usage_mutex);
             auto wait_result = m_pimpl->m_usage_cv.wait_for(
@@ -460,12 +509,21 @@ namespace musac {
         }
 
         // 4) Clear callbacks to prevent any further calls
-        m_pimpl->m_finish_callback = nullptr;
-        m_pimpl->m_loop_callback = nullptr;
+        {
+            impl::write_lock locker(m_pimpl.get());
+            m_pimpl->m_finish_callback = nullptr;
+            m_pimpl->m_loop_callback = nullptr;
+        }
     }
 
-    audio_stream::audio_stream(audio_stream&& other) noexcept
-        : m_pimpl(std::move(other.m_pimpl)) {
+    audio_stream::audio_stream(audio_stream&& other) noexcept {
+        // Take the callback mutex BEFORE hollowing out `other`: the audio
+        // callback resolves streams by token under this mutex, so it must
+        // never observe the window between "other.m_pimpl is null" and
+        // "the container points at this".
+        std::lock_guard<std::recursive_mutex> cb_lock(audio_callback_mutex());
+
+        m_pimpl = std::move(other.m_pimpl);
         // Update the mixer to point to this new stream object
         if (m_pimpl) {
             impl::s_mixer.update_stream_pointer(m_pimpl->m_token, this);
@@ -474,6 +532,9 @@ namespace musac {
 
     auto audio_stream::operator=(audio_stream&& other) noexcept -> audio_stream& {
         if (this != &other) {
+            // Same serialization rationale as the destructor / move ctor.
+            std::lock_guard<std::recursive_mutex> cb_lock(audio_callback_mutex());
+
             // Clean up current stream if it exists
             if (m_pimpl) {
                 // Same cleanup as destructor
@@ -491,8 +552,11 @@ namespace musac {
                     );
                 }
 
-                m_pimpl->m_finish_callback = nullptr;
-                m_pimpl->m_loop_callback = nullptr;
+                {
+                    impl::write_lock locker(m_pimpl.get());
+                    m_pimpl->m_finish_callback = nullptr;
+                    m_pimpl->m_loop_callback = nullptr;
+                }
             }
 
             // Take ownership of other's implementation
@@ -507,6 +571,9 @@ namespace musac {
     }
 
     void audio_stream::open() {
+        // The device data read below is swapped by audio_device::create_stream
+        // and device switching; the callback mutex orders us against both.
+        std::lock_guard<std::recursive_mutex> cb_lock(audio_callback_mutex());
         impl::state_lock lock(m_pimpl.get());
 
         if (m_pimpl->m_is_open) {
@@ -592,7 +659,9 @@ namespace musac {
     }
 
     auto audio_stream::duration() const -> std::chrono::microseconds {
-        impl::read_lock locker(m_pimpl.get());
+        // state_lock, not read_lock: the audio source is state-domain (the
+        // callback decodes and seek_to_time() seeks under m_state_mutex)
+        impl::state_lock locker(m_pimpl.get());
 
         return m_pimpl->m_audio_source.duration();
     }
@@ -654,20 +723,35 @@ namespace musac {
     }
 
     void audio_stream::invoke_finish_callback() {
-        if (m_pimpl->m_finish_callback) {
+        // Copy under the data lock, invoke without it: the callback may call
+        // set_finish_callback()/remove_finish_callback() itself.
+        callback_t cb;
+        {
+            impl::read_lock locker(m_pimpl.get());
+            cb = m_pimpl->m_finish_callback;
+        }
+        if (cb) {
             // Call directly from audio thread - callbacks should be quick!
-            m_pimpl->m_finish_callback(*this);
+            cb(*this);
         }
     }
 
     void audio_stream::invoke_loop_callback() {
-        if (m_pimpl->m_loop_callback) {
+        callback_t cb;
+        {
+            impl::read_lock locker(m_pimpl.get());
+            cb = m_pimpl->m_loop_callback;
+        }
+        if (cb) {
             // Call directly from audio thread - callbacks should be quick!
-            m_pimpl->m_loop_callback(*this);
+            cb(*this);
         }
     }
 
     void audio_stream::set_audio_device_data(const audio_device_data& aud) {
+        // The audio callback and audio_stream::open() read this global under
+        // the same mutex.
+        std::lock_guard<std::recursive_mutex> cb_lock(audio_callback_mutex());
         audio_mixer::m_audio_device_data = aud;
     }
 
@@ -680,6 +764,11 @@ namespace musac {
     }
 
     audio_stream::stream_snapshot audio_stream::capture_state() const {
+        // Hold both stream mutexes: the fields below span the state domain
+        // (playback flags, fade) and the data domain (volume, stereo, mute).
+        impl::state_lock state_locker(m_pimpl.get());
+        impl::read_lock data_locker(m_pimpl.get());
+
         stream_snapshot snapshot;
         snapshot.playback_tick = m_pimpl->m_playback_start_tick;
         snapshot.volume = m_pimpl->m_volume;
@@ -698,6 +787,9 @@ namespace musac {
     }
 
     void audio_stream::restore_state(const stream_snapshot& state) {
+        impl::state_lock state_locker(m_pimpl.get());
+        impl::write_lock data_locker(m_pimpl.get());
+
         m_pimpl->m_playback_start_tick =
             static_cast<unsigned int>(state.playback_start_tick);
         m_pimpl->m_volume = state.volume;

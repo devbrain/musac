@@ -33,7 +33,7 @@ buffer<uint8_t> audio_converter::convert(const audio_spec& src_spec,
     
     // Fast path 1: No conversion needed
     if (!needs_conversion(src_spec, dst_spec)) {
-        buffer<uint8_t> output(static_cast<unsigned int>(src_len));
+        buffer<uint8_t> output(src_len);
         std::memcpy(output.data(), src_data, src_len);
         return output;
     }
@@ -42,7 +42,7 @@ buffer<uint8_t> audio_converter::convert(const audio_spec& src_spec,
     if (src_spec.channels == dst_spec.channels && src_spec.freq == dst_spec.freq) {
         if ((src_spec.format == audio_format::s16le && dst_spec.format == audio_format::s16be) ||
             (src_spec.format == audio_format::s16be && dst_spec.format == audio_format::s16le)) {
-            buffer<uint8_t> output(static_cast<unsigned int>(src_len));
+            buffer<uint8_t> output(src_len);
             std::memcpy(output.data(), src_data, src_len);
             detail::fast_swap16_inplace(output.data(), src_len);
             return output;
@@ -51,7 +51,7 @@ buffer<uint8_t> audio_converter::convert(const audio_spec& src_spec,
             (src_spec.format == audio_format::s32be && dst_spec.format == audio_format::s32le) ||
             (src_spec.format == audio_format::f32le && dst_spec.format == audio_format::f32be) ||
             (src_spec.format == audio_format::f32be && dst_spec.format == audio_format::f32le)) {
-            buffer<uint8_t> output(static_cast<unsigned int>(src_len));
+            buffer<uint8_t> output(src_len);
             std::memcpy(output.data(), src_data, src_len);
             detail::fast_swap32_inplace(output.data(), src_len);
             return output;
@@ -297,7 +297,7 @@ size_t audio_converter::stream_converter::process_chunk(const uint8_t* input, si
     if (input_len > 0) {
         // Ensure buffer is large enough
         if (m_pimpl->input_accumulated + input_len > m_pimpl->input_buffer.size()) {
-            m_pimpl->input_buffer.resize(static_cast<unsigned int>(m_pimpl->input_accumulated + input_len + 4096));
+            m_pimpl->input_buffer.resize(m_pimpl->input_accumulated + input_len + 4096);
         }
         std::memcpy(m_pimpl->input_buffer.data() + m_pimpl->input_accumulated, 
                    input, input_len);

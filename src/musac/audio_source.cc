@@ -32,15 +32,19 @@ musac::audio_source::audio_source(std::unique_ptr<musac::io_stream> rwops,
         THROW_RUNTIME("No IO stream provided to audio_source");
     }
     
-    // Use provided registry or get the global one from audio_system
+    // Use provided registry or get the global one from audio_system.
+    // Keep shared ownership of the global registry so a concurrent
+    // set_decoders_registry()/done() can't destroy it while we use it.
+    std::shared_ptr<const decoders_registry> global_reg;
     const decoders_registry* reg = registry;
     if (!reg) {
-        reg = audio_system::get_decoders_registry();
+        global_reg = audio_system::get_decoders_registry();
+        reg = global_reg.get();
         if (!reg) {
             THROW_RUNTIME("No decoders registry available. Call audio_system::init() first or provide a registry.");
         }
     }
-    
+
     // Find appropriate decoder for the stream
     m_decoder = std::shared_ptr<decoder>(reg->find_decoder(m_rwops.get()));
     if (!m_decoder) {
@@ -57,21 +61,25 @@ musac::audio_source::audio_source(std::unique_ptr<musac::io_stream> rwops,
         THROW_RUNTIME("No IO stream provided to audio_source");
     }
     
-    // Use provided registry or get the global one from audio_system
+    // Use provided registry or get the global one from audio_system.
+    // Keep shared ownership of the global registry so a concurrent
+    // set_decoders_registry()/done() can't destroy it while we use it.
+    std::shared_ptr<const decoders_registry> global_reg;
     const decoders_registry* reg = registry;
     if (!reg) {
-        reg = audio_system::get_decoders_registry();
+        global_reg = audio_system::get_decoders_registry();
+        reg = global_reg.get();
         if (!reg) {
             THROW_RUNTIME("No decoders registry available. Call audio_system::init() first or provide a registry.");
         }
     }
-    
+
     // Find appropriate decoder for the stream
     m_decoder = std::shared_ptr<decoder>(reg->find_decoder(m_rwops.get()));
     if (!m_decoder) {
         THROW_RUNTIME("No suitable decoder found for the audio format");
     }
-    
+
     if (m_resampler) {
         m_resampler->set_decoder(m_decoder);
     }

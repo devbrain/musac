@@ -10,10 +10,13 @@
 namespace musac {
     audio_device_data audio_mixer::m_audio_device_data {};
 
-    audio_mixer::audio_mixer(): m_final_output_buffer(OUTPUT_BUFFER_SIZE, 0.0f),
+    audio_mixer::audio_mixer(): m_final_output_buffer(new std::atomic<float>[OUTPUT_BUFFER_SIZE]),
                                 m_final_mix_buf(0),
                                 m_stream_buf(0),
                                 m_processor_buf(0) {
+        for (size_t i = 0; i < OUTPUT_BUFFER_SIZE; ++i) {
+            m_final_output_buffer[i].store(0.0f, std::memory_order_relaxed);
+        }
     }
 
     std::shared_ptr<std::vector<stream_container::stream_entry>> audio_mixer::get_streams() const {
@@ -31,6 +34,10 @@ namespace musac {
     
     void audio_mixer::update_stream_pointer(int token, audio_stream* new_stream) {
         m_stream_container.update_stream_pointer(token, new_stream);
+    }
+
+    audio_stream* audio_mixer::find_stream_by_token(int token) const {
+        return m_stream_container.find_stream(token);
     }
 
     void audio_mixer::resize(size_t out_len_samples) {
@@ -197,8 +204,13 @@ namespace musac {
     }
     
     mixer_snapshot audio_mixer::capture_state() const {
+        // Freeze the audio callback and stream destruction/moves so the raw
+        // stream pointers walked below stay valid (recursive: switch_device
+        // already holds it).
+        std::lock_guard<std::recursive_mutex> cb_lock(audio_callback_mutex());
+
         mixer_snapshot snapshot;
-        
+
         // Capture timing
         snapshot.snapshot_time = std::chrono::steady_clock::now();
         // Calculate milliseconds since some fixed point (similar to SDL_GetTicks)
@@ -226,7 +238,12 @@ namespace musac {
         auto streams = get_streams();
         if (streams) {
             for (const auto& entry : *streams) {
-                if (entry.stream && !entry.lifetime_token.expired()) {
+                // Pin the impl: a stream whose destruction already completed
+                // has an expired token and is skipped; one that is mid-
+                // destruction is blocked on audio_callback_mutex(), so the
+                // pointer stays valid while we hold it.
+                auto pin = entry.lifetime_token.lock();
+                if (entry.stream && pin) {
                     mixer_snapshot::stream_state state;
                     auto* stream = entry.stream;
                     
@@ -266,7 +283,7 @@ namespace musac {
         
         // Restore pending samples to the mix buffer
         if (!snapshot.pending_samples.empty()) {
-            resize(static_cast<unsigned int>(snapshot.pending_samples.size()));
+            resize(snapshot.pending_samples.size());
             std::copy(snapshot.pending_samples.begin(), 
                      snapshot.pending_samples.end(),
                      m_final_mix_buf.begin());
@@ -277,27 +294,27 @@ namespace musac {
     
     void audio_mixer::capture_final_output(const float* buffer, size_t samples) {
         if (!buffer || samples == 0) return;
-        
+
         size_t pos = m_output_write_pos.load(std::memory_order_relaxed);
-        
+
         // Copy samples to ring buffer
         for (size_t i = 0; i < samples; ++i) {
-            m_final_output_buffer[(pos + i) % OUTPUT_BUFFER_SIZE] = buffer[i];
+            m_final_output_buffer[(pos + i) % OUTPUT_BUFFER_SIZE].store(buffer[i], std::memory_order_relaxed);
         }
-        
-        // Update write position
-        m_output_write_pos.store((pos + samples) % OUTPUT_BUFFER_SIZE, std::memory_order_relaxed);
+
+        // Publish the samples before the new write position
+        m_output_write_pos.store((pos + samples) % OUTPUT_BUFFER_SIZE, std::memory_order_release);
     }
-    
+
     std::vector<float> audio_mixer::get_final_output() const {
         std::vector<float> result(OUTPUT_BUFFER_SIZE);
-        size_t write_pos = m_output_write_pos.load(std::memory_order_relaxed);
-        
+        size_t write_pos = m_output_write_pos.load(std::memory_order_acquire);
+
         // Copy from ring buffer starting from write position (oldest data)
         for (size_t i = 0; i < OUTPUT_BUFFER_SIZE; ++i) {
-            result[i] = m_final_output_buffer[(write_pos + i) % OUTPUT_BUFFER_SIZE];
+            result[i] = m_final_output_buffer[(write_pos + i) % OUTPUT_BUFFER_SIZE].load(std::memory_order_relaxed);
         }
-        
+
         return result;
     }
     

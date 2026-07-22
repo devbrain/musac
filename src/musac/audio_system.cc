@@ -107,9 +107,12 @@ namespace musac {
         return s_backend_v2();
     }
     
-    const decoders_registry* audio_system::get_decoders_registry() {
+    std::shared_ptr<const decoders_registry> audio_system::get_decoders_registry() {
+        // Shared ownership: a raw pointer could dangle if a concurrent
+        // set_decoders_registry()/done() released the registry while the
+        // caller was still using it.
         std::lock_guard<std::mutex> lock(s_system_mutex());
-        return s_decoders_registry().get();
+        return s_decoders_registry();
     }
     
     void audio_system::set_decoders_registry(std::shared_ptr<decoders_registry> registry) {
@@ -136,11 +139,17 @@ namespace musac {
     
     bool audio_system::switch_device(audio_device& new_device) {
         std::lock_guard<std::mutex> lock(s_system_mutex());
-        
+
         if (!s_backend_v2()) {
             return false;
         }
-        
+
+        // Freeze the audio callback and stream destruction/moves for the whole
+        // switch: the raw audio_stream* collected in stream_states below are
+        // dereferenced across device teardown, which is only safe while
+        // destructors are blocked on this mutex.
+        std::lock_guard<std::recursive_mutex> cb_lock(audio_callback_mutex());
+
         try {
             // 1. Get current device (if any)
             audio_device* current_device = get_active_audio_device();
@@ -183,7 +192,11 @@ namespace musac {
             
             if (streams) {
                 for (const auto& entry : *streams) {
-                    if (entry.stream && !entry.lifetime_token.expired()) {
+                    // Pin instead of a racy expired() check; combined with the
+                    // callback mutex above the pointer can't be freed while we
+                    // use it (see audio_mixer::capture_state).
+                    auto pin = entry.lifetime_token.lock();
+                    if (entry.stream && pin) {
                         stream_playback_state state;
                         state.stream = entry.stream;
                         state.was_playing = entry.stream->is_playing();

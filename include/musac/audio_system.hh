@@ -136,15 +136,17 @@ namespace musac {
         
         /**
          * @brief Get the decoder registry
-         * @return Pointer to registry, or nullptr if not set
-         * 
+         * @return Shared pointer to registry, or nullptr if not set
+         *
          * Returns the current decoder registry used for format detection
          * and decoding. If no custom registry was set, returns the default
-         * registry with all built-in decoders.
-         * 
+         * registry with all built-in decoders. Shared ownership keeps the
+         * registry alive even if it is concurrently replaced via
+         * set_decoders_registry() or released by done().
+         *
          * @note Thread-safe
          */
-        static const decoders_registry* get_decoders_registry();
+        static std::shared_ptr<const decoders_registry> get_decoders_registry();
         
         /**
          * @brief Set a custom decoder registry

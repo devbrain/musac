@@ -44,6 +44,15 @@ namespace {
         result |= buffer[offset++] << 24;
         return result;
     }
+
+    //-------------------------------------------------
+    //  have_bytes - overflow-safe check that `need`
+    //  bytes are available at `offset`
+    //-------------------------------------------------
+
+    bool have_bytes(const std::vector <uint8_t>& buffer, uint32_t offset, size_t need) {
+        return offset <= buffer.size() && need <= buffer.size() - offset;
+    }
 }
 
 namespace musac {
@@ -60,24 +69,28 @@ namespace musac {
         if (file_size <= 0) {
             return false;
         }
-        m_input.resize(file_size);
+        m_input.resize(static_cast<size_t>(file_size));
         if (file->read( m_input.data(), file_size) != static_cast<size_t>(file_size)) {
             return false;
         }
-        if (m_input.size() >= 10 && m_input[0] == 0x1f && m_input[1] == 0x8b && m_input[2] == 0x08) {
-            // copy the raw data to a new buffer
-            std::vector <uint8_t> compressed = m_input;
+        // 18 = minimal gzip file (10-byte header + 8-byte trailer); the
+        // trailer's last 4 bytes hold the uncompressed size we read below
+        if (m_input.size() >= 18 && m_input[0] == 0x1f && m_input[1] == 0x8b && m_input[2] == 0x08) {
+            // take the raw data, decompress into m_input
+            std::vector <uint8_t> compressed = std::move(m_input);
 
-            // determine uncompressed size and resize the buffer
-            uint8_t* end = &compressed[compressed.size()];
-            uint32_t uncompressed = end[-4] | (end[-3] << 8) | (end[-2] << 16) | (end[-1] << 24);
-            if (static_cast<size_t>(file_size) < compressed.size() || file_size > 32 * 1024 * 1024) {
+            // determine uncompressed size and resize the buffer; the field is
+            // attacker-controlled, so bound it before allocating
+            const uint8_t* end = compressed.data() + compressed.size();
+            uint32_t uncompressed = static_cast<uint32_t>(end[-4]) | (static_cast<uint32_t>(end[-3]) << 8)
+                                  | (static_cast<uint32_t>(end[-2]) << 16) | (static_cast<uint32_t>(end[-1]) << 24);
+            if (uncompressed == 0 || uncompressed > 32 * 1024 * 1024) {
                 return false;
             }
-            m_input.resize(uncompressed);
+            m_input.assign(uncompressed, 0);
 
             // decompress the data
-            auto result = (int)em_inflate(&compressed[0], compressed.size(), &m_input[0], m_input.size());
+            auto result = (int)em_inflate(compressed.data(), compressed.size(), m_input.data(), m_input.size());
             if (result == -1) {
                 return false;
             }
@@ -88,17 +101,27 @@ namespace musac {
             return false;
         }
         uint32_t offset = 4;
-        // +04: parse the size
+        // +04: EOF offset (relative to +04); total file size = value + 4.
+        // 64-bit arithmetic: the raw field can be near UINT32_MAX
         uint32_t size = parse_uint32(m_input, offset);
-        if (offset - 4 + size > m_input.size()) {
+        uint64_t total_size = static_cast<uint64_t>(size) + 4;
+        if (total_size > m_input.size()) {
             LOG_ERROR("VGM", "Total size for file is too small; file may be truncated");
-            size = (uint32_t)(m_input.size() - 4);
+            total_size = m_input.size();
         }
-        m_input.resize(size + 4);
+        if (total_size < 64) {
+            // must at least cover the fixed part of the header
+            return false;
+        }
+        m_input.resize(static_cast<size_t>(total_size));
 
         // parse the header, creating any chips needed
         m_data_start = parse_header(m_input, offset);
         m_cmds_offset = m_data_start;
+        if (m_data_start > m_input.size()) {
+            LOG_ERROR("VGM", "Data offset points past end of file");
+            return false;
+        }
 
         // if no chips created, fail
         if (m_active_chips.empty()) {
@@ -222,6 +245,12 @@ namespace musac {
         if (version < 0x150)
             data_start = 0x40;
 
+        // The optional header fields below extend up to data_start, but a
+        // malformed file can claim a data_start beyond the end of the buffer —
+        // clamp the range we are willing to read header fields from.
+        const uint32_t header_end = static_cast<uint32_t>(
+            std::min<uint64_t>(data_start, buffer.size()));
+
         // +38: Sega PCM clock
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
@@ -231,28 +260,28 @@ namespace musac {
         dummy = parse_uint32(buffer, offset);
 
         // +40: RF5C68 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
             LOG_WARN("VGM", "Clock for RF5C68 specified, but not supported");
 
         // +44: YM2203 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
             add_chips(clock, CHIP_YM2203, "YM2203");
 
         // +48: YM2608 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
             add_chips(clock, CHIP_YM2608, "YM2608");
 
         // +4C: YM2610/2610B clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0) {
@@ -263,70 +292,70 @@ namespace musac {
         }
 
         // +50: YM3812 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
             add_chips(clock, CHIP_YM3812, "YM3812");
 
         // +54: YM3526 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
             add_chips(clock, CHIP_YM3526, "YM3526");
 
         // +58: Y8950 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
             add_chips(clock, CHIP_Y8950, "Y8950");
 
         // +5C: YMF262 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
             add_chips(clock, CHIP_YMF262, "YMF262");
 
         // +60: YMF278B clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
             add_chips(clock, CHIP_YMF278B, "YMF278B");
 
         // +64: YMF271 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
             WARN_UNSUPPORTED_CHIP("YMF271");
 
         // +68: YMF280B clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
             WARN_UNSUPPORTED_CHIP("YMF280B");
 
         // +6C: RF5C164 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
             WARN_UNSUPPORTED_CHIP("RF5C164");
 
         // +70: PWM clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0)
             WARN_UNSUPPORTED_CHIP("PWM");
 
         // +74: AY8910 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x151 && clock != 0) {
@@ -335,181 +364,181 @@ namespace musac {
         }
 
         // +78: AY8910 flags
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         dummy = parse_uint32(buffer, offset);
 
         // +7C: volume / loop info
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         dummy = parse_uint32(buffer, offset);
         if ((dummy & 0xff) != 0)
             LOG_DEBUG("VGM", "Volume modifier:", (dummy & 0xff), "(=", int(pow(2, double(dummy & 0xff) / 0x20)), ")");
 
         // +80: GameBoy DMG clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
             WARN_UNSUPPORTED_CHIP("GameBoy DMG");
 
         // +84: NES APU clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
             WARN_UNSUPPORTED_CHIP("NES APU");
 
         // +88: MultiPCM clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
             WARN_UNSUPPORTED_CHIP("MultiPCM");
 
         // +8C: uPD7759 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
             WARN_UNSUPPORTED_CHIP("uPD7759");
 
         // +90: OKIM6258 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
             WARN_UNSUPPORTED_CHIP("OKIM6258");
 
         // +94: OKIM6258 Flags / K054539 Flags / C140 Chip Type / reserved
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         dummy = parse_uint32(buffer, offset);
 
         // +98: OKIM6295 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
             WARN_UNSUPPORTED_CHIP("OKIM6295");
 
         // +9C: K051649 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
             WARN_UNSUPPORTED_CHIP("K051649");
 
         // +A0: K054539 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
             WARN_UNSUPPORTED_CHIP("K054539");
 
         // +A4: HuC6280 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
             WARN_UNSUPPORTED_CHIP("HuC6280");
 
         // +A8: C140 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
             WARN_UNSUPPORTED_CHIP("C140");
 
         // +AC: K053260 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
             WARN_UNSUPPORTED_CHIP("K053260");
 
         // +B0: Pokey clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
             WARN_UNSUPPORTED_CHIP("Pokey");
 
         // +B4: QSound clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x161 && clock != 0)
             WARN_UNSUPPORTED_CHIP("QSound");
 
         // +B8: SCSP clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
             WARN_UNSUPPORTED_CHIP("SCSP");
 
         // +BC: extra header offset
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         /*uint32_t extra_header =*/ parse_uint32(buffer, offset);
 
         // +C0: WonderSwan clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
             WARN_UNSUPPORTED_CHIP("WonderSwan");
 
         // +C4: VSU clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
             WARN_UNSUPPORTED_CHIP("VSU");
 
         // +C8: SAA1099 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
             WARN_UNSUPPORTED_CHIP("SAA1099");
 
         // +CC: ES5503 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
             WARN_UNSUPPORTED_CHIP("ES5503");
 
         // +D0: ES5505/ES5506 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
             WARN_UNSUPPORTED_CHIP("ES5505/ES5506");
 
         // +D4: ES5503 output channels / ES5505/ES5506 amount of output channels / C352 clock divider
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         dummy = parse_uint32(buffer, offset);
 
         // +D8: X1-010 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
             WARN_UNSUPPORTED_CHIP("X1-010");
 
         // +DC: C352 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
             WARN_UNSUPPORTED_CHIP("C352");
 
         // +E0: GA20 clock
-        if (offset + 4 > data_start)
+        if (offset + 4 > header_end)
             return data_start;
         clock = parse_uint32(buffer, offset);
         if (version >= 0x171 && clock != 0)
@@ -553,11 +582,25 @@ namespace musac {
 
     int vgm_player::apply_cmd(const std::vector <uint8_t>& buffer, uint32_t& offset, bool& done) {
         int delay = 0;
+        if (!have_bytes(buffer, offset, 1)) {
+            done = true;
+            return 0;
+        }
         uint8_t cmd = buffer[offset++];
+        // Checks that a command's operands are actually present; a truncated
+        // or malformed file ends playback instead of reading out of bounds.
+        auto need = [&](size_t count) {
+            if (!have_bytes(buffer, offset, count)) {
+                done = true;
+                return false;
+            }
+            return true;
+        };
         switch (cmd) {
             // YM2413, write value dd to register aa
             case 0x51:
             case 0xa1:
+                if (!need(2)) return 0;
                 write_chip(CHIP_YM2413, cmd >> 7, buffer[offset], buffer[offset + 1]);
                 offset += 2;
                 break;
@@ -565,6 +608,7 @@ namespace musac {
             // YM2612 port 0, write value dd to register aa
             case 0x52:
             case 0xa2:
+                if (!need(2)) return 0;
                 write_chip(CHIP_YM2612, cmd >> 7, buffer[offset], buffer[offset + 1]);
                 offset += 2;
                 break;
@@ -572,6 +616,7 @@ namespace musac {
             // YM2612 port 1, write value dd to register aa
             case 0x53:
             case 0xa3:
+                if (!need(2)) return 0;
                 write_chip(CHIP_YM2612, cmd >> 7, buffer[offset] | 0x100, buffer[offset + 1]);
                 offset += 2;
                 break;
@@ -579,6 +624,7 @@ namespace musac {
             // YM2151, write value dd to register aa
             case 0x54:
             case 0xa4:
+                if (!need(2)) return 0;
                 write_chip(CHIP_YM2151, cmd >> 7, buffer[offset], buffer[offset + 1]);
                 offset += 2;
                 break;
@@ -586,6 +632,7 @@ namespace musac {
             // YM2203, write value dd to register aa
             case 0x55:
             case 0xa5:
+                if (!need(2)) return 0;
                 write_chip(CHIP_YM2203, cmd >> 7, buffer[offset], buffer[offset + 1]);
                 offset += 2;
                 break;
@@ -593,6 +640,7 @@ namespace musac {
             // YM2608 port 0, write value dd to register aa
             case 0x56:
             case 0xa6:
+                if (!need(2)) return 0;
                 write_chip(CHIP_YM2608, cmd >> 7, buffer[offset], buffer[offset + 1]);
                 offset += 2;
                 break;
@@ -600,6 +648,7 @@ namespace musac {
             // YM2608 port 1, write value dd to register aa
             case 0x57:
             case 0xa7:
+                if (!need(2)) return 0;
                 write_chip(CHIP_YM2608, cmd >> 7, buffer[offset] | 0x100, buffer[offset + 1]);
                 offset += 2;
                 break;
@@ -607,6 +656,7 @@ namespace musac {
             // YM2610 port 0, write value dd to register aa
             case 0x58:
             case 0xa8:
+                if (!need(2)) return 0;
                 write_chip(CHIP_YM2610, cmd >> 7, buffer[offset], buffer[offset + 1]);
                 offset += 2;
                 break;
@@ -614,6 +664,7 @@ namespace musac {
             // YM2610 port 1, write value dd to register aa
             case 0x59:
             case 0xa9:
+                if (!need(2)) return 0;
                 write_chip(CHIP_YM2610, cmd >> 7, buffer[offset] | 0x100, buffer[offset + 1]);
                 offset += 2;
                 break;
@@ -621,6 +672,7 @@ namespace musac {
             // YM3812, write value dd to register aa
             case 0x5a:
             case 0xaa:
+                if (!need(2)) return 0;
                 write_chip(CHIP_YM3812, cmd >> 7, buffer[offset], buffer[offset + 1]);
                 offset += 2;
                 break;
@@ -628,6 +680,7 @@ namespace musac {
             // YM3526, write value dd to register aa
             case 0x5b:
             case 0xab:
+                if (!need(2)) return 0;
                 write_chip(CHIP_YM3526, cmd >> 7, buffer[offset], buffer[offset + 1]);
                 offset += 2;
                 break;
@@ -635,6 +688,7 @@ namespace musac {
             // Y8950, write value dd to register aa
             case 0x5c:
             case 0xac:
+                if (!need(2)) return 0;
                 write_chip(CHIP_Y8950, cmd >> 7, buffer[offset], buffer[offset + 1]);
                 offset += 2;
                 break;
@@ -642,6 +696,7 @@ namespace musac {
             // YMF262 port 0, write value dd to register aa
             case 0x5e:
             case 0xae:
+                if (!need(2)) return 0;
                 write_chip(CHIP_YMF262, cmd >> 7, buffer[offset], buffer[offset + 1]);
                 offset += 2;
                 break;
@@ -649,12 +704,14 @@ namespace musac {
             // YMF262 port 1, write value dd to register aa
             case 0x5f:
             case 0xaf:
+                if (!need(2)) return 0;
                 write_chip(CHIP_YMF262, cmd >> 7, buffer[offset] | 0x100, buffer[offset + 1]);
                 offset += 2;
                 break;
 
             // Wait n samples, n can range from 0 to 65535 (approx 1.49 seconds)
             case 0x61:
+                if (!need(2)) return 0;
                 delay = buffer[offset] | (buffer[offset + 1] << 8);
                 offset += 2;
                 break;
@@ -676,11 +733,16 @@ namespace musac {
 
             // data block
             case 0x67: {
+                if (!need(2)) return 0;
                 uint8_t dummy = buffer[offset++];
                 if (dummy != 0x66)
                     break;
                 uint8_t type = buffer[offset++];
+                if (!need(4)) return 0;
                 uint32_t size = parse_uint32(buffer, offset);
+                // The block payload must fit in the remaining buffer, and the
+                // ROM/PCM sub-blocks below carve an 8-byte prefix out of it
+                if (!need(size)) return 0;
                 uint32_t localoffset = offset;
 
                 switch (type) {
@@ -696,30 +758,35 @@ namespace musac {
                     case 0x00: // YM2612 PCM data for use with associated commands
                     {
                         auto* chip = find_chip(CHIP_YM2612, 0);
-                        if (chip != nullptr)
+                        if (chip != nullptr && size >= 8)
                             chip->write_data(ACCESS_PCM, 0, size - 8, &buffer[localoffset]);
                         break;
                     }
 
                     case 0x82: // YM2610 ADPCM ROM data
-                        add_rom_data(CHIP_YM2610, ACCESS_ADPCM_A, buffer, localoffset, size - 8);
+                        if (size >= 8)
+                            add_rom_data(CHIP_YM2610, ACCESS_ADPCM_A, buffer, localoffset, size - 8);
                         break;
 
                     case 0x81: // YM2608 DELTA-T ROM data
-                        add_rom_data(CHIP_YM2608, ACCESS_ADPCM_B, buffer, localoffset, size - 8);
+                        if (size >= 8)
+                            add_rom_data(CHIP_YM2608, ACCESS_ADPCM_B, buffer, localoffset, size - 8);
                         break;
 
                     case 0x83: // YM2610 DELTA-T ROM data
-                        add_rom_data(CHIP_YM2610, ACCESS_ADPCM_B, buffer, localoffset, size - 8);
+                        if (size >= 8)
+                            add_rom_data(CHIP_YM2610, ACCESS_ADPCM_B, buffer, localoffset, size - 8);
                         break;
 
                     case 0x84: // YMF278B ROM data
                     case 0x87: // YMF278B RAM data
-                        add_rom_data(CHIP_YMF278B, ACCESS_PCM, buffer, localoffset, size - 8);
+                        if (size >= 8)
+                            add_rom_data(CHIP_YMF278B, ACCESS_PCM, buffer, localoffset, size - 8);
                         break;
 
                     case 0x88: // Y8950 DELTA-T ROM data
-                        add_rom_data(CHIP_Y8950, ACCESS_ADPCM_B, buffer, localoffset, size - 8);
+                        if (size >= 8)
+                            add_rom_data(CHIP_Y8950, ACCESS_ADPCM_B, buffer, localoffset, size - 8);
                         break;
 
                     case 0x80: // Sega PCM ROM data
@@ -760,12 +827,14 @@ namespace musac {
 
             // AY8910, write value dd to register aa
             case 0xa0:
+                if (!need(2)) return 0;
                 write_chip(CHIP_YM2149, buffer[offset] >> 7, buffer[offset] & 0x7f, buffer[offset + 1]);
                 offset += 2;
                 break;
 
             // pp aa dd: YMF278B, port pp, write value dd to register aa
             case 0xd0:
+                if (!need(3)) return 0;
                 write_chip(CHIP_YMF278B, buffer[offset] >> 7, ((buffer[offset] & 0x7f) << 8) | buffer[offset + 1],
                            buffer[offset + 2]);
                 offset += 3;
@@ -832,6 +901,7 @@ namespace musac {
             case 0x3f:
             case 0x4f: // dd: Game Gear PSG stereo, write dd to port 0x06
             case 0x50: // dd: PSG (SN76489/SN76496) write value dd
+                if (!need(1)) return 0;
                 offset++;
                 break;
 
@@ -868,6 +938,7 @@ namespace musac {
             case 0xbd: // aa dd: SAA1099, write value dd to register aa
             case 0xbe: // aa dd: ES5506, write value dd to register aa
             case 0xbf: // aa dd: GA20, write value dd to register aa
+                if (!need(2)) return 0;
                 offset += 2;
                 break;
 
@@ -904,6 +975,7 @@ namespace musac {
             case 0xd4: // pp aa dd: C140, write value dd to register ppaa
             case 0xd5: // pp aa dd: ES5503, write value dd to register ppaa
             case 0xd6: // pp aa dd: ES5506, write value aadd to register pp
+                if (!need(3)) return 0;
                 offset += 3;
                 break;
 
@@ -911,11 +983,14 @@ namespace musac {
             case 0xe0:
                 // dddddddd: Seek to offset dddddddd (Intel byte order) in PCM data bank of data block type 0 (YM2612).
             {
+                if (!need(4)) return 0;
                 auto* chip = find_chip(CHIP_YM2612, 0);
                 uint32_t pos = parse_uint32(buffer, offset);
                 if (chip != nullptr)
                     chip->seek_pcm(pos);
-                offset += 4;
+                // note: parse_uint32 already consumed the 4 operand bytes; the
+                // extra `offset += 4` that used to sit here desynced the
+                // command stream after every 0xe0
                 break;
             }
             case 0xe1: // mmll aadd: C352, write value aadd to register mmll
@@ -949,6 +1024,7 @@ namespace musac {
             case 0xfd:
             case 0xfe:
             case 0xff:
+                if (!need(4)) return 0;
                 offset += 4;
                 break;
         }

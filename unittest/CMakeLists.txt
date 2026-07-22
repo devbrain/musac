@@ -91,6 +91,7 @@ add_executable(musac_unittest
         integration/codecs/test_decoder_wav.cc
         integration/codecs/test_decoders_with_golden_data.cc
         integration/codecs/test_decoders_with_golden_data_synth.cc
+        integration/codecs/test_codec_robustness.cc
 )
 
 # Include directories

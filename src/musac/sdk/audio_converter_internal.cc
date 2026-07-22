@@ -46,7 +46,7 @@ buffer<uint8_t> fast_mono_to_stereo(const uint8_t* data, size_t len, audio_forma
     size_t sample_size = audio_format_byte_size(format);
     size_t num_samples = len / sample_size;
     
-    buffer<uint8_t> output(static_cast<unsigned int>(len * 2));
+    buffer<uint8_t> output(len * 2);
     
     if (sample_size == 1) {
         // 8-bit samples
@@ -82,7 +82,7 @@ buffer<uint8_t> fast_stereo_to_mono(const uint8_t* data, size_t len, audio_forma
     size_t sample_size = audio_format_byte_size(format);
     size_t num_frames = len / (sample_size * 2);
     
-    buffer<uint8_t> output(static_cast<unsigned int>(len / 2));
+    buffer<uint8_t> output(len / 2);
     
     if (format == audio_format::u8) {
         const uint8_t* src = data;
@@ -122,7 +122,7 @@ buffer<uint8_t> convert_format(const uint8_t* data, size_t len,
     size_t to_size = audio_format_byte_size(to);
     size_t num_samples = len / from_size;
     
-    buffer<uint8_t> output(static_cast<unsigned int>(num_samples * to_size));
+    buffer<uint8_t> output(num_samples * to_size);
     
     // U8 to S16LE
     if (from == audio_format::u8 && to == audio_format::s16le) {
@@ -274,7 +274,7 @@ buffer<uint8_t> resample_cubic(const uint8_t* data, size_t len,
                              uint32_t src_freq, uint32_t dst_freq) {
     if (src_freq == dst_freq) {
         // No resampling needed
-        buffer<uint8_t> output(static_cast<unsigned int>(len));
+        buffer<uint8_t> output(len);
         std::memcpy(output.data(), data, len);
         return output;
     }
@@ -284,7 +284,7 @@ buffer<uint8_t> resample_cubic(const uint8_t* data, size_t len,
     size_t src_frames = len / frame_size;
     size_t dst_frames = static_cast<size_t>(static_cast<double>(src_frames) * dst_freq / src_freq);
     
-    buffer<uint8_t> output(static_cast<unsigned int>(dst_frames * frame_size));
+    buffer<uint8_t> output(dst_frames * frame_size);
     float ratio = static_cast<float>(src_frames) / static_cast<float>(dst_frames);
     
     // Convert to float for processing

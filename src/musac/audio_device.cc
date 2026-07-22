@@ -121,6 +121,12 @@ struct audio_device::impl {
     std::atomic<int> stream_count{0}; // Track active streams
     std::string device_name;
     std::string device_id;
+
+    // Serializes stream creation on this device: the check-then-create of
+    // `stream` and the global device-data setup must be atomic across
+    // concurrent create_stream() calls. Recursive because create_stream()
+    // calls create_stream_with_callback(), which locks it too.
+    std::recursive_mutex create_mutex;
     
     // Destructor to handle cleanup
     ~impl() {
@@ -297,7 +303,9 @@ void audio_device::set_gain(float v) {
 void audio_device::create_stream_with_callback(
     void (*callback)(void* userdata, uint8_t* stream, int len),
     void* userdata) {
-    
+
+    std::lock_guard<std::recursive_mutex> lock(m_pimpl->create_mutex);
+
     if (m_pimpl->backend_v2 && m_pimpl->device_handle_v2) {
         m_pimpl->stream = m_pimpl->backend_v2->create_stream(
             m_pimpl->device_handle_v2, m_pimpl->spec, callback, userdata
@@ -309,6 +317,8 @@ void audio_device::create_stream_with_callback(
 }
 
 audio_stream audio_device::create_stream(audio_source&& audio_src) {
+    std::lock_guard<std::recursive_mutex> lock(m_pimpl->create_mutex);
+
     // Set up audio device data for the stream system
     audio_device_data aud;
     aud.m_audio_spec = m_pimpl->spec;
@@ -356,6 +366,8 @@ audio_stream audio_device::create_stream(audio_source&& audio_src) {
 }
 
 pc_speaker_stream audio_device::create_pc_speaker_stream() {
+    std::lock_guard<std::recursive_mutex> lock(m_pimpl->create_mutex);
+
     // Set up audio device data for the stream system
     audio_device_data aud;
     aud.m_audio_spec = m_pimpl->spec;

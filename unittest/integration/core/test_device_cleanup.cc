@@ -3,6 +3,7 @@
 #include <musac/audio_system.hh>
 #include <musac/sdk/audio_backend.hh>
 #include "../../backend_selection.hh"
+#include <atomic>
 #include <memory>
 #include <thread>
 #include <chrono>
@@ -22,12 +23,12 @@ TEST_CASE("Resource cleanup ordering with device_guard") {
             musac::audio_device::open_default_device(backend)
         );
         
-        bool callback_running = false;
-        
+        std::atomic<bool> callback_running{false};
+
         // Create stream with callback
         device->create_stream_with_callback(
             [](void* userdata, [[maybe_unused]] uint8_t* stream, [[maybe_unused]] int len) {
-                auto* flag = static_cast<bool*>(userdata);
+                auto* flag = static_cast<std::atomic<bool>*>(userdata);
                 *flag = true; // running
                 // Simulate some work
                 std::this_thread::sleep_for(std::chrono::microseconds(100));
