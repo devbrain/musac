@@ -1,0 +1,14 @@
+diff --git a/src/libiff/chunk_reader.cc b/src/libiff/chunk_reader.cc
+index e3c9635..fb9b5f3 100644
+--- a/src/libiff/chunk_reader.cc
++++ b/src/libiff/chunk_reader.cc
+@@ -51,7 +51,8 @@ namespace iff {
+     }
+     
+     std::vector<std::byte> chunk_reader::read_bytes(std::size_t n) {
+-        std::size_t to_read = std::min(n, remaining());
++        std::uint64_t available = remaining();
++        std::size_t to_read = available < n ? static_cast<std::size_t>(available) : n;
+         std::vector<std::byte> result(to_read);
+         
+         if (to_read > 0) {
