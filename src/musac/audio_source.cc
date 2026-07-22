@@ -118,8 +118,8 @@ void musac::audio_source::open(sample_rate_t rate, channels_t channels, size_t f
         try {
             m_resampler = std::make_unique<resampler_speex>(5); // Default quality = 5
             m_resampler->set_decoder(m_decoder);
-            LOG_INFO("audio_source", "Automatic resampling enabled:", decoder_rate, 
-                     "Hz →", rate, "Hz");
+            LOG_DEBUG("audio_source", "Automatic resampling enabled:", decoder_rate,
+                      "Hz →", rate, "Hz");
         } catch (const std::exception& e) {
             LOG_WARN("audio_source", "Failed to create resampler for sample rate conversion from", 
                      decoder_rate, "Hz to", rate, "Hz:", e.what());
